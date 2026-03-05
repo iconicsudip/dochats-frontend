@@ -1,0 +1,89 @@
+import React from 'react';
+import { Row, Col, Card, Statistic, List, Avatar, Typography, Button, Skeleton } from 'antd';
+import { LinkOutlined, MessageOutlined, PlusOutlined, MoreOutlined } from '@ant-design/icons';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../api/apiClient';
+
+const { Title, Text } = Typography;
+
+const Overview: React.FC = () => {
+    const { data: linksResponse, isLoading } = useQuery({
+        queryKey: ['links'],
+        queryFn: () => apiClient.get('/links?limit=50').then(res => res.data),
+    });
+
+    const links = linksResponse?.data || [];
+    const totalChats = links?.reduce((acc: number, l: any) => acc + l._count.conversations, 0) || 0;
+
+    const stats = [
+        { title: 'My Links', value: links?.length || 0, icon: <LinkOutlined />, desc: '+2 this week', trend: '#0c0c0c' },
+        { title: 'Live Chats', value: totalChats, icon: <MessageOutlined />, desc: '0 active now', trend: '#a855f7' },
+    ];
+
+    if (isLoading) return <Skeleton active paragraph={{ rows: 10 }} />;
+
+    return (
+        <div>
+            <div style={{ marginBottom: 32 }}>
+                <Title level={3} style={{ margin: 0, fontWeight: 800 }}>Dashboard Overview</Title>
+                <Text type="secondary" style={{ fontSize: 13 }}>Welcome back, here's what's happening today.</Text>
+            </div>
+
+            <Row gutter={[24, 24]}>
+                {stats.map((stat, idx) => (
+                    <Col xs={24} sm={24} lg={12} key={idx}>
+                        <Card className="premium-card">
+                            <div style={{ padding: 16 }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                                    <div style={{ width: 44, height: 44, background: 'rgba(0, 223, 154, 0.05)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0, 223, 154, 0.1)' }}>
+                                        {React.cloneElement(stat.icon as any, { style: { fontSize: 20, color: '#00df9a' } })}
+                                    </div>
+                                    <div style={{ fontSize: 11, color: '#00df9a', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>{stat.desc}</div>
+                                </div>
+                                <Statistic
+                                    title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>{stat.title}</Text>}
+                                    value={stat.value}
+                                    valueStyle={{ fontSize: 32, fontWeight: 800, color: '#fff', marginTop: 4 }}
+                                />
+                            </div>
+                        </Card>
+                    </Col>
+                ))}
+            </Row>
+
+            <Row gutter={[24, 24]} style={{ marginTop: 32 }}>
+                <Col xs={24}>
+                    <Card
+                        className="premium-card"
+                        title={<Title level={5} style={{ margin: 0 }}>Recent Links</Title>}
+                        extra={<Button type="link" style={{ color: '#00df9a', fontSize: 13 }}>View All</Button>}
+                    >
+                        <div style={{ padding: '0 16px 16px 16px' }}>
+                            {links?.length === 0 ? (
+                                <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                                    <PlusOutlined style={{ fontSize: 40, marginBottom: 12, opacity: 0.3 }} />
+                                    <p>No links created yet.</p>
+                                </div>
+                            ) : (
+                                <List
+                                    dataSource={links?.slice(0, 4)}
+                                    renderItem={(item: any) => (
+                                        <List.Item extra={<Button type="text" icon={<MoreOutlined />} />}>
+                                            <List.Item.Meta
+                                                avatar={<Avatar size={36} icon={<LinkOutlined />} style={{ background: 'rgba(0, 223, 154, 0.1)', color: '#00df9a' }} />}
+                                                title={<Text strong style={{ fontSize: 14 }}>{item.title}</Text>}
+                                                description={<Text type="secondary" style={{ fontSize: 12 }}>/{item.slug} • {item._count.conversations} conversations</Text>}
+                                            />
+                                        </List.Item>
+                                    )}
+                                />
+                            )}
+                        </div>
+                    </Card>
+                </Col>
+            </Row>
+        </div>
+    );
+};
+
+export default Overview;
