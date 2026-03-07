@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Card, Button, Row, Col, List, Space, Divider, Spin, message, Segmented } from 'antd';
+import { Typography, Card, Button, Row, Col, List, Space, Divider, Spin, message, Segmented, Grid } from 'antd';
 import { CheckCircleOutlined, TeamOutlined, LinkOutlined, WhatsAppOutlined, RocketOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
@@ -13,12 +13,12 @@ const Plans: React.FC = () => {
     const [submitting, setSubmitting] = useState(false);
     const [billingCycle, setBillingCycle] = useState<'MONTHLY' | 'YEARLY'>('MONTHLY');
 
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
+
     const fetchPlans = async () => {
         setLoading(true);
         try {
-            // Re-using the super-admin/plans for now if accessible, 
-            // but normally you'd have a public or admin-specific route.
-            // Let's assume there's a logic that allows admins to see plans.
             const res = await apiClient.get('/super-admin/plans');
             setPlans(res.data);
         } catch (e) {
@@ -71,27 +71,27 @@ const Plans: React.FC = () => {
 
     return (
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: 64 }}>
-                <Title level={2} style={{ fontWeight: 800, margin: 0, fontSize: 32 }}>Choose the Right Plan for Your Business</Title>
-                <Paragraph type="secondary" style={{ fontSize: 16, marginTop: 12 }}>
+            <div style={{ textAlign: 'center', marginBottom: isMobile ? 32 : 64 }}>
+                <Title level={2} style={{ fontWeight: 800, margin: 0, fontSize: isMobile ? 24 : 32 }}>Choose the Right Plan for Your Business</Title>
+                <Paragraph type="secondary" style={{ fontSize: isMobile ? 14 : 16, marginTop: 12 }}>
                     Unlock advanced features, higher limits, and dedicated support to scale your customer engagement.
                 </Paragraph>
-                <div style={{ marginTop: 32, display: 'flex', justifyContent: 'center' }}>
+                <div style={{ marginTop: 24, display: 'flex', justifyContent: 'center' }}>
                     <Segmented
                         options={[
-                            { label: 'Monthly billing', value: 'MONTHLY' },
+                            { label: isMobile ? 'Monthly' : 'Monthly billing', value: 'MONTHLY' },
                             {
                                 label: (
-                                    <Space>
-                                        Yearly billing
-                                        <span style={{ fontSize: 10, background: '#00df9a', color: '#000', padding: '1px 6px', borderRadius: 4, fontWeight: 700 }}>20% OFF</span>
+                                    <Space size={isMobile ? 4 : 8}>
+                                        {isMobile ? 'Yearly' : 'Yearly billing'}
+                                        <span style={{ fontSize: 9, background: '#00df9a', color: '#000', padding: '1px 4px', borderRadius: 4, fontWeight: 700 }}>20% OFF</span>
                                     </Space>
                                 ), value: 'YEARLY'
                             }
                         ]}
                         value={billingCycle}
                         onChange={(val: any) => setBillingCycle(val)}
-                        size="large"
+                        size={isMobile ? 'middle' : 'large'}
                         className="premium-segmented"
                         style={{ background: 'rgba(255,255,255,0.03)', padding: 4, borderRadius: 12 }}
                     />
@@ -212,9 +212,16 @@ const Plans: React.FC = () => {
                 })}
             </Row>
 
-            <div style={{ marginTop: 80, textAlign: 'center', background: 'rgba(0, 223, 154, 0.03)', padding: '48px', borderRadius: 24, border: '1px solid rgba(0, 223, 154, 0.1)' }}>
-                <Title level={3} style={{ color: '#fff' }}>Need something custom?</Title>
-                <Paragraph style={{ color: '#8696a0', fontSize: 16 }}>
+            <div style={{
+                marginTop: isMobile ? 40 : 80,
+                textAlign: 'center',
+                background: 'rgba(0, 223, 154, 0.03)',
+                padding: isMobile ? '32px 20px' : '48px',
+                borderRadius: 24,
+                border: '1px solid rgba(0, 223, 154, 0.1)'
+            }}>
+                <Title level={3} style={{ color: '#fff', fontSize: isMobile ? 20 : 24 }}>Need something custom?</Title>
+                <Paragraph style={{ color: '#8696a0', fontSize: isMobile ? 14 : 16 }}>
                     If our standard plans don't fit your needs, we can create a custom solution tailored to your specific requirements.
                 </Paragraph>
                 <Button
@@ -225,7 +232,7 @@ const Plans: React.FC = () => {
                     onClick={handleCustomRequest}
                     loading={submitting}
                     disabled={user?.upgradeRequests?.some((r: any) => r.planId === null)}
-                    style={{ marginTop: 16, height: 52, padding: '0 40px', fontWeight: 700 }}
+                    style={{ marginTop: 16, height: 52, padding: isMobile ? '0 24px' : '0 40px', fontWeight: 700, width: isMobile ? '100%' : 'auto' }}
                 >
                     {user?.upgradeRequests?.some((r: any) => r.planId === null)
                         ? 'Custom Plan Request Pending'

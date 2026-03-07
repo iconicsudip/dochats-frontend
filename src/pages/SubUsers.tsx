@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Button, Table, Modal, Form, Input, Select, Spin, Tag, App, Space, Card, Image, Avatar, Progress } from 'antd';
+import { Typography, Button, Table, Modal, Form, Input, Select, Spin, Tag, App, Space, Card, Image, Avatar, Progress, Grid } from 'antd';
 import { TeamOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
@@ -177,14 +177,24 @@ const SubUsers: React.FC = () => {
         }
     ];
 
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
+
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40 }}>
+            <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'flex-start' : 'flex-end',
+                marginBottom: isMobile ? 24 : 40,
+                gap: isMobile ? 20 : 0
+            }}>
                 <div>
-                    <Title level={3} style={{ margin: 0, fontWeight: 800 }}>Team Management</Title>
+                    <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 20 : 24 }}>Team Management</Title>
                     <Text type="secondary" style={{ fontSize: 13 }}>Create and manage sub-users who can handle your chat links.</Text>
                 </div>
-                <Space direction="vertical" align="end" style={{ minWidth: 200 }}>
+                <Space direction="vertical" align={isMobile ? 'start' : 'end'} style={{ minWidth: isMobile ? '100%' : 200 }}>
                     <div style={{ width: '100%' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                             <Text type="secondary" style={{ fontSize: 12 }}>Team: {total} / {user?.subUsersLimit || 0}</Text>
@@ -204,6 +214,7 @@ const SubUsers: React.FC = () => {
                         className="premium-button"
                         onClick={handleOpenCreateModal}
                         disabled={total >= (user?.subUsersLimit || 0)}
+                        style={{ width: isMobile ? '100%' : 'auto' }}
                     >
                         Add Team Member
                     </Button>

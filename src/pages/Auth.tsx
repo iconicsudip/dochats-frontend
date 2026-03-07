@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Form, Input, Button, Typography, message } from 'antd';
+import { Card, Form, Input, Button, Typography, message, Grid } from 'antd';
 import { UserOutlined, LockOutlined, CheckCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -12,6 +12,8 @@ const Auth: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const { login } = useAuth();
     const navigate = useNavigate();
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     const onFinish = async (values: any) => {
         setLoading(true);
@@ -33,14 +35,14 @@ const Auth: React.FC = () => {
     };
 
     return (
-        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#09090b', backgroundImage: 'radial-gradient(circle at top, #141414 0%, #09090b 100%)' }}>
-            <div style={{ width: 400 }}>
+        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#09090b', backgroundImage: 'radial-gradient(circle at top, #141414 0%, #09090b 100%)', padding: isMobile ? '0 20px' : 0 }}>
+            <div style={{ width: '100%', maxWidth: 400 }}>
                 <div style={{ textAlign: 'center', marginBottom: 32 }}>
                     <div style={{ width: 56, height: 56, background: '#00df9a', borderRadius: 16, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', marginBottom: 20 }}>
                         <CheckCircleOutlined style={{ color: '#000', fontSize: 28 }} />
                     </div>
-                    <Title level={3} style={{ margin: 0, fontWeight: 800, color: '#fff', fontFamily: 'Outfit, sans-serif' }}>Welcome to DoChats</Title>
-                    <Text type="secondary" style={{ fontSize: 13 }}>Manage your customer chats with custom links.</Text>
+                    <Title level={isMobile ? 4 : 3} style={{ margin: 0, fontWeight: 800, color: '#fff', fontFamily: 'Outfit, sans-serif' }}>Welcome to DoChats</Title>
+                    <Text type="secondary" style={{ fontSize: isMobile ? 12 : 13 }}>Manage your customer chats with custom links.</Text>
                 </div>
 
                 <Card className="premium-card">

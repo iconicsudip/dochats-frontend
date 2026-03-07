@@ -12,7 +12,8 @@ import {
     Space,
     Skeleton,
     message,
-    Result
+    Result,
+    Grid
 } from 'antd';
 import {
     CreditCardOutlined,
@@ -35,6 +36,8 @@ declare global {
 const Billing: React.FC = () => {
     const queryClient = useQueryClient();
     const [paymentLoading, setPaymentLoading] = useState(false);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
     const [page, setPage] = useState(1);
 
     const { data: status, isLoading: statusLoading } = useQuery({
@@ -175,8 +178,8 @@ const Billing: React.FC = () => {
 
     return (
         <div>
-            <div style={{ marginBottom: 32 }}>
-                <Title level={3} style={{ margin: 0, fontWeight: 800 }}>Billing & Subscription</Title>
+            <div style={{ marginBottom: isMobile ? 24 : 32 }}>
+                <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 22 : 24 }}>Billing & Subscription</Title>
                 <Text type="secondary" style={{ fontSize: 13 }}>Manage your monthly subscription and view payment history.</Text>
             </div>
 
@@ -184,13 +187,13 @@ const Billing: React.FC = () => {
             {isOverdue && (
                 <Alert
                     message="Subscription Expired"
-                    description="Your subscription has expired. Please make the payment to continue using all features."
+                    description={isMobile ? "Please pay to continue." : "Your subscription has expired. Please make the payment to continue using all features."}
                     type="error"
                     showIcon
                     icon={<WarningOutlined />}
                     style={{ marginBottom: 24, borderRadius: 12, border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.08)' }}
                     action={
-                        <Button type="primary" danger onClick={handlePayNow} loading={paymentLoading}>
+                        <Button type="primary" danger onClick={handlePayNow} loading={paymentLoading} size={isMobile ? 'small' : 'middle'}>
                             Pay Now
                         </Button>
                     }
@@ -200,14 +203,14 @@ const Billing: React.FC = () => {
             {/* Warning Alert - 3 days before expiry */}
             {showWarning && !isOverdue && (
                 <Alert
-                    message={`Subscription expires in ${sub.daysRemaining} day${sub.daysRemaining > 1 ? 's' : ''}`}
-                    description="Your subscription is about to expire. Pay now to avoid any service interruption."
+                    message={`Expires in ${sub.daysRemaining} day${sub.daysRemaining > 1 ? 's' : ''}`}
+                    description={isMobile ? "Pay now to avoid interruption." : "Your subscription is about to expire. Pay now to avoid any service interruption."}
                     type="warning"
                     showIcon
                     icon={<ClockCircleOutlined />}
                     style={{ marginBottom: 24, borderRadius: 12, border: '1px solid rgba(250, 204, 21, 0.3)', background: 'rgba(250, 204, 21, 0.08)' }}
                     action={
-                        <Button type="primary" onClick={handlePayNow} loading={paymentLoading} className="premium-button">
+                        <Button type="primary" onClick={handlePayNow} loading={paymentLoading} className="premium-button" size={isMobile ? 'small' : 'middle'}>
                             Renew Now
                         </Button>
                     }
@@ -231,7 +234,7 @@ const Billing: React.FC = () => {
                                 title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>{status?.billingCycle === 'YEARLY' ? 'YEARLY' : 'MONTHLY'} PLAN</Text>}
                                 value={sub?.amount || status?.defaultAmount || 0}
                                 prefix="₹"
-                                valueStyle={{ fontSize: 32, fontWeight: 800, color: '#fff', marginTop: 4 }}
+                                valueStyle={{ fontSize: isMobile ? 26 : 32, fontWeight: 800, color: '#fff', marginTop: 4 }}
                             />
                         </div>
                     </Card>
@@ -248,7 +251,7 @@ const Billing: React.FC = () => {
                             <Statistic
                                 title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>DAYS REMAINING</Text>}
                                 value={sub?.daysRemaining ?? 0}
-                                valueStyle={{ fontSize: 32, fontWeight: 800, color: isOverdue ? '#ef4444' : '#fff', marginTop: 4 }}
+                                valueStyle={{ fontSize: isMobile ? 26 : 32, fontWeight: 800, color: isOverdue ? '#ef4444' : '#fff', marginTop: 4 }}
                                 suffix={<Text type="secondary" style={{ fontSize: 14 }}>days</Text>}
                             />
                         </div>
@@ -266,7 +269,7 @@ const Billing: React.FC = () => {
                             <Statistic
                                 title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>CURRENT PERIOD</Text>}
                                 value={sub ? `${new Date(sub.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} — ${new Date(sub.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'N/A'}
-                                valueStyle={{ fontSize: 20, fontWeight: 800, color: '#fff', marginTop: 4 }}
+                                valueStyle={{ fontSize: isMobile ? 16 : 20, fontWeight: 800, color: '#fff', marginTop: 4 }}
                             />
                         </div>
                     </Card>
@@ -321,10 +324,13 @@ const Billing: React.FC = () => {
                         current: page,
                         pageSize: 10,
                         total: total,
-                        onChange: (newPage) => setPage(newPage)
+                        onChange: (newPage) => setPage(newPage),
+                        size: 'small',
+                        position: ['bottomCenter']
                     }}
-                    style={{ margin: '0 -8px' }}
+                    style={{ margin: isMobile ? '0 -12px' : '0' }}
                     locale={{ emptyText: 'No payment history yet' }}
+                    scroll={{ x: 'max-content' }}
                 />
             </Card>
         </div>

@@ -9,6 +9,7 @@ import {
     Statistic,
     Spin,
     Empty,
+    Grid,
 } from 'antd';
 import {
     WhatsAppOutlined,
@@ -23,6 +24,8 @@ const { Title, Text } = Typography;
 
 const Reports: React.FC = () => {
     const [page, setPage] = useState(1);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     const { data: reportsResponse, isLoading } = useQuery({
         queryKey: ['link-reports', page],
@@ -98,12 +101,12 @@ const Reports: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
         >
-            <div style={{ marginBottom: 40 }}>
-                <Title level={3} style={{ margin: 0, fontWeight: 800 }}>Reports & Analytics</Title>
+            <div style={{ marginBottom: isMobile ? 24 : 40 }}>
+                <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 20 : 24 }}>Reports & Analytics</Title>
                 <Text type="secondary" style={{ fontSize: 13 }}>Track your WhatsApp redirection performance.</Text>
             </div>
 
-            <Row gutter={[24, 24]} style={{ marginBottom: 40 }}>
+            <Row gutter={[24, 24]} style={{ marginBottom: isMobile ? 24 : 40 }}>
                 <Col xs={24} sm={8}>
                     <Card className="premium-card" style={{ height: '100%' }}>
                         <Statistic
@@ -149,10 +152,13 @@ const Reports: React.FC = () => {
                         current: page,
                         pageSize: 10,
                         total: total,
-                        onChange: (newPage) => setPage(newPage)
+                        onChange: (newPage) => setPage(newPage),
+                        size: 'small',
+                        position: ['bottomCenter']
                     }}
                     locale={{ emptyText: <Empty description="No data available" /> }}
                     className="premium-table"
+                    scroll={{ x: 'max-content' }}
                 />
             </Card>
         </motion.div>

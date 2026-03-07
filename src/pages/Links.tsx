@@ -15,7 +15,8 @@ import {
     Typography,
     Pagination,
     Space,
-    Progress
+    Progress,
+    Grid
 } from 'antd';
 import {
     PlusOutlined,
@@ -105,14 +106,24 @@ const Links: React.FC = () => {
         l.slug.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
+
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 40 }}>
+            <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'flex-start' : 'flex-end',
+                marginBottom: isMobile ? 24 : 40,
+                gap: isMobile ? 24 : 0
+            }}>
                 <div>
-                    <Title level={3} style={{ margin: 0, fontWeight: 800 }}>My Chat Links</Title>
+                    <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 20 : 24 }}>My Chat Links</Title>
                     <Text type="secondary" style={{ fontSize: 13 }}>Manage and share your custom chat URLs.</Text>
                 </div>
-                <Space direction="vertical" align="end" style={{ minWidth: 200 }}>
+                <Space direction="vertical" align={isMobile ? 'start' : 'end'} style={{ minWidth: isMobile ? '100%' : 200 }}>
                     <div style={{ width: '100%' }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
                             <Text type="secondary" style={{ fontSize: 12 }}>Usage: {totalLinks} / {user?.linksLimit || 0}</Text>
@@ -132,6 +143,7 @@ const Links: React.FC = () => {
                         className="premium-button"
                         onClick={() => setShowModal(true)}
                         disabled={totalLinks >= (user?.linksLimit || 0)}
+                        style={{ width: isMobile ? '100%' : 'auto' }}
                     >
                         Create New Link
                     </Button>
@@ -150,7 +162,7 @@ const Links: React.FC = () => {
                         setCurrentPage(1);
                     }}
                     style={{
-                        maxWidth: 400,
+                        maxWidth: isMobile ? '100%' : 400,
                         background: 'rgba(255,255,255,0.03)',
                         border: '1px solid var(--divider)',
                         borderRadius: 8,

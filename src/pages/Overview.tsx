@@ -1,5 +1,5 @@
 import React from 'react';
-import { Row, Col, Card, Statistic, List, Avatar, Typography, Button, Skeleton, Tag, Space } from 'antd';
+import { Card, Statistic, List, Avatar, Typography, Button, Skeleton, Tag, Space, Grid, Row, Col } from 'antd';
 import { LinkOutlined, MessageOutlined, PlusOutlined, MoreOutlined, ThunderboltOutlined, TeamOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../api/apiClient';
@@ -24,12 +24,15 @@ const Overview: React.FC = () => {
         { title: 'Live Chats', value: totalChats, icon: <MessageOutlined />, desc: '0 active now', trend: '#a855f7' },
     ];
 
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
+
     if (isLoading) return <Skeleton active paragraph={{ rows: 10 }} />;
 
     return (
         <div>
-            <div style={{ marginBottom: 32 }}>
-                <Title level={3} style={{ margin: 0, fontWeight: 800 }}>Dashboard Overview</Title>
+            <div style={{ marginBottom: isMobile ? 24 : 32 }}>
+                <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 20 : 24 }}>Dashboard Overview</Title>
                 <Text type="secondary" style={{ fontSize: 13 }}>Welcome back, here's what's happening today.</Text>
             </div>
 
@@ -47,7 +50,7 @@ const Overview: React.FC = () => {
                                 <Statistic
                                     title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>{stat.title}</Text>}
                                     value={stat.value}
-                                    valueStyle={{ fontSize: 32, fontWeight: 800, color: '#fff', marginTop: 4 }}
+                                    valueStyle={{ fontSize: isMobile ? 28 : 32, fontWeight: 800, color: '#fff', marginTop: 4 }}
                                 />
                             </div>
                         </Card>
@@ -66,7 +69,7 @@ const Overview: React.FC = () => {
                             <Statistic
                                 title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>ACTIVE PLAN</Text>}
                                 value={user?.plan?.name || 'Basic'}
-                                valueStyle={{ fontSize: 24, fontWeight: 800, color: '#fff', marginTop: 4 }}
+                                valueStyle={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: '#fff', marginTop: 4 }}
                             />
                         </div>
                     </Card>
@@ -84,7 +87,7 @@ const Overview: React.FC = () => {
                                 title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>TEAM USAGE</Text>}
                                 value={user?.subUsersLimit || 0}
                                 suffix={<span style={{ fontSize: 14, color: '#8696a0' }}>limit</span>}
-                                valueStyle={{ fontSize: 24, fontWeight: 800, color: '#fff', marginTop: 4 }}
+                                valueStyle={{ fontSize: isMobile ? 20 : 24, fontWeight: 800, color: '#fff', marginTop: 4 }}
                             />
                         </div>
                     </Card>
@@ -100,9 +103,16 @@ const Overview: React.FC = () => {
                         borderRadius: 16
                     }}
                 >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px' }}>
+                    <div style={{
+                        display: 'flex',
+                        flexDirection: isMobile ? 'column' : 'row',
+                        justifyContent: 'space-between',
+                        alignItems: isMobile ? 'flex-start' : 'center',
+                        padding: '8px 16px',
+                        gap: isMobile ? 20 : 0
+                    }}>
                         <Space size={16}>
-                            <div style={{ width: 40, height: 40, background: '#00df9a', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <div style={{ width: 40, height: 40, background: '#00df9a', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 <ThunderboltOutlined style={{ color: '#000', fontSize: 20 }} />
                             </div>
                             <div>
@@ -115,6 +125,7 @@ const Overview: React.FC = () => {
                             className="premium-button"
                             icon={<ThunderboltOutlined />}
                             onClick={() => navigate('/dashboard/plans')}
+                            style={{ width: isMobile ? '100%' : 'auto' }}
                         >
                             Upgrade Now
                         </Button>
