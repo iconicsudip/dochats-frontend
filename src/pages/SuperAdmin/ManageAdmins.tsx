@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Table, Button, Modal, Form, Input, Typography, Space, Card, message, Image } from 'antd';
+import { Table, Button, Modal, Form, Input, Typography, Space, Card, message, Image, Select, Divider, Tag, Row, Col, Radio } from 'antd';
 import { UserAddOutlined, DeleteOutlined, TeamOutlined, LinkOutlined, UploadOutlined } from '@ant-design/icons';
 import apiClient from '../../api/apiClient';
 
@@ -7,12 +7,14 @@ const { Title, Text } = Typography;
 
 const ManageAdmins: React.FC = () => {
     const [admins, setAdmins] = useState<any[]>([]);
+    const [plans, setPlans] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingAdmin, setEditingAdmin] = useState<any>(null);
     const [logoBase64, setLogoBase64] = useState<string | null>(null);
-    const [defaultAmount, setDefaultAmount] = useState<number>(7999);
     const [form] = Form.useForm();
+    const planType = Form.useWatch('planType', form);
 
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
@@ -20,12 +22,15 @@ const ManageAdmins: React.FC = () => {
     const fetchAdmins = async (currentPage: number = 1) => {
         setLoading(true);
         try {
-            const res = await apiClient.get(`/super-admin/admins?page=${currentPage}&limit=15`);
-            setAdmins(res.data?.data || res.data);
-            setTotal(res.data?.total || 0);
-            if (res.data?.defaultAmount) setDefaultAmount(res.data.defaultAmount);
+            const [adminRes, planRes] = await Promise.all([
+                apiClient.get(`/super-admin/admins?page=${currentPage}&limit=15`),
+                apiClient.get('/super-admin/plans')
+            ]);
+            setAdmins(adminRes.data?.data || adminRes.data);
+            setTotal(adminRes.data?.total || 0);
+            setPlans(planRes.data);
         } catch (e) {
-            message.error('Failed to fetch admins');
+            message.error('Failed to fetch data');
         } finally {
             setLoading(false);
         }
@@ -36,22 +41,29 @@ const ManageAdmins: React.FC = () => {
     }, [page]);
 
     const handleSaveAdmin = async (values: any) => {
+        setSubmitting(true);
         try {
-            const payload = { ...values, logoUrl: logoBase64 };
+            const data = {
+                ...values,
+                logoUrl: logoBase64,
+                billingCycle: values.billingCycle || 'MONTHLY'
+            };
             if (editingAdmin) {
-                await apiClient.put(`/super-admin/admins/${editingAdmin.id}`, payload);
-                message.success('Admin account updated successfully');
+                await apiClient.put(`/super-admin/admins/${editingAdmin.id}`, data);
+                message.success('Admin updated successfully');
             } else {
-                await apiClient.post('/super-admin/admins', payload);
-                message.success('Admin account created successfully');
+                await apiClient.post('/super-admin/admins', data);
+                message.success('Admin created successfully');
             }
             setIsModalOpen(false);
             setEditingAdmin(null);
             setLogoBase64(null);
             form.resetFields();
-            fetchAdmins();
+            fetchAdmins(page);
         } catch (e: any) {
             message.error(e.response?.data?.error || 'Failed to save admin');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -61,7 +73,12 @@ const ManageAdmins: React.FC = () => {
         form.setFieldsValue({
             username: admin.username,
             name: admin.name,
+            planType: admin.planId ? 'available' : 'custom',
             subscriptionAmount: admin.subscriptionAmount,
+            planId: admin.planId,
+            subUsersLimit: admin.subUsersLimit,
+            linksLimit: admin.linksLimit,
+            billingCycle: admin.billingCycle || 'MONTHLY', // Set billing cycle for existing admin
             password: '' // Don't show old password
         });
         setIsModalOpen(true);
@@ -154,12 +171,30 @@ const ManageAdmins: React.FC = () => {
             )
         },
         {
+            title: 'Plan & Limits',
+            key: 'plan',
+            render: (_: any, record: any) => {
+                const isCustom = !record.planId;
+                return (
+                    <div>
+                        <Tag color={isCustom ? 'cyan' : (record.plan?.name === 'Basic' ? 'blue' : 'gold')}>
+                            {record.plan?.name || 'Custom Plan'}
+                        </Tag>
+                        <div style={{ fontSize: 11, marginTop: 4, color: '#8696a0' }}>
+                            <TeamOutlined style={{ marginRight: 4 }} /> {record.subUsersLimit || record.subUsers?.length || 0} users |
+                            <LinkOutlined style={{ margin: '0 4px' }} /> {record.linksLimit || record.links?.length || 0} links
+                        </div>
+                    </div>
+                );
+            }
+        },
+        {
             title: 'Monthly Plan',
             dataIndex: 'subscriptionAmount',
             key: 'subscriptionAmount',
-            render: (amount: number) => (
+            render: (amount: number, record: any) => (
                 <Text style={{ color: '#00df9a', fontWeight: 600 }}>
-                    ₹{(amount || defaultAmount).toLocaleString()}
+                    ₹{(amount || (record.billingCycle === 'YEARLY' ? record.plan?.yearlyPrice : record.plan?.monthlyPrice) || 0).toLocaleString()}
                 </Text>
             )
         },
@@ -198,6 +233,7 @@ const ManageAdmins: React.FC = () => {
                         setEditingAdmin(null);
                         setLogoBase64(null);
                         form.resetFields();
+                        form.setFieldsValue({ planType: 'available', billingCycle: 'MONTHLY' });
                         setIsModalOpen(true);
                     }}
                     className="premium-button"
@@ -220,6 +256,7 @@ const ManageAdmins: React.FC = () => {
                         onChange: (newPage) => setPage(newPage)
                     }}
                     style={{ background: 'transparent' }}
+                    scroll={{ x: 'max-content' }}
                 />
             </Card>
 
@@ -239,7 +276,7 @@ const ManageAdmins: React.FC = () => {
                     body: { background: '#121316', padding: '24px' },
                 }}
             >
-                <Form form={form} layout="vertical" onFinish={handleSaveAdmin}>
+                <Form form={form} layout="vertical" onFinish={handleSaveAdmin} initialValues={{ planType: 'available', billingCycle: 'MONTHLY' }}>
                     <Form.Item
                         name="username"
                         label={<span style={{ color: '#a1a1aa' }}>Username</span>}
@@ -254,13 +291,119 @@ const ManageAdmins: React.FC = () => {
                         <Input placeholder="Personal or Brand Name" className="premium-input" />
                     </Form.Item>
 
+                    <Divider />
+
                     <Form.Item
-                        name="subscriptionAmount"
-                        label={<span style={{ color: '#a1a1aa' }}>Monthly Subscription Amount (₹)</span>}
-                        tooltip="Leave blank to use default plan amount"
+                        name="planType"
+                        label={<span style={{ color: '#a1a1aa' }}>Configuration Type</span>}
                     >
-                        <Input type="number" placeholder="Default from settings" className="premium-input" />
+                        <Radio.Group style={{ width: '100%' }}>
+                            <Row gutter={16}>
+                                <Col span={12}>
+                                    <div className={`selection-card ${planType === 'available' ? 'active' : ''}`} onClick={() => form.setFieldsValue({ planType: 'available' })}>
+                                        <Radio value="available">Available Plan</Radio>
+                                    </div>
+                                </Col>
+                                <Col span={12}>
+                                    <div className={`selection-card ${planType === 'custom' ? 'active' : ''}`} onClick={() => form.setFieldsValue({ planType: 'custom' })}>
+                                        <Radio value="custom">Custom</Radio>
+                                    </div>
+                                </Col>
+                            </Row>
+                        </Radio.Group>
                     </Form.Item>
+
+                    <Form.Item
+                        name="billingCycle"
+                        label={<span style={{ color: '#a1a1aa' }}>Billing Cycle</span>}
+                        rules={[{ required: true }]}
+                    >
+                        <Select
+                            className="premium-select"
+                            options={[
+                                { label: 'Monthly', value: 'MONTHLY' },
+                                { label: 'Yearly', value: 'YEARLY' },
+                            ]}
+                            onChange={() => {
+                                const planId = form.getFieldValue('planId');
+                                if (planId) {
+                                    const plan = plans.find(p => p.id === planId);
+                                    const cycle = form.getFieldValue('billingCycle');
+                                    if (plan) {
+                                        form.setFieldsValue({
+                                            subscriptionAmount: cycle === 'YEARLY' ? plan.yearlyPrice : plan.monthlyPrice
+                                        });
+                                    }
+                                }
+                            }}
+                        />
+                    </Form.Item>
+
+                    {planType === 'available' && (
+                        <Form.Item
+                            name="planId"
+                            label={<span style={{ color: '#a1a1aa' }}>Select Plan</span>}
+                            rules={[{ required: true, message: 'Please select a plan' }]}
+                        >
+                            <Select
+                                className="premium-input"
+                                placeholder="Select a plan"
+                                onChange={(planId) => {
+                                    const plan = plans.find(p => p.id === planId);
+                                    if (plan) {
+                                        const cycle = form.getFieldValue('billingCycle') || 'MONTHLY';
+                                        form.setFieldsValue({
+                                            planId: plan.id,
+                                            subUsersLimit: plan.subUsersLimit,
+                                            linksLimit: plan.linksLimit,
+                                            subscriptionAmount: cycle === 'YEARLY' ? plan.yearlyPrice : plan.monthlyPrice
+                                        });
+                                    }
+                                }}
+                            >
+                                {plans.map(p => (
+                                    <Select.Option key={p.id} value={p.id}>
+                                        {p.name} (Monthly: ₹{p.monthlyPrice} / Yearly: ₹{p.yearlyPrice})
+                                    </Select.Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+                    )}
+
+                    {planType === 'custom' && (
+                        <>
+                            <Row gutter={16} style={{ marginTop: 16 }}>
+                                <Col span={12}>
+                                    <Form.Item
+                                        name="subUsersLimit"
+                                        label={<span style={{ color: '#a1a1aa' }}>Sub-Users Limit</span>}
+                                        rules={[{ required: true, message: 'Required' }]}
+                                    >
+                                        <Input type="number" className="premium-input" />
+                                    </Form.Item>
+                                </Col>
+                                <Col span={12}>
+                                    <Form.Item
+                                        name="linksLimit"
+                                        label={<span style={{ color: '#a1a1aa' }}>Links Limit</span>}
+                                        rules={[{ required: true, message: 'Required' }]}
+                                    >
+                                        <Input type="number" className="premium-input" />
+                                    </Form.Item>
+                                </Col>
+                            </Row>
+
+                            <Form.Item
+                                name="subscriptionAmount"
+                                label={<span style={{ color: '#a1a1aa' }}>Subscription Amount (₹)</span>}
+                                rules={[{ required: true, message: 'Required' }]}
+                            >
+                                <Input type="number" className="premium-input" />
+                            </Form.Item>
+                        </>
+                    )}
+
+                    <Divider />
 
                     <Form.Item label={<span style={{ color: '#a1a1aa' }}>Admin Logo</span>}>
                         <input
@@ -276,7 +419,7 @@ const ManageAdmins: React.FC = () => {
                                 background: '#0b0c0e',
                                 border: '1px dashed #2d2e33',
                                 borderRadius: 12,
-                                padding: '20px',
+                                padding: '16px',
                                 textAlign: 'center',
                                 cursor: 'pointer',
                                 transition: 'border-color 0.2s',
@@ -326,12 +469,32 @@ const ManageAdmins: React.FC = () => {
                             }}
                             style={{ borderColor: '#2d2e33', color: '#a1a1aa' }}
                         >Cancel</Button>
-                        <Button type="primary" htmlType="submit" className="premium-button">
+                        <Button type="primary" htmlType="submit" className="premium-button" loading={submitting}>
                             {editingAdmin ? "Save Changes" : "Create Account"}
                         </Button>
                     </Space>
                 </Form>
             </Modal>
+
+            <style>{`
+                .selection-card {
+                    background: #0b0c0e;
+                    border: 1px solid #2d2e33;
+                    border-radius: 8px;
+                    padding: 12px;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                }
+                .selection-card:hover {
+                    border-color: #00df9a;
+                    background: rgba(0, 223, 154, 0.05);
+                }
+                .selection-card.active {
+                    border-color: #00df9a;
+                    background: rgba(0, 223, 154, 0.1);
+                    box-shadow: 0 0 10px rgba(0, 223, 154, 0.1);
+                }
+            `}</style>
         </div>
     );
 };

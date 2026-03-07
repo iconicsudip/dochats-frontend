@@ -14,7 +14,8 @@ import {
     Empty,
     Typography,
     Pagination,
-    Space
+    Space,
+    Progress
 } from 'antd';
 import {
     PlusOutlined,
@@ -26,12 +27,14 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
 
 const Links: React.FC = () => {
+    const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [showModal, setShowModal] = useState(false);
@@ -109,15 +112,30 @@ const Links: React.FC = () => {
                     <Title level={3} style={{ margin: 0, fontWeight: 800 }}>My Chat Links</Title>
                     <Text type="secondary" style={{ fontSize: 13 }}>Manage and share your custom chat URLs.</Text>
                 </div>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    size="large"
-                    className="premium-button"
-                    onClick={() => setShowModal(true)}
-                >
-                    Create New Link
-                </Button>
+                <Space direction="vertical" align="end" style={{ minWidth: 200 }}>
+                    <div style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Usage: {totalLinks} / {user?.linksLimit || 0}</Text>
+                        </div>
+                        <Progress
+                            percent={Math.min(100, (totalLinks / (user?.linksLimit || 1)) * 100)}
+                            showInfo={false}
+                            strokeColor="#00df9a"
+                            trailColor="rgba(255,255,255,0.05)"
+                            size="small"
+                        />
+                    </div>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        size="large"
+                        className="premium-button"
+                        onClick={() => setShowModal(true)}
+                        disabled={totalLinks >= (user?.linksLimit || 0)}
+                    >
+                        Create New Link
+                    </Button>
+                </Space>
             </div>
 
             <div style={{ marginBottom: 32 }}>

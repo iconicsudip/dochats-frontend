@@ -355,6 +355,7 @@ const Payments: React.FC = () => {
                             style={{ background: 'transparent' }}
                             className="premium-table"
                             size="middle"
+                            scroll={{ x: 'max-content' }}
                         />
                         {totalPayments > pageSize && (
                             <div style={{ padding: '16px 24px', borderTop: '1px solid #2d2e33', display: 'flex', justifyContent: 'flex-end' }}>

@@ -10,7 +10,9 @@ import {
     PieChartOutlined,
     CreditCardOutlined,
     DollarOutlined,
-    WarningOutlined
+    WarningOutlined,
+    ThunderboltOutlined,
+    RocketOutlined
 } from '@ant-design/icons';
 import { Layout, Menu, Button, Avatar, Space, Typography, ConfigProvider, theme } from 'antd';
 import { useNavigate, useLocation, Outlet } from 'react-router-dom';
@@ -33,14 +35,18 @@ const DashboardLayout: React.FC = () => {
     const menuItems = [
         { key: '/dashboard', icon: <DashboardOutlined />, label: 'System Overview', roles: [Role.SUPER_ADMIN] },
         { key: '/dashboard/manage-admins', icon: <TeamOutlined />, label: 'Manage Admins', roles: [Role.SUPER_ADMIN] },
+        { key: '/dashboard/manage-plans', icon: <ThunderboltOutlined />, label: 'Subscription Plans', roles: [Role.SUPER_ADMIN] },
+        { key: '/dashboard/upgrade-requests', icon: <RocketOutlined />, label: 'Upgrade Requests', roles: [Role.SUPER_ADMIN] },
         { key: '/dashboard/payments', icon: <DollarOutlined />, label: 'Payments', roles: [Role.SUPER_ADMIN] },
         { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview', roles: [Role.ADMIN] },
+        { key: '/dashboard/plans', icon: <ThunderboltOutlined />, label: 'My Plan', roles: [Role.ADMIN] },
         { key: '/dashboard/links', icon: <LinkOutlined />, label: 'My Links', roles: [Role.ADMIN] },
         { key: '/dashboard/sub-users', icon: <TeamOutlined />, label: 'Sub-Users', roles: [Role.ADMIN] },
         { key: '/dashboard/reports', icon: <PieChartOutlined />, label: 'Reports', roles: [Role.ADMIN] },
         { key: '/dashboard/billing', icon: <CreditCardOutlined />, label: 'Billing', roles: [Role.ADMIN] },
         { key: '/dashboard/chat', icon: <MessageOutlined />, label: 'Live Chat', roles: [Role.ADMIN, Role.SUB_USER] },
     ].filter(item => (item.roles as Role[]).includes(user?.role));
+
 
     const subscriptionWarning = user?.role === Role.ADMIN && user?.subscription;
     const isOverdue = subscriptionWarning && user.subscription.isOverdue;
@@ -105,6 +111,52 @@ const DashboardLayout: React.FC = () => {
 
                         {/* Footer Section - Stick to bottom but flow naturally in flex */}
                         <div style={{ paddingBottom: 20, flexShrink: 0 }}>
+                            {user?.role === Role.ADMIN && (
+                                <div style={{ padding: '0 16px', marginBottom: 16 }}>
+                                    <div style={{
+                                        background: 'linear-gradient(135deg, #121316 0%, #1a1b1e 100%)',
+                                        border: '1px solid #2d2e33',
+                                        borderRadius: 12,
+                                        padding: '16px',
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                    }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                                            <div style={{
+                                                width: 32,
+                                                height: 32,
+                                                borderRadius: 8,
+                                                background: 'rgba(0, 223, 154, 0.1)',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center'
+                                            }}>
+                                                <ThunderboltOutlined style={{ color: '#00df9a', fontSize: 16 }} />
+                                            </div>
+                                            <div>
+                                                <div style={{ fontSize: 11, color: '#8696a0', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700 }}>Active Plan</div>
+                                                <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>{user?.plan?.name || 'Custom Plan'}</div>
+                                            </div>
+                                        </div>
+
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <div style={{ fontSize: 10, color: '#8696a0', opacity: 0.8 }}>
+                                                {user?.subUsersLimit} Users | {user?.linksLimit} Links
+                                            </div>
+                                            {(!user?.planId || user?.plan?.name?.toLowerCase().includes('basic')) && (
+                                                <Button
+                                                    type="link"
+                                                    size="small"
+                                                    onClick={() => navigate('/dashboard/plans')}
+                                                    style={{ padding: 0, color: '#00df9a', fontSize: 12, fontWeight: 700, height: 'auto' }}
+                                                >
+                                                    Upgrade
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             <div style={{ padding: '0 16px', display: 'flex', justifyContent: 'center' }}>
                                 <Button
                                     icon={<LogoutOutlined style={{ fontSize: 18 }} />}

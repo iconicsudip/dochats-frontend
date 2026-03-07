@@ -69,7 +69,7 @@ const Billing: React.FC = () => {
                 amount: order.amount,
                 currency: order.currency,
                 name: 'DoChats',
-                description: 'Monthly Subscription',
+                description: `${status.billingCycle === 'YEARLY' ? 'Yearly' : 'Monthly'} Subscription`,
                 order_id: order.orderId,
                 handler: async (response: any) => {
                     try {
@@ -228,7 +228,7 @@ const Billing: React.FC = () => {
                                 </Tag>
                             </div>
                             <Statistic
-                                title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>MONTHLY PLAN</Text>}
+                                title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>{status?.billingCycle === 'YEARLY' ? 'YEARLY' : 'MONTHLY'} PLAN</Text>}
                                 value={sub?.amount || status?.defaultAmount || 0}
                                 prefix="₹"
                                 valueStyle={{ fontSize: 32, fontWeight: 800, color: '#fff', marginTop: 4 }}
@@ -288,7 +288,7 @@ const Billing: React.FC = () => {
                         Pay Early & Extend
                     </Button>
                     <Text type="secondary" style={{ display: 'block', marginTop: 8, fontSize: 12 }}>
-                        Pay before your period ends. Your new 30-day period will start from today.
+                        Pay before your period ends. Your new {status?.billingCycle === 'YEARLY' ? '365' : '30'}-day period will start from today.
                     </Text>
                 </div>
             )}

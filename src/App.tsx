@@ -7,13 +7,16 @@ import PublicChat from './pages/PublicChat';
 import SubUsers from './pages/SubUsers';
 import Reports from './pages/Reports';
 import Billing from './pages/Billing';
+import Plans from './pages/Plans';
 import Auth from './pages/Auth';
 import { useAuth } from './contexts/AuthContext';
 import { Spin } from 'antd';
 import { Role } from './enums';
 import SuperAdminOverview from './pages/SuperAdmin/Overview';
 import ManageAdmins from './pages/SuperAdmin/ManageAdmins';
+import ManagePlans from './pages/SuperAdmin/ManagePlans';
 import Payments from './pages/SuperAdmin/Payments';
+import UpgradeRequests from './pages/SuperAdmin/UpgradeRequests';
 
 function App() {
   const { token, loading, user } = useAuth();
@@ -37,7 +40,9 @@ function App() {
           <>
             <Route index element={<SuperAdminOverview />} />
             <Route path="manage-admins" element={<ManageAdmins />} />
+            <Route path="manage-plans" element={<ManagePlans />} />
             <Route path="payments" element={<Payments />} />
+            <Route path="upgrade-requests" element={<UpgradeRequests />} />
           </>
         )}
 
@@ -45,6 +50,7 @@ function App() {
           <>
             <Route index element={<Overview />} />
             <Route path="billing" element={<Billing />} />
+            <Route path="plans" element={<Plans />} />
             {/* These routes are accessible but will show blurred/locked content if overdue */}
             <Route path="links" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Links />} />
             <Route path="sub-users" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <SubUsers />} />

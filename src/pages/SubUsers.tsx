@@ -1,15 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Button, Table, Modal, Form, Input, Select, Spin, Tag, App, Space, Card, Image, Avatar } from 'antd';
+import { Typography, Button, Table, Modal, Form, Input, Select, Spin, Tag, App, Space, Card, Image, Avatar, Progress } from 'antd';
 import { TeamOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
 
 const { Title, Text } = Typography;
 
 const SubUsers: React.FC = () => {
+    const { user } = useAuth();
     const { modal, message: msg } = App.useApp();
     const [subUsers, setSubUsers] = useState<any[]>([]);
     const [links, setLinks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [submitting, setSubmitting] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [form] = Form.useForm();
@@ -54,6 +57,7 @@ const SubUsers: React.FC = () => {
     };
 
     const handleSubmit = async (values: any) => {
+        setSubmitting(true);
         try {
             if (editingUser) {
                 await apiClient.put(`/auth/sub-users/${editingUser.id}`, {
@@ -74,6 +78,8 @@ const SubUsers: React.FC = () => {
             fetchData();
         } catch (e: any) {
             msg.error(e.response?.data?.error || 'Operation failed');
+        } finally {
+            setSubmitting(false);
         }
     };
 
@@ -178,15 +184,30 @@ const SubUsers: React.FC = () => {
                     <Title level={3} style={{ margin: 0, fontWeight: 800 }}>Team Management</Title>
                     <Text type="secondary" style={{ fontSize: 13 }}>Create and manage sub-users who can handle your chat links.</Text>
                 </div>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
-                    size="large"
-                    className="premium-button"
-                    onClick={handleOpenCreateModal}
-                >
-                    Add Team Member
-                </Button>
+                <Space direction="vertical" align="end" style={{ minWidth: 200 }}>
+                    <div style={{ width: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Team: {total} / {user?.subUsersLimit || 0}</Text>
+                        </div>
+                        <Progress
+                            percent={Math.min(100, (total / (user?.subUsersLimit || 1)) * 100)}
+                            showInfo={false}
+                            strokeColor="#00df9a"
+                            trailColor="rgba(255,255,255,0.05)"
+                            size="small"
+                        />
+                    </div>
+                    <Button
+                        type="primary"
+                        icon={<PlusOutlined />}
+                        size="large"
+                        className="premium-button"
+                        onClick={handleOpenCreateModal}
+                        disabled={total >= (user?.subUsersLimit || 0)}
+                    >
+                        Add Team Member
+                    </Button>
+                </Space>
             </div>
 
             {loading ? (
@@ -205,6 +226,7 @@ const SubUsers: React.FC = () => {
                             position: ['bottomCenter']
                         }}
                         className="premium-table"
+                        scroll={{ x: 'max-content' }}
                     />
                 </Card>
             )}
@@ -275,6 +297,7 @@ const SubUsers: React.FC = () => {
                             type="primary"
                             htmlType="submit"
                             className="premium-button"
+                            loading={submitting}
                         >
                             {editingUser ? "Update Member" : "Create Member"}
                         </Button>

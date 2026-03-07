@@ -403,3 +403,17 @@ h5,
 .ant-modal .ant-modal-close:hover {
   color: #fff !important;
 }
+
+.ant-modal-body {
+  max-height: 75vh !important;
+  overflow-y: auto !important;
+}
+
+.ant-modal-body::-webkit-scrollbar {
+  width: 4px;
+}
+
+.ant-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}

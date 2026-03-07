@@ -1,12 +1,16 @@
 import React from 'react';
-import { Row, Col, Card, Statistic, List, Avatar, Typography, Button, Skeleton } from 'antd';
-import { LinkOutlined, MessageOutlined, PlusOutlined, MoreOutlined } from '@ant-design/icons';
+import { Row, Col, Card, Statistic, List, Avatar, Typography, Button, Skeleton, Tag, Space, Divider } from 'antd';
+import { LinkOutlined, MessageOutlined, PlusOutlined, MoreOutlined, ThunderboltOutlined, TeamOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
 import apiClient from '../api/apiClient';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const { Title, Text } = Typography;
 
 const Overview: React.FC = () => {
+    const { user } = useAuth();
+    const navigate = useNavigate();
     const { data: linksResponse, isLoading } = useQuery({
         queryKey: ['links'],
         queryFn: () => apiClient.get('/links?limit=50').then(res => res.data),
@@ -31,7 +35,7 @@ const Overview: React.FC = () => {
 
             <Row gutter={[24, 24]}>
                 {stats.map((stat, idx) => (
-                    <Col xs={24} sm={24} lg={12} key={idx}>
+                    <Col xs={24} sm={12} lg={6} key={idx}>
                         <Card className="premium-card">
                             <div style={{ padding: 16 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
@@ -49,7 +53,75 @@ const Overview: React.FC = () => {
                         </Card>
                     </Col>
                 ))}
+
+                <Col xs={24} sm={12} lg={6}>
+                    <Card className="premium-card">
+                        <div style={{ padding: 16 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                                <div style={{ width: 44, height: 44, background: 'rgba(168, 85, 247, 0.05)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
+                                    <SafetyCertificateOutlined style={{ fontSize: 20, color: '#a855f7' }} />
+                                </div>
+                                <Tag color={user?.plan?.name === 'Basic' ? 'blue' : 'gold'} style={{ margin: 0 }}>{user?.plan?.name || 'Basic'}</Tag>
+                            </div>
+                            <Statistic
+                                title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>ACTIVE PLAN</Text>}
+                                value={user?.plan?.name || 'Basic'}
+                                valueStyle={{ fontSize: 24, fontWeight: 800, color: '#fff', marginTop: 4 }}
+                            />
+                        </div>
+                    </Card>
+                </Col>
+
+                <Col xs={24} sm={12} lg={6}>
+                    <Card className="premium-card">
+                        <div style={{ padding: 16 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
+                                <div style={{ width: 44, height: 44, background: 'rgba(59, 130, 246, 0.05)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
+                                    <TeamOutlined style={{ fontSize: 20, color: '#3b82f6' }} />
+                                </div>
+                            </div>
+                            <Statistic
+                                title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>TEAM USAGE</Text>}
+                                value={user?.subUsersLimit || 0}
+                                suffix={<span style={{ fontSize: 14, color: '#8696a0' }}>limit</span>}
+                                valueStyle={{ fontSize: 24, fontWeight: 800, color: '#fff', marginTop: 4 }}
+                            />
+                        </div>
+                    </Card>
+                </Col>
             </Row>
+
+            {user?.plan?.name === 'Basic' && (
+                <Card
+                    style={{
+                        marginTop: 24,
+                        background: 'linear-gradient(90deg, rgba(0, 223, 154, 0.05) 0%, rgba(168, 85, 247, 0.05) 100%)',
+                        border: '1px dashed rgba(0, 223, 154, 0.3)',
+                        borderRadius: 16
+                    }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 16px' }}>
+                        <Space size={16}>
+                            <div style={{ width: 40, height: 40, background: '#00df9a', borderRadius: 20, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <ThunderboltOutlined style={{ color: '#000', fontSize: 20 }} />
+                            </div>
+                            <div>
+                                <Text strong style={{ fontSize: 15, display: 'block' }}>Unlock your full potential with DoChats Pro</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>Get more team members, unlimited links and priority support.</Text>
+                            </div>
+                        </Space>
+                        <Button
+                            type="primary"
+                            className="premium-button"
+                            icon={<ThunderboltOutlined />}
+                            onClick={() => navigate('/dashboard/plans')}
+                        >
+                            Upgrade Now
+                        </Button>
+                    </div>
+                </Card>
+            )}
+
 
             <Row gutter={[24, 24]} style={{ marginTop: 32 }}>
                 <Col xs={24}>
