@@ -159,42 +159,32 @@ const PublicChat: React.FC = () => {
     }, [conversationId, isSocketConnected]);
 
     useEffect(() => {
-        if (!chatInfo || !conversationId || (onboardingStep !== 1 && onboardingStep !== 2) || !hasInitialMessagesFetched || hasTriggeredOnboarding.current) return;
+        if (!chatInfo || !conversationId || !hasInitialMessagesFetched || hasTriggeredOnboarding.current) return;
 
-        const triggerOnboardingMsg = async (text: string) => {
-            // Check if we already asked this in the messages history to prevent duplicates on refresh
-            const alreadyAsked = messages.some(m => m.isFromAdmin && m.content === text);
-            if (alreadyAsked) return;
-
-            try {
-                await apiClient.post('/public/messages', {
-                    conversationId,
-                    content: text,
-                    isFromAdmin: true,
-                });
-            } catch (err) { }
-        };
-
-        const runOnboarding = async () => {
+        const runFlow = async () => {
             hasTriggeredOnboarding.current = true;
 
-            // For Step 1: Welcome + Ask Name
-            if (onboardingStep === 1) {
-                if (chatInfo.welcomeMessage) {
-                    await triggerOnboardingMsg(chatInfo.welcomeMessage);
-                    setTimeout(() => triggerOnboardingMsg("To get started, could you please tell me your name?"), 800);
-                } else {
-                    await triggerOnboardingMsg("Hello! To get started, could you please tell me your name?");
-                }
+            // 1. Send Welcome Message if applicable
+            if (chatInfo.welcomeMessage) {
+                await sendBotMessage(chatInfo.welcomeMessage);
             }
-            // For Step 2: Landed with name but no phone
-            else if (onboardingStep === 2) {
-                await triggerOnboardingMsg(`Welcome back ${visitorData.name || 'there'}! Could you please share your phone number or email so we can stay in touch?`);
+
+            // 2. Lead Capture prompt on Entry
+            if (onboardingStep === 1) {
+                const delay = chatInfo.welcomeMessage ? 1200 : 0;
+                setTimeout(() => {
+                    sendBotMessage("To get started, could you please tell me your name?");
+                }, delay);
+            } else if (onboardingStep === 2) {
+                const delay = chatInfo.welcomeMessage ? 1200 : 0;
+                setTimeout(() => {
+                    sendBotMessage(`Welcome back ${visitorData.name || 'there'}! Could you please share your phone number or email so we can stay in touch?`);
+                }, delay);
             }
         };
 
-        runOnboarding();
-    }, [chatInfo, conversationId, onboardingStep, hasInitialMessagesFetched, messages]);
+        runFlow();
+    }, [chatInfo, conversationId, onboardingStep, hasInitialMessagesFetched]);
 
     const fetchMessages = async () => {
         if (!conversationId) return;
@@ -230,10 +220,27 @@ const PublicChat: React.FC = () => {
             setHasInitialMessagesFetched(true);
         } catch (err) {
             console.error('Fetch messages error:', err);
+            setHasInitialMessagesFetched(true); // Don't block onboarding on fetch failure
         }
     };
 
-    const handleSend = async (e?: React.FormEvent) => {
+    const sendBotMessage = async (text: string) => {
+        if (!conversationId) return;
+
+        // Prevent duplicate bot messages (e.g. from rapid state updates or refreshes)
+        const alreadyExists = messages.some(m => m.isFromAdmin && m.content === text);
+        if (alreadyExists) return;
+
+        try {
+            await apiClient.post('/public/messages', {
+                conversationId,
+                content: text,
+                isFromAdmin: true,
+            });
+        } catch (err) { }
+    };
+
+    const handleSendMessage = async (e?: React.FormEvent) => {
         e?.preventDefault();
         if (!inputText.trim() || !conversationId) return;
 
@@ -256,9 +263,9 @@ const PublicChat: React.FC = () => {
             addOptimisticMessage(content, MessageType.TEXT, tempId);
 
             // Trigger next question
-            setTimeout(async () => {
-                await triggerOnboardingMsg("Thank you! And what's your phone number or email so we can reach you?");
-            }, 600);
+            setTimeout(() => {
+                sendBotMessage("Thank you! And what's your phone number or email so we can reach you?");
+            }, 800);
             return;
         }
 
@@ -273,9 +280,9 @@ const PublicChat: React.FC = () => {
             const tempId = `temp-${Date.now()}`;
             addOptimisticMessage(content, MessageType.TEXT, tempId);
 
-            setTimeout(async () => {
-                await triggerOnboardingMsg("Perfect! How can I help you today?");
-            }, 600);
+            setTimeout(() => {
+                sendBotMessage("Perfect! How can I help you today?");
+            }, 800);
             return;
         }
 
@@ -299,16 +306,6 @@ const PublicChat: React.FC = () => {
             // Optionally remove optimistic message on failure
             setMessages(prev => prev.filter(m => m.id !== tempId));
         }
-    };
-
-    const triggerOnboardingMsg = async (text: string) => {
-        try {
-            await apiClient.post('/public/messages', {
-                conversationId,
-                content: text,
-                isFromAdmin: true,
-            });
-        } catch (err) { }
     };
 
     const addOptimisticMessage = (content: string, type: MessageType = MessageType.TEXT, tempId?: string) => {
@@ -407,7 +404,7 @@ const PublicChat: React.FC = () => {
         if (e.key === 'Enter') {
             if (e.shiftKey || e.metaKey || e.ctrlKey || window.innerWidth <= 768) return;
             e.preventDefault();
-            handleSend(e as unknown as React.FormEvent);
+            handleSendMessage(e as unknown as React.FormEvent);
         }
     };
 
@@ -524,7 +521,7 @@ const PublicChat: React.FC = () => {
                                     </Space>
                                 </div>
                             ) : (
-                                <form onSubmit={handleSend} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+                                <form onSubmit={handleSendMessage} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
                                     <Input.TextArea
                                         autoSize={{ minRows: 1, maxRows: 5 }}
                                         placeholder={onboardingStep === 1 ? "Enter your name..." : onboardingStep === 2 ? "Enter phone/email..." : "Type a message"}
