@@ -343,11 +343,11 @@ const PublicChat: React.FC = () => {
         }, 100);
 
         const customerMsgs = messages.filter(m => !m.isFromAdmin);
-        if (chatInfo?.whatsappLink && customerMsgs.length >= (chatInfo.whatsappThreshold || 5)) {
-            const hasShown = sessionStorage.getItem(`wa_popup_${conversationId}`);
-            if (!hasShown) {
+        const threshold = chatInfo?.whatsappThreshold || 5;
+        if (chatInfo?.whatsappLink && customerMsgs.length >= threshold) {
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg && !lastMsg.isFromAdmin) {
                 setShowWAPopup(true);
-                sessionStorage.setItem(`wa_popup_${conversationId}`, 'true');
             }
         }
     }, [messages.length]);

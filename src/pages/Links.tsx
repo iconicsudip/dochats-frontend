@@ -331,12 +331,12 @@ const Links: React.FC = () => {
                         <Title level={5} style={{ fontSize: 14, color: '#00df9a', marginBottom: 16 }}>WhatsApp Redirection (Optional)</Title>
 
                         <Form.Item
-                            label="WhatsApp Link"
+                            label="WhatsApp Redirection Link"
                             name="whatsappLink"
-                            extra="e.g. https://wa.link/mybusiness"
+                            extra="Format: https://wa.me/phonenumber?text=Hi Message"
                         >
                             <Input
-                                placeholder="Enter link to redirect customer later"
+                                placeholder="https://wa.me/1234567890?text=Hi"
                                 variant="borderless"
                                 style={{
                                     height: 48,
