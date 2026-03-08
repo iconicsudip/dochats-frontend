@@ -27,6 +27,7 @@ const PublicChat: React.FC = () => {
     const [showWAPopup, setShowWAPopup] = useState(false);
     const [isAdminTyping, setIsAdminTyping] = useState(false);
     const [isSocketConnected, setIsSocketConnected] = useState(false);
+    const [hasInitialMessagesFetched, setHasInitialMessagesFetched] = useState(false);
     const hasTriggeredOnboarding = useRef(false);
     const typingTimeoutRef = useRef<any>(null);
     const pollIntervalRef = useRef<any>(null);
@@ -158,9 +159,13 @@ const PublicChat: React.FC = () => {
     }, [conversationId, isSocketConnected]);
 
     useEffect(() => {
-        if (!chatInfo || !conversationId || onboardingStep !== 1 || hasTriggeredOnboarding.current) return;
+        if (!chatInfo || !conversationId || (onboardingStep !== 1 && onboardingStep !== 2) || !hasInitialMessagesFetched || hasTriggeredOnboarding.current) return;
 
         const triggerOnboardingMsg = async (text: string) => {
+            // Check if we already asked this in the messages history to prevent duplicates on refresh
+            const alreadyAsked = messages.some(m => m.isFromAdmin && m.content === text);
+            if (alreadyAsked) return;
+
             try {
                 await apiClient.post('/public/messages', {
                     conversationId,
@@ -171,17 +176,25 @@ const PublicChat: React.FC = () => {
         };
 
         const runOnboarding = async () => {
-            if (messages.length === 0) {
-                hasTriggeredOnboarding.current = true;
+            hasTriggeredOnboarding.current = true;
+
+            // For Step 1: Welcome + Ask Name
+            if (onboardingStep === 1) {
                 if (chatInfo.welcomeMessage) {
                     await triggerOnboardingMsg(chatInfo.welcomeMessage);
+                    setTimeout(() => triggerOnboardingMsg("To get started, could you please tell me your name?"), 800);
+                } else {
+                    await triggerOnboardingMsg("Hello! To get started, could you please tell me your name?");
                 }
-                setTimeout(() => triggerOnboardingMsg("To get started, could you please tell me your name?"), 600);
+            }
+            // For Step 2: Landed with name but no phone
+            else if (onboardingStep === 2) {
+                await triggerOnboardingMsg(`Welcome back ${visitorData.name || 'there'}! Could you please share your phone number or email so we can stay in touch?`);
             }
         };
 
         runOnboarding();
-    }, [chatInfo, conversationId, onboardingStep, messages.length]);
+    }, [chatInfo, conversationId, onboardingStep, hasInitialMessagesFetched, messages]);
 
     const fetchMessages = async () => {
         if (!conversationId) return;
@@ -214,6 +227,7 @@ const PublicChat: React.FC = () => {
             if (res.data.length > 0) {
                 apiClient.post('/public/mark-read', { conversationId, isAdmin: false }).catch(() => { });
             }
+            setHasInitialMessagesFetched(true);
         } catch (err) {
             console.error('Fetch messages error:', err);
         }
