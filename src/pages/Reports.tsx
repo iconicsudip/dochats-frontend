@@ -57,6 +57,7 @@ const Reports: React.FC = () => {
             dataIndex: 'totalConversations',
             key: 'totalConversations',
             align: 'center' as const,
+            responsive: ['md' as const],
             sorter: (a: any, b: any) => a.totalConversations - b.totalConversations,
         },
         {
@@ -112,8 +113,8 @@ const Reports: React.FC = () => {
                         <Statistic
                             title={<span style={{ color: 'var(--text-secondary)' }}>Total Web Chats</span>}
                             value={totalChats}
-                            prefix={<MessageOutlined style={{ color: '#00df9a', marginRight: 8 }} />}
-                            valueStyle={{ color: '#fff', fontWeight: 800 }}
+                            prefix={<MessageOutlined style={{ color: '#00df9a', marginRight: 8, fontSize: isMobile ? 18 : 22 }} />}
+                            valueStyle={{ color: '#fff', fontWeight: 800, fontSize: isMobile ? 24 : 32 }}
                         />
                     </Card>
                 </Col>
@@ -122,8 +123,8 @@ const Reports: React.FC = () => {
                         <Statistic
                             title={<span style={{ color: 'var(--text-secondary)' }}>WhatsApp Redirects</span>}
                             value={totalWARedirects}
-                            prefix={<WhatsAppOutlined style={{ color: '#25D366', marginRight: 8 }} />}
-                            valueStyle={{ color: '#fff', fontWeight: 800 }}
+                            prefix={<WhatsAppOutlined style={{ color: '#25D366', marginRight: 8, fontSize: isMobile ? 18 : 22 }} />}
+                            valueStyle={{ color: '#fff', fontWeight: 800, fontSize: isMobile ? 24 : 32 }}
                         />
                     </Card>
                 </Col>
@@ -133,8 +134,8 @@ const Reports: React.FC = () => {
                             title={<span style={{ color: 'var(--text-secondary)' }}>Avg. Conversion Rate</span>}
                             value={avgConversion}
                             suffix="%"
-                            prefix={<LineChartOutlined style={{ color: '#53bdeb', marginRight: 8 }} />}
-                            valueStyle={{ color: '#fff', fontWeight: 800 }}
+                            prefix={<LineChartOutlined style={{ color: '#53bdeb', marginRight: 8, fontSize: isMobile ? 18 : 22 }} />}
+                            valueStyle={{ color: '#fff', fontWeight: 800, fontSize: isMobile ? 24 : 32 }}
                         />
                     </Card>
                 </Col>

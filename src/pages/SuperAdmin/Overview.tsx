@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Card, Statistic, Typography, Skeleton, Space, Table, Avatar, Tag } from 'antd';
+import { Row, Col, Card, Statistic, Typography, Skeleton, Space, Table, Avatar, Tag, Grid } from 'antd';
 import { TeamOutlined, LinkOutlined, MessageOutlined, DashboardOutlined, GlobalOutlined, UserOutlined } from '@ant-design/icons';
 import apiClient from '../../api/apiClient';
 
@@ -8,6 +8,8 @@ const { Title, Text } = Typography;
 const Overview: React.FC = () => {
     const [stats, setStats] = useState<any>(null);
     const [loading, setLoading] = useState(true);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     useEffect(() => {
         apiClient.get('/super-admin/stats')
@@ -31,8 +33,8 @@ const Overview: React.FC = () => {
 
     return (
         <div>
-            <div style={{ marginBottom: 32 }}>
-                <Title level={4} style={{ margin: 0, fontWeight: 800 }}>System Overview</Title>
+            <div style={{ marginBottom: isMobile ? 24 : 32 }}>
+                <Title level={4} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 18 : 20 }}>System Overview</Title>
                 <Text type="secondary" style={{ fontSize: 13 }}>Global performance and resource mapping across all accounts.</Text>
             </div>
 
@@ -96,15 +98,15 @@ const Overview: React.FC = () => {
 
             <Card
                 style={{ marginTop: 40, background: 'rgba(0, 223, 154, 0.05)', border: '1px solid rgba(0, 223, 154, 0.2)', borderRadius: 16 }}
-                styles={{ body: { padding: '40px' } }}
+                styles={{ body: { padding: isMobile ? '24px' : '40px' } }}
             >
-                <Space align="start" size={24}>
+                <Space align="start" size={isMobile ? 16 : 24}>
                     <div style={{ width: 48, height: 48, background: '#00df9a', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         <GlobalOutlined style={{ fontSize: 24, color: '#000' }} />
                     </div>
                     <div>
-                        <Title level={5} style={{ color: '#fff', margin: '0 0 8px 0' }}>Super Admin Control Panel</Title>
-                        <Text style={{ color: '#94a3b8', fontSize: 13, lineHeight: 1.5 }}>
+                        <Title level={5} style={{ color: '#fff', margin: '0 0 8px 0', fontSize: isMobile ? 15 : 16 }}>Super Admin Control Panel</Title>
+                        <Text style={{ color: '#94a3b8', fontSize: 12, lineHeight: 1.5 }}>
                             You are currently viewing global system reports. As a Super Admin, you have the authority to manage all administrative accounts, monitor their activities, and ensure system-wide performance.
                         </Text>
                     </div>

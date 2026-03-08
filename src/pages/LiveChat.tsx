@@ -30,6 +30,10 @@ const LiveChat: React.FC = () => {
     const messagesCache = useRef<Record<string, any[]>>({});
     const fetchCounter = useRef(0);
     const isSending = useRef(false);
+    const [isVisitorTyping, setIsVisitorTyping] = useState(false);
+    const [isSocketConnected, setIsSocketConnected] = useState(false);
+    const typingTimeoutRef = useRef<any>(null);
+    const pollIntervalRef = useRef<any>(null);
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const { isRecording, recordingTime, formatTime, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
@@ -39,10 +43,18 @@ const LiveChat: React.FC = () => {
         socket.connect();
         socket.emit('join_admin', user.id);
 
+        const onConnect = () => setIsSocketConnected(true);
+        const onDisconnect = () => setIsSocketConnected(false);
+
+        socket.on('connect', onConnect);
+        socket.on('disconnect', onDisconnect);
+
         const updateConv = () => queryClient.invalidateQueries({ queryKey: ['conversations'] });
         socket.on('conversation_updated', updateConv);
 
         return () => {
+            socket.off('connect', onConnect);
+            socket.off('disconnect', onDisconnect);
             socket.off('conversation_updated', updateConv);
             socket.disconnect();
         };
@@ -80,6 +92,22 @@ const LiveChat: React.FC = () => {
         ? conversations
         : conversations.filter((c: any) => c.linkId === selectedLinkId);
 
+    // Poll for messages when socket is disconnected (Fallback)
+    useEffect(() => {
+        if (!selectedId || isSocketConnected) {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            return;
+        }
+
+        pollIntervalRef.current = setInterval(() => {
+            fetchMessages(true); // Quiet fetch (non-loading)
+        }, 5000); // 5s fallback polling
+
+        return () => {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        };
+    }, [selectedId, isSocketConnected]);
+
     useEffect(() => {
         if (selectedId) {
             // INSTANT CACHE LOAD
@@ -95,19 +123,24 @@ const LiveChat: React.FC = () => {
 
             const handleMessage = (msg: any) => {
                 setMessages(prev => {
-                    // Ignore if message already in memory by real DB ID
-                    if (prev.find(m => m.id === msg.id)) return prev;
+                    if (prev.some(m => m.id === msg.id)) return prev;
 
-                    // If it matches an optimistic message tempId, replace it inline instead of duplicating
-                    if (msg.tempId && prev.find(m => m.id === msg.tempId)) {
-                        const replaced = prev.map(m => m.id === msg.tempId ? msg : m);
-                        messagesCache.current[selectedId] = replaced;
-                        return replaced;
+                    // Support both tempId check and fallback content-based deduplication
+                    const dupeIndex = prev.findIndex(m =>
+                        (msg.tempId && m.id === msg.tempId) ||
+                        (m.id.startsWith('temp-') && m.content === msg.content && m.isFromAdmin === msg.isFromAdmin)
+                    );
+
+                    let nextMessages;
+                    if (dupeIndex !== -1) {
+                        nextMessages = [...prev];
+                        nextMessages[dupeIndex] = msg;
+                    } else {
+                        nextMessages = [...prev, msg];
                     }
 
-                    const newMessages = [...prev, msg];
-                    messagesCache.current[selectedId] = newMessages;
-                    return newMessages;
+                    messagesCache.current[selectedId] = nextMessages;
+                    return nextMessages;
                 });
 
                 // Mark as read immediately when active
@@ -126,12 +159,24 @@ const LiveChat: React.FC = () => {
                 });
             };
 
+            const handleTyping = (data: { isFromAdmin: boolean }) => {
+                if (!data.isFromAdmin) setIsVisitorTyping(true);
+            };
+
+            const handleStopTyping = (data: { isFromAdmin: boolean }) => {
+                if (!data.isFromAdmin) setIsVisitorTyping(false);
+            };
+
             socket.on('receive_message', handleMessage);
             socket.on('messages_read', handleRead);
+            socket.on('user_typing', handleTyping);
+            socket.on('user_stop_typing', handleStopTyping);
 
             return () => {
                 socket.off('receive_message', handleMessage);
                 socket.off('messages_read', handleRead);
+                socket.off('user_typing', handleTyping);
+                socket.off('user_stop_typing', handleStopTyping);
                 socket.emit('leave_conversation', selectedId);
             };
         } else {
@@ -173,8 +218,30 @@ const LiveChat: React.FC = () => {
             const res = await apiClient.get(`/messages?conversationId=${selectedId}`);
             if (currentFetch !== fetchCounter.current) return;
 
-            setMessages(res.data);
-            messagesCache.current[selectedId] = res.data; // UPDATE CACHE
+            setMessages(prev => {
+                const newMsgs = res.data;
+                const existingIds = new Set(prev.map(m => m.id));
+                const merged = [...prev];
+
+                newMsgs.forEach((msg: any) => {
+                    if (existingIds.has(msg.id)) return;
+
+                    const dupeIndex = merged.findIndex(m =>
+                        (msg.tempId && m.id === msg.tempId) ||
+                        (m.id.startsWith('temp-') && m.content === msg.content && m.isFromAdmin === msg.isFromAdmin)
+                    );
+
+                    if (dupeIndex !== -1) {
+                        merged[dupeIndex] = msg;
+                    } else {
+                        merged.push(msg);
+                    }
+                });
+
+                const sorted = merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                messagesCache.current[selectedId!] = sorted;
+                return sorted;
+            });
 
             // Mark as read when messages are fetched/viewed
             if (res.data.length > 0) {
@@ -313,6 +380,17 @@ const LiveChat: React.FC = () => {
 
     const onEmojiClick = (emojiData: any) => {
         setInputText(prev => prev + emojiData.emoji);
+        handleTypingIndicator();
+    };
+
+    const handleTypingIndicator = () => {
+        if (!selectedId) return;
+        socket.emit('typing', { conversationId: selectedId, isFromAdmin: true });
+
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+            socket.emit('stop_typing', { conversationId: selectedId, isFromAdmin: true });
+        }, 2000);
     };
 
     const groupMessagesByDate = (msgs: any[]) => {
@@ -594,15 +672,15 @@ const LiveChat: React.FC = () => {
                                             type="text"
                                             icon={<ArrowLeftOutlined />}
                                             onClick={() => setSelectedId(null)}
-                                            style={{ color: 'var(--wa-secondary)', padding: 4 }}
+                                            style={{ color: 'var(--wa-secondary)', padding: '0 4px', fontSize: 18, height: 'auto' }}
                                         />
                                     )}
                                     <Avatar size={isMobile ? 36 : 40} src={`https://api.dicebear.com/7.x/bottts/svg?seed=${selectedConv?.visitorToken}`} style={{ background: '#6a7175', flexShrink: 0 }} />
-                                    <div style={{ minWidth: 0 }}>
+                                    <div style={{ minWidth: 0, flex: 1 }}>
                                         <div style={{ color: '#fff', fontSize: isMobile ? 14 : 16, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                                             {selectedConv?.visitorName ? `${selectedConv.visitorName}` : `User ${selectedConv?.visitorToken.substring(0, 8)}`}
                                         </div>
-                                        <div style={{ color: 'var(--wa-green)', fontSize: 11, fontWeight: 500 }}>online</div>
+                                        <div style={{ color: 'var(--wa-green)', fontSize: 10, fontWeight: 500, lineHeight: 1 }}>online</div>
                                     </div>
                                 </div>
                                 <Space size={isMobile ? 12 : 20} style={{ color: 'var(--wa-secondary)', fontSize: 20 }}>
@@ -738,6 +816,17 @@ const LiveChat: React.FC = () => {
                                         ))}
                                     </>
                                 )}
+                                {isVisitorTyping && (
+                                    <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, animation: 'fadeIn 0.3s' }}>
+                                        <div className="wa-bubble wa-bubble-in" style={{ padding: '8px 12px', minWidth: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <div className="typing-indicator">
+                                                <span></span>
+                                                <span></span>
+                                                <span></span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             {/* Input Area */}
@@ -839,9 +928,13 @@ const LiveChat: React.FC = () => {
                                         <form onSubmit={handleSend} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
                                             <Input.TextArea
                                                 autoSize={{ minRows: 1, maxRows: 5 }}
+                                                className="wa-input"
                                                 placeholder="Type a message"
                                                 value={inputText}
-                                                onChange={e => setInputText(e.target.value)}
+                                                onChange={e => {
+                                                    setInputText(e.target.value);
+                                                    handleTypingIndicator();
+                                                }}
                                                 onFocus={() => setShowEmoji(false)}
                                                 onKeyDown={handleKeyDown}
                                                 style={{

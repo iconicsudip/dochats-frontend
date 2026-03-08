@@ -120,6 +120,7 @@ const SubUsers: React.FC = () => {
         {
             title: 'ASSIGNED LINKS',
             key: 'assignedLinks',
+            responsive: ['md' as const],
             render: (_: any, record: any) => (
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                     {record.assignedLinks?.map((l: any) => (

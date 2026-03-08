@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Table, Button, Modal, Form, Input, Typography, Space, Card, message, Image, Select, Divider, Tag, Row, Col, Radio } from 'antd';
+import { Table, Button, Modal, Form, Input, Typography, Space, Card, message, Image, Select, Divider, Tag, Row, Col, Radio, Grid } from 'antd';
 import { UserAddOutlined, DeleteOutlined, TeamOutlined, LinkOutlined, UploadOutlined } from '@ant-design/icons';
 import apiClient from '../../api/apiClient';
 
@@ -18,6 +18,8 @@ const ManageAdmins: React.FC = () => {
 
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     const fetchAdmins = async (currentPage: number = 1) => {
         setLoading(true);
@@ -152,6 +154,7 @@ const ManageAdmins: React.FC = () => {
             title: 'Sub-Users',
             dataIndex: 'subUsers',
             key: 'subUsers',
+            responsive: ['md' as const],
             render: (subUsers: any[]) => (
                 <Space>
                     <TeamOutlined style={{ color: '#8696a0' }} />
@@ -163,6 +166,7 @@ const ManageAdmins: React.FC = () => {
             title: 'Active Links',
             dataIndex: 'links',
             key: 'links',
+            responsive: ['lg' as const],
             render: (links: any[]) => (
                 <Space>
                     <LinkOutlined style={{ color: '#8696a0' }} />
@@ -221,9 +225,16 @@ const ManageAdmins: React.FC = () => {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
+            <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'flex-start' : 'flex-end',
+                marginBottom: 32,
+                gap: isMobile ? 20 : 0
+            }}>
                 <div>
-                    <Title level={4} style={{ margin: 0, fontWeight: 800 }}>Manage Administrators</Title>
+                    <Title level={4} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 18 : 20 }}>Manage Administrators</Title>
                     <Text type="secondary" style={{ fontSize: 13 }}>Create and monitor all admin accounts across the system.</Text>
                 </div>
                 <Button
@@ -237,6 +248,7 @@ const ManageAdmins: React.FC = () => {
                         setIsModalOpen(true);
                     }}
                     className="premium-button"
+                    style={{ width: isMobile ? '100%' : 'auto' }}
                 >
                     Create New Admin
                 </Button>

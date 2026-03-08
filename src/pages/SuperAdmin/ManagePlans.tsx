@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Typography, Space, Card, message, Row, Col } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, LinkOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Typography, Space, Card, message, Row, Col, Switch, Tag, Grid } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, LinkOutlined, UserOutlined } from '@ant-design/icons';
 import apiClient from '../../api/apiClient';
 
 const { Title, Text, Paragraph } = Typography;
@@ -12,6 +12,8 @@ const ManagePlans: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState<any>(null);
     const [form] = Form.useForm();
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     const fetchPlans = async () => {
         setLoading(true);
@@ -84,6 +86,7 @@ const ManagePlans: React.FC = () => {
             dataIndex: 'order',
             key: 'order',
             width: 80,
+            responsive: ['md' as const],
             render: (order: number) => (
                 <Text style={{ color: '#8696a0' }}>#{order}</Text>
             )
@@ -117,9 +120,20 @@ const ManagePlans: React.FC = () => {
             )
         },
         {
+            title: 'Lead Capture',
+            dataIndex: 'leadCaptureEnabled',
+            key: 'leadCaptureEnabled',
+            render: (enabled: boolean) => (
+                <Tag color={enabled ? 'green' : 'default'} style={{ borderRadius: 12, border: 'none', background: enabled ? 'rgba(0, 223, 154, 0.1)' : 'rgba(161, 161, 170, 0.1)', color: enabled ? '#00df9a' : '#a1a1aa' }}>
+                    {enabled ? 'Enabled' : 'Disabled'}
+                </Tag>
+            )
+        },
+        {
             title: 'Description',
             dataIndex: 'description',
             key: 'description',
+            responsive: ['lg' as const],
             render: (desc: string) => (
                 <Paragraph ellipsis={{ rows: 2 }} style={{ color: '#8696a0', fontSize: 12, margin: 0, maxWidth: 200 }}>
                     {desc || 'No description'}
@@ -150,9 +164,16 @@ const ManagePlans: React.FC = () => {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
+            <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'flex-start' : 'flex-end',
+                marginBottom: 32,
+                gap: isMobile ? 20 : 0
+            }}>
                 <div>
-                    <Title level={4} style={{ margin: 0, fontWeight: 800 }}>Subscription Plans</Title>
+                    <Title level={4} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 18 : 20 }}>Subscription Plans</Title>
                     <Paragraph type="secondary" style={{ fontSize: 13, margin: 0 }}>
                         Define and manage service tiers for your administrative users.
                     </Paragraph>
@@ -166,6 +187,7 @@ const ManagePlans: React.FC = () => {
                         setIsModalOpen(true);
                     }}
                     className="premium-button"
+                    style={{ width: isMobile ? '100%' : 'auto' }}
                 >
                     Create New Plan
                 </Button>
@@ -195,7 +217,7 @@ const ManagePlans: React.FC = () => {
                     body: { background: '#121316', padding: '24px' },
                 }}
             >
-                <Form form={form} layout="vertical" onFinish={handleSavePlan} initialValues={{ subUsersLimit: 3, linksLimit: 5, order: 0 }}>
+                <Form form={form} layout="vertical" onFinish={handleSavePlan} initialValues={{ subUsersLimit: 3, linksLimit: 5, order: 0, leadCaptureEnabled: false }}>
                     <Row gutter={16}>
                         <Col span={16}>
                             <Form.Item
@@ -258,6 +280,17 @@ const ManagePlans: React.FC = () => {
                             </Form.Item>
                         </Col>
                     </Row>
+
+                    <Form.Item
+                        label={<span style={{ color: '#a1a1aa' }}>Lead Capture Feature</span>}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px', background: '#0b0c0e', border: '1px solid #2d2e33', borderRadius: 8 }}>
+                            <Text style={{ color: '#8696a0', fontSize: 13 }}><UserOutlined style={{ marginRight: 8 }} /> Allow admin to capture visitor name & phone?</Text>
+                            <Form.Item name="leadCaptureEnabled" valuePropName="checked" noStyle>
+                                <Switch size="small" />
+                            </Form.Item>
+                        </div>
+                    </Form.Item>
 
                     <Form.Item
                         name="description"

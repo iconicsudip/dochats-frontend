@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Typography, Space, Card, Tag, message, Avatar, Tooltip } from 'antd';
+import { Table, Button, Typography, Space, Card, Tag, message, Avatar, Tooltip, Grid } from 'antd';
 import { CheckOutlined, CloseOutlined, ThunderboltOutlined, UserOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import apiClient from '../../api/apiClient';
 import dayjs from 'dayjs';
@@ -13,6 +13,8 @@ const UpgradeRequests: React.FC = () => {
     const [requests, setRequests] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [processingId, setProcessingId] = useState<string | null>(null);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     const fetchRequests = async () => {
         setLoading(true);
@@ -89,6 +91,7 @@ const UpgradeRequests: React.FC = () => {
             title: 'Request Date',
             dataIndex: 'createdAt',
             key: 'date',
+            responsive: ['md' as const],
             render: (date: string) => (
                 <Tooltip title={dayjs(date).format('LLL')}>
                     <Space size={4}>
@@ -144,14 +147,21 @@ const UpgradeRequests: React.FC = () => {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 32 }}>
+            <div style={{
+                display: 'flex',
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between',
+                alignItems: isMobile ? 'flex-start' : 'flex-end',
+                marginBottom: 32,
+                gap: isMobile ? 20 : 0
+            }}>
                 <div>
-                    <Title level={4} style={{ margin: 0, fontWeight: 800 }}>Upgrade Requests</Title>
+                    <Title level={4} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 18 : 20 }}>Upgrade Requests</Title>
                     <Paragraph type="secondary" style={{ fontSize: 13, margin: 0 }}>
                         Review and approve plan change requests from your administrative users.
                     </Paragraph>
                 </div>
-                <ThunderboltOutlined style={{ fontSize: 32, color: '#00df9a', opacity: 0.1 }} />
+                {!isMobile && <ThunderboltOutlined style={{ fontSize: 32, color: '#00df9a', opacity: 0.1 }} />}
             </div>
 
             <Card styles={{ body: { padding: 0 } }} style={{ background: '#121316', border: '1px solid #2d2e33', borderRadius: 12, overflow: 'hidden' }}>

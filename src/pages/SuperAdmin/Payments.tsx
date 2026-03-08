@@ -13,7 +13,8 @@ import {
     Select,
     Tooltip,
     Empty,
-    Pagination
+    Pagination,
+    Grid
 } from 'antd';
 import {
     DollarOutlined,
@@ -35,6 +36,8 @@ const Payments: React.FC = () => {
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 15;
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     const { data: response, isLoading } = useQuery({
         queryKey: ['all-payments', currentPage, searchTerm, statusFilter],
@@ -125,6 +128,7 @@ const Payments: React.FC = () => {
             title: 'BILLING PERIOD',
             key: 'period',
             width: 200,
+            responsive: ['md' as const],
             render: (_: any, record: any) => (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <CalendarOutlined style={{ color: '#8696a0', fontSize: 14 }} />
@@ -210,6 +214,7 @@ const Payments: React.FC = () => {
             title: 'RAZORPAY ID',
             key: 'razorpayId',
             width: 180,
+            responsive: ['lg' as const],
             render: (_: any, record: any) => {
                 const rpId = record.payment?.razorpayPaymentId;
                 if (!rpId) return <Text type="secondary" style={{ fontSize: 11 }}>—</Text>;
@@ -241,8 +246,8 @@ const Payments: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
         >
-            <div style={{ marginBottom: 32 }}>
-                <Title level={3} style={{ margin: 0, fontWeight: 800 }}>Payment Management</Title>
+            <div style={{ marginBottom: isMobile ? 32 : 40 }}>
+                <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 22 : 24 }}>Payment Management</Title>
                 <Text type="secondary" style={{ fontSize: 13 }}>Track all admin payments, subscription statuses, and revenue analytics.</Text>
             </div>
 

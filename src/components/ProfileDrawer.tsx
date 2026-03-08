@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Drawer, Form, Input, Button, Typography, Avatar, message, Divider, Image } from 'antd';
+import { Drawer, Form, Input, Button, Typography, Avatar, message, Divider, Image, Grid } from 'antd';
 import { UserOutlined, CameraOutlined, LockOutlined, SaveOutlined, UploadOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
@@ -17,6 +17,8 @@ export const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ open, onClose }) =
     const [logoBase64, setLogoBase64] = useState<string | null>(null);
     const [form] = Form.useForm();
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     // Re-sync state every time drawer opens
     useEffect(() => {
@@ -73,7 +75,7 @@ export const ProfileDrawer: React.FC<ProfileDrawerProps> = ({ open, onClose }) =
             placement="right"
             onClose={onClose}
             open={open}
-            width={400}
+            width={isMobile ? '100%' : 400}
             styles={{
                 header: { background: '#121316', borderBottom: '1px solid #2d2e33' },
                 body: { background: '#0b0c0e', padding: '24px' }

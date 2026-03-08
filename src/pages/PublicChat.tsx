@@ -25,6 +25,11 @@ const PublicChat: React.FC = () => {
     const [onboardingStep, setOnboardingStep] = useState<0 | 1 | 2 | 3>(0); // 0: Init, 1: Ask Name, 2: Ask Phone, 3: Completed
     const [visitorData, setVisitorData] = useState({ name: '', phone: '' });
     const [showWAPopup, setShowWAPopup] = useState(false);
+    const [isAdminTyping, setIsAdminTyping] = useState(false);
+    const [isSocketConnected, setIsSocketConnected] = useState(false);
+    const hasTriggeredOnboarding = useRef(false);
+    const typingTimeoutRef = useRef<any>(null);
+    const pollIntervalRef = useRef<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const { isRecording, recordingTime, formatTime, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
@@ -51,7 +56,9 @@ const PublicChat: React.FC = () => {
                     setChatInfo(res.data);
                     setVisitorData({ name: res.data.visitorName || '', phone: res.data.visitorPhone || '' });
 
-                    if (res.data.visitorName && res.data.visitorPhone) {
+                    if (!res.data.leadCaptureEnabled) {
+                        setOnboardingStep(3); // Skip onboarding if not enabled in plan
+                    } else if (res.data.visitorName && res.data.visitorPhone) {
                         setOnboardingStep(3);
                     } else if (res.data.visitorName) {
                         setOnboardingStep(2);
@@ -71,12 +78,31 @@ const PublicChat: React.FC = () => {
             socket.connect();
             socket.emit('join_conversation', conversationId);
 
+            const onConnect = () => setIsSocketConnected(true);
+            const onDisconnect = () => setIsSocketConnected(false);
+
+            socket.on('connect', onConnect);
+            socket.on('disconnect', onDisconnect);
+
             const handleMessage = (msg: any) => {
                 setMessages(prev => {
-                    if (prev.find(m => m.id === msg.id)) return prev;
-                    if (msg.tempId && prev.find(m => m.id === msg.tempId)) {
+                    if (prev.some(m => m.id === msg.id)) return prev;
+                    if (msg.tempId && prev.some(m => m.id === msg.tempId)) {
                         return prev.map(m => m.id === msg.tempId ? msg : m);
                     }
+
+                    const dupeIndex = prev.findIndex(m =>
+                        m.id.startsWith('temp-') &&
+                        m.content === msg.content &&
+                        m.isFromAdmin === msg.isFromAdmin
+                    );
+
+                    if (dupeIndex !== -1) {
+                        const next = [...prev];
+                        next[dupeIndex] = msg;
+                        return next;
+                    }
+
                     return [...prev, msg];
                 });
                 apiClient.post('/public/mark-read', { conversationId, isAdmin: false }).catch(() => { });
@@ -90,54 +116,101 @@ const PublicChat: React.FC = () => {
                 }));
             };
 
+            const handleTyping = (data: { isFromAdmin: boolean }) => {
+                if (data.isFromAdmin) setIsAdminTyping(true);
+            };
+
+            const handleStopTyping = (data: { isFromAdmin: boolean }) => {
+                if (data.isFromAdmin) setIsAdminTyping(false);
+            };
+
             socket.on('receive_message', handleMessage);
             socket.on('messages_read', handleRead);
+            socket.on('user_typing', handleTyping);
+            socket.on('user_stop_typing', handleStopTyping);
 
             return () => {
+                socket.off('connect', onConnect);
+                socket.off('disconnect', onDisconnect);
                 socket.off('receive_message', handleMessage);
                 socket.off('messages_read', handleRead);
+                socket.off('user_typing', handleTyping);
+                socket.off('user_stop_typing', handleStopTyping);
                 socket.emit('leave_conversation', conversationId);
             };
         }
     }, [conversationId]);
 
-    // 4. Onboarding Logic (Trigger Questions)
+    // Poll for messages when socket is disconnected (Fallback)
     useEffect(() => {
-        if (!chatInfo || !conversationId) return;
+        if (!conversationId || isSocketConnected) {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            return;
+        }
+
+        pollIntervalRef.current = setInterval(() => {
+            fetchMessages();
+        }, 5000);
+
+        return () => {
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+        };
+    }, [conversationId, isSocketConnected]);
+
+    useEffect(() => {
+        if (!chatInfo || !conversationId || onboardingStep !== 1 || hasTriggeredOnboarding.current) return;
 
         const triggerOnboardingMsg = async (text: string) => {
             try {
-                // We send it to backend so it's persisted in the conversation
                 await apiClient.post('/public/messages', {
                     conversationId,
                     content: text,
                     isFromAdmin: true,
                 });
-            } catch (err) {
-                console.error('Trigger msg error:', err);
-            }
+            } catch (err) { }
         };
 
         const runOnboarding = async () => {
-            // Check if we need to show welcome message + first question
-            if (onboardingStep === 1 && messages.length === 0) {
-                // Send Pre-defined welcome message first
+            if (messages.length === 0) {
+                hasTriggeredOnboarding.current = true;
                 if (chatInfo.welcomeMessage) {
                     await triggerOnboardingMsg(chatInfo.welcomeMessage);
                 }
-                // Then ask for name
                 setTimeout(() => triggerOnboardingMsg("To get started, could you please tell me your name?"), 600);
             }
         };
 
         runOnboarding();
-    }, [chatInfo, conversationId, onboardingStep]);
+    }, [chatInfo, conversationId, onboardingStep, messages.length]);
 
     const fetchMessages = async () => {
         if (!conversationId) return;
         try {
             const res = await apiClient.get(`/public/messages?conversationId=${conversationId}`);
-            setMessages(res.data);
+            setMessages(prev => {
+                const newMsgs = res.data;
+                const existingIds = new Set(prev.map(m => m.id));
+                const merged = [...prev];
+
+                newMsgs.forEach((msg: any) => {
+                    if (existingIds.has(msg.id)) return;
+
+                    // Check for optimistic message to replace
+                    const dupeIndex = merged.findIndex(m =>
+                        (msg.tempId && m.id === msg.tempId) ||
+                        (m.content === msg.content && m.isFromAdmin === msg.isFromAdmin && m.id.startsWith('temp-'))
+                    );
+
+                    if (dupeIndex !== -1) {
+                        merged[dupeIndex] = msg;
+                    } else {
+                        merged.push(msg);
+                    }
+                });
+
+                return merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            });
+
             if (res.data.length > 0) {
                 apiClient.post('/public/mark-read', { conversationId, isAdmin: false }).catch(() => { });
             }
@@ -165,10 +238,13 @@ const PublicChat: React.FC = () => {
             // Submit to backend
             apiClient.post('/public/init', { slug, visitorToken, visitorName: content });
 
-            // Add visitor message optimistically
-            addOptimisticMessage(content);
+            const tempId = `temp-${Date.now()}`;
+            addOptimisticMessage(content, MessageType.TEXT, tempId);
+
             // Trigger next question
-            setTimeout(() => triggerOnboardingMsg("Thank you! And what's your phone number or email so we can reach you?"), 600);
+            setTimeout(async () => {
+                await triggerOnboardingMsg("Thank you! And what's your phone number or email so we can reach you?");
+            }, 600);
             return;
         }
 
@@ -180,24 +256,34 @@ const PublicChat: React.FC = () => {
             // Submit to backend
             apiClient.post('/public/init', { slug, visitorToken, visitorName: visitorData.name, visitorPhone: content });
 
-            addOptimisticMessage(content);
-            setTimeout(() => triggerOnboardingMsg("Perfect! How can I help you today?"), 600);
+            const tempId = `temp-${Date.now()}`;
+            addOptimisticMessage(content, MessageType.TEXT, tempId);
+
+            setTimeout(async () => {
+                await triggerOnboardingMsg("Perfect! How can I help you today?");
+            }, 600);
             return;
         }
 
         // Regular Sending
-        addOptimisticMessage(content);
+        const tempId = `temp-${Date.now()}`;
+        addOptimisticMessage(content, MessageType.TEXT, tempId);
+
         try {
             const res = await apiClient.post('/public/messages', {
                 conversationId,
                 content,
                 type: MessageType.TEXT,
                 isFromAdmin: false,
+                tempId,
                 replyToId: replyingTo?.id
             });
-            setMessages(prev => prev.map(m => m.id === `temp-${Date.now()}` ? res.data : m));
+            // Replace optimistic message with actual DB message
+            setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
         } catch (err) {
             console.error('Send error:', err);
+            // Optionally remove optimistic message on failure
+            setMessages(prev => prev.filter(m => m.id !== tempId));
         }
     };
 
@@ -211,9 +297,9 @@ const PublicChat: React.FC = () => {
         } catch (err) { }
     };
 
-    const addOptimisticMessage = (content: string, type: MessageType = MessageType.TEXT) => {
+    const addOptimisticMessage = (content: string, type: MessageType = MessageType.TEXT, tempId?: string) => {
         const optimisticMsg: any = {
-            id: `temp-${Date.now()}`,
+            id: tempId || `temp-${Date.now()}`,
             conversationId,
             content,
             type,
@@ -234,16 +320,20 @@ const PublicChat: React.FC = () => {
         const audioBase64 = await stopRecording();
         if (!audioBase64) return;
 
-        addOptimisticMessage(audioBase64, MessageType.AUDIO);
+        const tempId = `temp-${Date.now()}`;
+        addOptimisticMessage(audioBase64, MessageType.AUDIO, tempId);
         try {
             const res = await apiClient.post('/public/messages', {
                 conversationId,
                 content: audioBase64,
                 type: MessageType.AUDIO,
-                isFromAdmin: false
+                isFromAdmin: false,
+                tempId
             });
-            setMessages(prev => prev.map(m => (m.id as string).startsWith('temp-') ? res.data : m));
-        } catch (err) { }
+            setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
+        } catch (err) {
+            setMessages(prev => prev.filter(m => m.id !== tempId));
+        }
     };
 
     // UI Helpers & Scroll
@@ -262,7 +352,20 @@ const PublicChat: React.FC = () => {
         }
     }, [messages.length]);
 
-    const onEmojiClick = (emojiData: any) => setInputText(prev => prev + emojiData.emoji);
+    const onEmojiClick = (emojiData: any) => {
+        setInputText(prev => prev + emojiData.emoji);
+        handleTypingIndicator();
+    };
+
+    const handleTypingIndicator = () => {
+        if (!conversationId) return;
+        socket.emit('typing', { conversationId, isFromAdmin: false });
+
+        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+        typingTimeoutRef.current = setTimeout(() => {
+            socket.emit('stop_typing', { conversationId, isFromAdmin: false });
+        }, 2000);
+    };
 
     const groupMessagesByDate = (msgs: any[]) => {
         const groups: { [key: string]: any[] } = {};
@@ -380,6 +483,17 @@ const PublicChat: React.FC = () => {
                                     ))}
                                 </React.Fragment>
                             ))}
+                            {isAdminTyping && (
+                                <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, animation: 'fadeIn 0.3s' }}>
+                                    <div className="wa-bubble wa-bubble-in" style={{ padding: '8px 12px', minWidth: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <div className="typing-indicator">
+                                            <span></span>
+                                            <span></span>
+                                            <span></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Input Area */}
@@ -401,7 +515,10 @@ const PublicChat: React.FC = () => {
                                         autoSize={{ minRows: 1, maxRows: 5 }}
                                         placeholder={onboardingStep === 1 ? "Enter your name..." : onboardingStep === 2 ? "Enter phone/email..." : "Type a message"}
                                         value={inputText}
-                                        onChange={e => setInputText(e.target.value)}
+                                        onChange={e => {
+                                            setInputText(e.target.value);
+                                            handleTypingIndicator();
+                                        }}
                                         onKeyDown={handleKeyDown}
                                         style={{ background: '#2a3942', border: 'none', borderRadius: 8, color: '#fff', padding: '9px 12px' }}
                                     />

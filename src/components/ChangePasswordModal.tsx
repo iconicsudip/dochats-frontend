@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Input, Button, Typography, message } from 'antd';
+import { Modal, Input, Button, Typography, message, Grid } from 'antd';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
 
@@ -9,6 +9,8 @@ export const ChangePasswordModal: React.FC = () => {
     const { user, setUser } = useAuth();
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
+    const screens = Grid.useBreakpoint();
+    const isMobile = !screens.sm;
 
     if (!user || (!user.isFirstLogin && !user.mustChangePassword)) return null;
 
@@ -34,7 +36,7 @@ export const ChangePasswordModal: React.FC = () => {
             maskClosable={false}
             footer={null}
             centered
-            width={400}
+            width={isMobile ? '100%' : 400}
             styles={{
                 body: {
                     background: '#1a1b1e',

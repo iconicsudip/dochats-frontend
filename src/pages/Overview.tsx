@@ -1,20 +1,40 @@
-import React from 'react';
-import { Card, Statistic, List, Avatar, Typography, Button, Skeleton, Tag, Space, Grid, Row, Col } from 'antd';
-import { LinkOutlined, MessageOutlined, PlusOutlined, MoreOutlined, ThunderboltOutlined, TeamOutlined, SafetyCertificateOutlined } from '@ant-design/icons';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useState } from 'react';
+import { Card, Statistic, List, Avatar, Typography, Button, Skeleton, Space, Grid, Row, Col, message } from 'antd';
+import { LinkOutlined, MessageOutlined, PlusOutlined, MoreOutlined, ThunderboltOutlined, TeamOutlined, SafetyCertificateOutlined, DownloadOutlined } from '@ant-design/icons';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../api/apiClient';
 import { useAuth } from '../contexts/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { socket } from '../socket';
 
 const { Title, Text } = Typography;
 
 const Overview: React.FC = () => {
     const { user } = useAuth();
-    const navigate = useNavigate();
+    const [downloading, setDownloading] = useState(false);
     const { data: linksResponse, isLoading } = useQuery({
         queryKey: ['links'],
         queryFn: () => apiClient.get('/links?limit=50').then(res => res.data),
     });
+
+    const queryClient = useQueryClient();
+
+    useEffect(() => {
+        if (!user?.id) return;
+        socket.connect();
+        socket.emit('join_admin', user.id);
+
+        const refreshData = () => {
+            queryClient.invalidateQueries({ queryKey: ['links'] });
+        };
+
+        socket.on('conversation_updated', refreshData);
+        socket.on('receive_message', refreshData);
+
+        return () => {
+            socket.off('conversation_updated', refreshData);
+            socket.off('receive_message', refreshData);
+        };
+    }, [user?.id, queryClient]);
 
     const links = linksResponse?.data || [];
     const totalChats = links?.reduce((acc: number, l: any) => acc + l._count.conversations, 0) || 0;
@@ -27,13 +47,74 @@ const Overview: React.FC = () => {
     const screens = Grid.useBreakpoint();
     const isMobile = !screens.sm;
 
+    const handleDownloadLeads = async () => {
+        if (downloading) return;
+        setDownloading(true);
+        try {
+            const res = await apiClient.get('/conversations/download');
+            const leads = res.data;
+
+            if (leads.length === 0) {
+                message.info('No leads found to download.');
+                return;
+            }
+
+            // Faster non-blocking CSV Generation
+            setTimeout(() => {
+                const headers = ['Name', 'Phone', 'Link', 'Date'];
+                const csvRows = [
+                    headers.join(','),
+                    ...leads.map((l: any) => [
+                        `"${(l.name || '').replace(/"/g, '""')}"`,
+                        `"${(l.phone || '').replace(/"/g, '""')}"`,
+                        `"${(l.link || '').replace(/"/g, '""')}"`,
+                        new Date(l.date).toLocaleString()
+                    ].join(','))
+                ];
+                const csvString = csvRows.join('\n');
+                const blob = new Blob([csvString], { type: 'text/csv' });
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = `leads_${new Date().toISOString().split('T')[0]}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                setTimeout(() => {
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                }, 100);
+            }, 0);
+
+        } catch (e) {
+            console.error('Download error:', e);
+            message.error('Failed to download leads');
+        } finally {
+            setDownloading(false);
+        }
+    };
+
     if (isLoading) return <Skeleton active paragraph={{ rows: 10 }} />;
 
     return (
         <div>
-            <div style={{ marginBottom: isMobile ? 24 : 32 }}>
-                <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 20 : 24 }}>Dashboard Overview</Title>
-                <Text type="secondary" style={{ fontSize: 13 }}>Welcome back, here's what's happening today.</Text>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: isMobile ? 24 : 32 }}>
+                <div>
+                    <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 20 : 24 }}>Dashboard Overview</Title>
+                    <Text type="secondary" style={{ fontSize: 13 }}>Welcome back, here's what's happening today.</Text>
+                </div>
+                {user?.plan?.leadCaptureEnabled && (
+                    <Button
+                        icon={<DownloadOutlined />}
+                        onClick={handleDownloadLeads}
+                        loading={downloading}
+                        disabled={downloading}
+                        className="premium-button"
+                        style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6' }}
+                    >
+                        {!isMobile && (downloading ? "Processing..." : "Download Leads")}
+                    </Button>
+                )}
             </div>
 
             <Row gutter={[24, 24]}>
@@ -64,7 +145,6 @@ const Overview: React.FC = () => {
                                 <div style={{ width: 44, height: 44, background: 'rgba(168, 85, 247, 0.05)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(168, 85, 247, 0.1)' }}>
                                     <SafetyCertificateOutlined style={{ fontSize: 20, color: '#a855f7' }} />
                                 </div>
-                                <Tag color={user?.plan?.name === 'Basic' ? 'blue' : 'gold'} style={{ margin: 0 }}>{user?.plan?.name || 'Basic'}</Tag>
                             </div>
                             <Statistic
                                 title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>ACTIVE PLAN</Text>}
@@ -117,17 +197,17 @@ const Overview: React.FC = () => {
                             </div>
                             <div>
                                 <Text strong style={{ fontSize: 15, display: 'block' }}>Unlock your full potential with DoChats Pro</Text>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Get more team members, unlimited links and priority support.</Text>
+                                <Text type="secondary" style={{ fontSize: 12 }}>Custom plans, dedicated support, and unlimited scale.</Text>
                             </div>
                         </Space>
                         <Button
                             type="primary"
                             className="premium-button"
-                            icon={<ThunderboltOutlined />}
-                            onClick={() => navigate('/dashboard/plans')}
+                            icon={<MessageOutlined />}
+                            onClick={() => window.open('https://wa.me/1234567890', '_blank')}
                             style={{ width: isMobile ? '100%' : 'auto' }}
                         >
-                            Upgrade Now
+                            Contact Sales
                         </Button>
                     </div>
                 </Card>

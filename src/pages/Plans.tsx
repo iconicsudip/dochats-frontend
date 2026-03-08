@@ -136,16 +136,16 @@ const Plans: React.FC = () => {
                                 <div style={{ padding: '8px' }}>
                                     <Space direction="vertical" size={24} style={{ width: '100%' }}>
                                         <div>
-                                            <Title level={4} style={{ margin: 0, color: '#fff' }}>{plan.name}</Title>
-                                            <Paragraph style={{ color: '#8696a0', fontSize: 13, marginTop: 8, height: 40, overflow: 'hidden' }}>
+                                            <Title level={4} style={{ margin: 0, color: '#fff', fontSize: isMobile ? 18 : 20 }}>{plan.name}</Title>
+                                            <Paragraph style={{ color: '#8696a0', fontSize: isMobile ? 12 : 13, marginTop: 8, height: isMobile ? 'auto' : 40, overflow: 'hidden' }}>
                                                 {plan.description || "The perfect starting point for growing businesses."}
                                             </Paragraph>
                                         </div>
 
                                         <div>
-                                            <Title level={2} style={{ margin: 0, color: '#00df9a', fontWeight: 800 }}>
+                                            <Title level={2} style={{ margin: 0, color: '#00df9a', fontWeight: 800, fontSize: isMobile ? 24 : 32 }}>
                                                 ₹{billingCycle === 'MONTHLY' ? plan.monthlyPrice.toLocaleString() : (plan.yearlyPrice / 12).toLocaleString()}
-                                                <span style={{ fontSize: 14, color: '#8696a0', fontWeight: 400 }}>/month</span>
+                                                <span style={{ fontSize: isMobile ? 13 : 14, color: '#8696a0', fontWeight: 400 }}>/month</span>
                                             </Title>
                                             {billingCycle === 'YEARLY' && (
                                                 <Text type="secondary" style={{ fontSize: 12 }}>Billed annually at ₹{plan.yearlyPrice.toLocaleString()}</Text>
