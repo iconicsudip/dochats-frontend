@@ -14,20 +14,42 @@ const { Content } = Layout;
 
 const PublicChat: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
-    const [visitorToken, setVisitorToken] = useState<string | null>(null);
+    const [visitorToken] = useState<string | null>(() => {
+        let token = localStorage.getItem('visitor_token');
+        if (!token) {
+            token = crypto.randomUUID();
+            localStorage.setItem('visitor_token', token);
+        }
+        return token;
+    });
     const [conversationId, setConversationId] = useState<string | null>(null);
-    const [chatInfo, setChatInfo] = useState<any>(null);
+    const [chatInfo, setChatInfo] = useState<any>(() => {
+        if (!slug) return null;
+        try {
+            const cached = localStorage.getItem(`chat_info_${slug}`);
+            return cached ? JSON.parse(cached) : null;
+        } catch { return null; }
+    });
     const [inputText, setInputText] = useState('');
     const [showEmoji, setShowEmoji] = useState(false);
     const [messages, setMessages] = useState<any[]>([]);
     const [linkPreview, setLinkPreview] = useState<any>(null);
     const [replyingTo, setReplyingTo] = useState<any>(null);
-    const [onboardingStep, setOnboardingStep] = useState<0 | 1 | 2 | 3>(0); // 0: Init, 1: Ask Name, 2: Ask Phone, 3: Completed
-    const [visitorData, setVisitorData] = useState({ name: '', phone: '' });
+    const [onboardingStep, setOnboardingStep] = useState<0 | 1 | 2 | 3>(() => {
+        const name = localStorage.getItem('visitor_name');
+        const phone = localStorage.getItem('visitor_phone');
+        if (name && phone) return 3;
+        return 1; 
+    });
+    const [visitorData, setVisitorData] = useState(() => ({
+        name: localStorage.getItem('visitor_name') || '',
+        phone: localStorage.getItem('visitor_phone') || ''
+    }));
     const [showWAPopup, setShowWAPopup] = useState(false);
     const [isAdminTyping, setIsAdminTyping] = useState(false);
     const [isSocketConnected, setIsSocketConnected] = useState(false);
-    const [hasInitialMessagesFetched, setHasInitialMessagesFetched] = useState(false);
+    const [isInitialLoading, setIsInitialLoading] = useState(true);
+    const [showOnboardingForm, setShowOnboardingForm] = useState(false);
     const hasTriggeredOnboarding = useRef(false);
     const typingTimeoutRef = useRef<any>(null);
     const pollIntervalRef = useRef<any>(null);
@@ -35,17 +57,7 @@ const PublicChat: React.FC = () => {
 
     const { isRecording, recordingTime, formatTime, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
 
-    // 1. Initial Visitor Discovery
-    useEffect(() => {
-        let token = localStorage.getItem('visitor_token');
-        if (!token) {
-            token = crypto.randomUUID();
-            localStorage.setItem('visitor_token', token);
-        }
-        setVisitorToken(token);
-    }, []);
-
-    // 2. Load Chat Infrastructure
+    // 1. Initial Visitor Discovery & Load Chat Infrastructure
     useEffect(() => {
         if (slug && visitorToken) {
             const storedName = localStorage.getItem('visitor_name') || undefined;
@@ -58,7 +70,7 @@ const PublicChat: React.FC = () => {
                     setVisitorData({ name: res.data.visitorName || '', phone: res.data.visitorPhone || '' });
 
                     if (!res.data.leadCaptureEnabled) {
-                        setOnboardingStep(3); // Skip onboarding if not enabled in plan
+                        setOnboardingStep(3);
                     } else if (res.data.visitorName && res.data.visitorPhone) {
                         setOnboardingStep(3);
                     } else if (res.data.visitorName) {
@@ -74,41 +86,24 @@ const PublicChat: React.FC = () => {
     // 3. Socket & History Engine
     useEffect(() => {
         if (conversationId) {
+            // No changes needed here, keeping logic as is
             fetchMessages();
-
             socket.connect();
             socket.emit('join_conversation', conversationId);
-
             const onConnect = () => setIsSocketConnected(true);
             const onDisconnect = () => setIsSocketConnected(false);
-
             socket.on('connect', onConnect);
             socket.on('disconnect', onDisconnect);
-
             const handleMessage = (msg: any) => {
                 setMessages(prev => {
                     if (prev.some(m => m.id === msg.id)) return prev;
-                    if (msg.tempId && prev.some(m => m.id === msg.tempId)) {
-                        return prev.map(m => m.id === msg.tempId ? msg : m);
-                    }
-
-                    const dupeIndex = prev.findIndex(m =>
-                        m.id.startsWith('temp-') &&
-                        m.content === msg.content &&
-                        m.isFromAdmin === msg.isFromAdmin
-                    );
-
-                    if (dupeIndex !== -1) {
-                        const next = [...prev];
-                        next[dupeIndex] = msg;
-                        return next;
-                    }
-
+                    if (msg.tempId && prev.some(m => m.id === msg.tempId)) return prev.map(m => m.id === msg.tempId ? msg : m);
+                    const dupeIndex = prev.findIndex(m => m.id.startsWith('temp-') && m.content === msg.content && m.isFromAdmin === msg.isFromAdmin);
+                    if (dupeIndex !== -1) { const next = [...prev]; next[dupeIndex] = msg; return next; }
                     return [...prev, msg];
                 });
                 apiClient.post('/public/mark-read', { conversationId, isAdmin: false }).catch(() => { });
             };
-
             const handleRead = (data: { byAdmin: boolean }) => {
                 setMessages(prev => prev.map(m => {
                     if (data?.byAdmin && !m.isFromAdmin) return { ...m, isRead: true };
@@ -116,20 +111,12 @@ const PublicChat: React.FC = () => {
                     return m;
                 }));
             };
-
-            const handleTyping = (data: { isFromAdmin: boolean }) => {
-                if (data.isFromAdmin) setIsAdminTyping(true);
-            };
-
-            const handleStopTyping = (data: { isFromAdmin: boolean }) => {
-                if (data.isFromAdmin) setIsAdminTyping(false);
-            };
-
+            const handleTyping = (data: { isFromAdmin: boolean }) => { if (data.isFromAdmin) setIsAdminTyping(true); };
+            const handleStopTyping = (data: { isFromAdmin: boolean }) => { if (data.isFromAdmin) setIsAdminTyping(false); };
             socket.on('receive_message', handleMessage);
             socket.on('messages_read', handleRead);
             socket.on('user_typing', handleTyping);
             socket.on('user_stop_typing', handleStopTyping);
-
             return () => {
                 socket.off('connect', onConnect);
                 socket.off('disconnect', onDisconnect);
@@ -148,43 +135,31 @@ const PublicChat: React.FC = () => {
             if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
             return;
         }
-
-        pollIntervalRef.current = setInterval(() => {
-            fetchMessages();
-        }, 5000);
-
-        return () => {
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-        };
+        pollIntervalRef.current = setInterval(() => { fetchMessages(); }, 5000);
+        return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); };
     }, [conversationId, isSocketConnected]);
 
     useEffect(() => {
-        if (!chatInfo || !conversationId || !hasInitialMessagesFetched || hasTriggeredOnboarding.current) return;
-
+        if (!chatInfo || !conversationId || isInitialLoading || hasTriggeredOnboarding.current) return;
         const runFlow = async () => {
             hasTriggeredOnboarding.current = true;
-
-            // 1. Send Welcome Message if applicable
             if (chatInfo.welcomeMessage) {
-                await sendBotMessage(chatInfo.welcomeMessage);
-            }
-
-            // 2. Lead Capture prompt on Entry
-            if (onboardingStep === 1) {
-                const delay = chatInfo.welcomeMessage ? 1200 : 0;
-                setTimeout(() => {
-                    sendBotMessage("To get started, could you please tell me your name?");
-                }, delay);
-            } else if (onboardingStep === 2) {
-                const delay = chatInfo.welcomeMessage ? 1200 : 0;
-                setTimeout(() => {
-                    sendBotMessage(`Welcome back ${visitorData.name || 'there'}! Could you please share your phone number or email so we can stay in touch?`);
-                }, delay);
+                const alreadySent = messages.some(m => m.isFromAdmin && m.content === chatInfo.welcomeMessage);
+                if (!alreadySent) {
+                    await sendBotMessage(chatInfo.welcomeMessage);
+                    // Show form with a slight delay after the message is sent
+                    setTimeout(() => setShowOnboardingForm(true), 1000);
+                } else {
+                    // Already exists, show form immediately
+                    setShowOnboardingForm(true);
+                }
+            } else {
+                // No welcome message, show form immediately
+                setShowOnboardingForm(true);
             }
         };
-
         runFlow();
-    }, [chatInfo, conversationId, onboardingStep, hasInitialMessagesFetched]);
+    }, [chatInfo, conversationId, isInitialLoading, messages]);
 
     const fetchMessages = async () => {
         if (!conversationId) return;
@@ -194,197 +169,104 @@ const PublicChat: React.FC = () => {
                 const newMsgs = res.data;
                 const existingIds = new Set(prev.map(m => m.id));
                 const merged = [...prev];
-
                 newMsgs.forEach((msg: any) => {
                     if (existingIds.has(msg.id)) return;
-
-                    // Check for optimistic message to replace
-                    const dupeIndex = merged.findIndex(m =>
-                        (msg.tempId && m.id === msg.tempId) ||
-                        (m.content === msg.content && m.isFromAdmin === msg.isFromAdmin && m.id.startsWith('temp-'))
-                    );
-
-                    if (dupeIndex !== -1) {
-                        merged[dupeIndex] = msg;
-                    } else {
-                        merged.push(msg);
-                    }
+                    const dupeIndex = merged.findIndex(m => (msg.tempId && m.id === msg.tempId) || (m.content === msg.content && m.isFromAdmin === msg.isFromAdmin && m.id.startsWith('temp-')));
+                    if (dupeIndex !== -1) merged[dupeIndex] = msg;
+                    else merged.push(msg);
                 });
-
                 return merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
             });
-
-            if (res.data.length > 0) {
-                apiClient.post('/public/mark-read', { conversationId, isAdmin: false }).catch(() => { });
-            }
-            setHasInitialMessagesFetched(true);
-        } catch (err) {
-            console.error('Fetch messages error:', err);
-            setHasInitialMessagesFetched(true); // Don't block onboarding on fetch failure
+            if (res.data.length > 0) apiClient.post('/public/mark-read', { conversationId, isAdmin: false }).catch(() => { });
+        } catch (err) { 
+            console.error('Fetch messages error:', err); 
+        } finally {
+            setIsInitialLoading(false);
         }
     };
 
     const sendBotMessage = async (text: string) => {
         if (!conversationId) return;
-
-        // Prevent duplicate bot messages (e.g. from rapid state updates or refreshes)
         const alreadyExists = messages.some(m => m.isFromAdmin && m.content === text);
         if (alreadyExists) return;
+        try { await apiClient.post('/public/messages', { conversationId, content: text, isFromAdmin: true }); } catch (err) { }
+    };
 
+    const handleOnboardingSubmit = async () => {
+        if (!visitorData.name.trim() || !visitorData.phone.trim() || !conversationId) return;
+        const { name, phone } = visitorData;
+        localStorage.setItem('visitor_name', name);
+        localStorage.setItem('visitor_phone', phone);
+        setOnboardingStep(3);
         try {
-            await apiClient.post('/public/messages', {
-                conversationId,
-                content: text,
-                isFromAdmin: true,
-            });
-        } catch (err) { }
+            await apiClient.post('/public/init', { slug, visitorToken, visitorName: name, visitorPhone: phone });
+            const tempIdName = `temp-name-${Date.now()}`;
+            const tempIdPhone = `temp-phone-${Date.now()}`;
+            setMessages(prev => [
+                ...prev,
+                { id: tempIdName, content: `Name: ${name}`, isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT },
+                { id: tempIdPhone, content: `Phone: ${phone}`, isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT }
+            ]);
+            setTimeout(() => { sendBotMessage("Perfect! Thank you for sharing your details. How can I help you today?"); }, 800);
+        } catch (err) { console.error('Onboarding submit error:', err); }
     };
 
     const handleSendMessage = async (e?: React.FormEvent) => {
         e?.preventDefault();
         if (!inputText.trim() || !conversationId) return;
-
         const content = inputText;
         setInputText('');
         setShowEmoji(false);
         setLinkPreview(null);
         setReplyingTo(null);
-
-        // Onboarding Handling
-        if (onboardingStep === 1) {
-            // Processing Name
-            setVisitorData(prev => ({ ...prev, name: content }));
-            localStorage.setItem('visitor_name', content);
-            setOnboardingStep(2);
-            // Submit to backend
-            apiClient.post('/public/init', { slug, visitorToken, visitorName: content });
-
-            const tempId = `temp-${Date.now()}`;
-            addOptimisticMessage(content, MessageType.TEXT, tempId);
-
-            // Trigger next question
-            setTimeout(() => {
-                sendBotMessage("Thank you! And what's your phone number or email so we can reach you?");
-            }, 800);
-            return;
-        }
-
-        if (onboardingStep === 2) {
-            // Processing Phone
-            setVisitorData(prev => ({ ...prev, phone: content }));
-            localStorage.setItem('visitor_phone', content);
-            setOnboardingStep(3);
-            // Submit to backend
-            apiClient.post('/public/init', { slug, visitorToken, visitorName: visitorData.name, visitorPhone: content });
-
-            const tempId = `temp-${Date.now()}`;
-            addOptimisticMessage(content, MessageType.TEXT, tempId);
-
-            setTimeout(() => {
-                sendBotMessage("Perfect! How can I help you today?");
-            }, 800);
-            return;
-        }
-
-        // Regular Sending
         const tempId = `temp-${Date.now()}`;
         addOptimisticMessage(content, MessageType.TEXT, tempId);
-
         try {
-            const res = await apiClient.post('/public/messages', {
-                conversationId,
-                content,
-                type: MessageType.TEXT,
-                isFromAdmin: false,
-                tempId,
-                replyToId: replyingTo?.id
-            });
-            // Replace optimistic message with actual DB message
+            const res = await apiClient.post('/public/messages', { conversationId, content, type: MessageType.TEXT, isFromAdmin: false, tempId, replyToId: replyingTo?.id });
             setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
-        } catch (err) {
-            console.error('Send error:', err);
-            // Optionally remove optimistic message on failure
-            setMessages(prev => prev.filter(m => m.id !== tempId));
-        }
+        } catch (err) { console.error('Send error:', err); setMessages(prev => prev.filter(m => m.id !== tempId)); }
     };
 
     const addOptimisticMessage = (content: string, type: MessageType = MessageType.TEXT, tempId?: string) => {
-        const optimisticMsg: any = {
-            id: tempId || `temp-${Date.now()}`,
-            conversationId,
-            content,
-            type,
-            isFromAdmin: false,
-            isRead: false,
-            createdAt: new Date().toISOString(),
-            linkPreview,
-            replyTo: replyingTo,
-            replyToId: replyingTo?.id
-        };
+        const optimisticMsg: any = { id: tempId || `temp-${Date.now()}`, conversationId, content, type, isFromAdmin: false, isRead: false, createdAt: new Date().toISOString(), linkPreview, replyTo: replyingTo, replyToId: replyingTo?.id };
         setMessages(prev => [...prev, optimisticMsg]);
     };
 
     const sendVoiceMessage = async () => {
         if (!conversationId) return;
-        if (onboardingStep < 3) return; // Disallow voice during onboarding for simplicity
-
+        if (onboardingStep < 3) return;
         const audioBase64 = await stopRecording();
         if (!audioBase64) return;
-
         const tempId = `temp-${Date.now()}`;
         addOptimisticMessage(audioBase64, MessageType.AUDIO, tempId);
         try {
-            const res = await apiClient.post('/public/messages', {
-                conversationId,
-                content: audioBase64,
-                type: MessageType.AUDIO,
-                isFromAdmin: false,
-                tempId
-            });
+            const res = await apiClient.post('/public/messages', { conversationId, content: audioBase64, type: MessageType.AUDIO, isFromAdmin: false, tempId });
             setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
-        } catch (err) {
-            setMessages(prev => prev.filter(m => m.id !== tempId));
-        }
+        } catch (err) { setMessages(prev => prev.filter(m => m.id !== tempId)); }
     };
 
-    // UI Helpers & Scroll
     useEffect(() => {
-        setTimeout(() => {
-            if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }, 100);
-
+        setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 100);
         const customerMsgs = messages.filter(m => !m.isFromAdmin);
         const threshold = chatInfo?.whatsappThreshold || 5;
         if (chatInfo?.whatsappLink && customerMsgs.length >= threshold) {
             const lastMsg = messages[messages.length - 1];
-            if (lastMsg && !lastMsg.isFromAdmin) {
-                setShowWAPopup(true);
-            }
+            if (lastMsg && !lastMsg.isFromAdmin) { setShowWAPopup(true); }
         }
     }, [messages.length]);
 
-    const onEmojiClick = (emojiData: any) => {
-        setInputText(prev => prev + emojiData.emoji);
-        handleTypingIndicator();
-    };
+    const onEmojiClick = (emojiData: any) => { setInputText(prev => prev + emojiData.emoji); handleTypingIndicator(); };
 
     const handleTypingIndicator = () => {
         if (!conversationId) return;
         socket.emit('typing', { conversationId, isFromAdmin: false });
-
         if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => {
-            socket.emit('stop_typing', { conversationId, isFromAdmin: false });
-        }, 2000);
+        typingTimeoutRef.current = setTimeout(() => { socket.emit('stop_typing', { conversationId, isFromAdmin: false }); }, 2000);
     };
 
     const groupMessagesByDate = (msgs: any[]) => {
         const groups: { [key: string]: any[] } = {};
-        msgs.forEach(msg => {
-            const date = format(new Date(msg.createdAt), 'yyyy-MM-dd');
-            if (!groups[date]) groups[date] = [];
-            groups[date].push(msg);
-        });
+        msgs.forEach(msg => { const date = format(new Date(msg.createdAt), 'yyyy-MM-dd'); if (!groups[date]) groups[date] = []; groups[date].push(msg); });
         return groups;
     };
 
@@ -393,19 +275,13 @@ const PublicChat: React.FC = () => {
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         const parts = text.split(urlRegex);
         return parts.map((part, i) => {
-            if (part.match(urlRegex)) {
-                return <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#53bdeb', textDecoration: 'underline' }}>{part}</a>;
-            }
+            if (part.match(urlRegex)) return <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#53bdeb', textDecoration: 'underline' }}>{part}</a>;
             return <span key={i}>{part.split('\n').map((line, j) => <React.Fragment key={j}>{j > 0 && <br />}{line}</React.Fragment>)}</span>;
         });
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (e.key === 'Enter') {
-            if (e.shiftKey || e.metaKey || e.ctrlKey || window.innerWidth <= 768) return;
-            e.preventDefault();
-            handleSendMessage(e as unknown as React.FormEvent);
-        }
+        if (e.key === 'Enter') { if (e.shiftKey || e.metaKey || e.ctrlKey || window.innerWidth <= 768) return; e.preventDefault(); handleSendMessage(e as unknown as React.FormEvent); }
     };
 
     const getDateLabel = (dateStr: string) => {
@@ -447,8 +323,8 @@ const PublicChat: React.FC = () => {
                                     icon={<UserOutlined />}
                                     style={{ background: '#6a7175' }}
                                 />
-                                <div>
-                                    <div style={{ color: '#fff', fontSize: 16, fontWeight: 600 }}>{chatInfo.adminName}</div>
+                                <div style={{ minWidth: 0 }}>
+                                    <div style={{ color: '#fff', fontSize: 16, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chatInfo.adminName}</div>
                                     <div style={{ color: 'var(--wa-secondary)', fontSize: 12 }}>online</div>
                                 </div>
                             </div>
@@ -494,6 +370,47 @@ const PublicChat: React.FC = () => {
                                     ))}
                                 </React.Fragment>
                             ))}
+                            {(onboardingStep < 3 && chatInfo.leadCaptureEnabled && showOnboardingForm) && (
+                                <div className="wa-bubble wa-bubble-in" style={{ padding: '16px', maxWidth: '320px', width: '90%', marginBottom: 16, alignSelf: 'flex-start', animation: 'fadeIn 0.6s ease-out' }}>
+                                    <div style={{ marginBottom: 16, color: 'var(--wa-text)', fontSize: 13, fontWeight: 500 }}>
+                                        To help you better, please share your details:
+                                    </div>
+                                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
+                                        <div>
+                                            <div style={{ color: 'var(--wa-secondary)', fontSize: 11, marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</div>
+                                            <Input 
+                                                placeholder="e.g. John Doe" 
+                                                value={visitorData.name} 
+                                                onChange={e => setVisitorData(prev => ({ ...prev, name: e.target.value }))}
+                                                style={{ background: '#2a3942', border: '1px solid #3b4a54', borderRadius: 8, color: '#fff', padding: '8px 12px' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <div style={{ color: 'var(--wa-secondary)', fontSize: 11, marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone Number (10 digits)</div>
+                                            <Input 
+                                                placeholder="e.g. 9876543210" 
+                                                value={visitorData.phone} 
+                                                maxLength={10}
+                                                onChange={e => {
+                                                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                                    setVisitorData(prev => ({ ...prev, phone: val }));
+                                                }}
+                                                style={{ background: '#2a3942', border: '1px solid #3b4a54', borderRadius: 8, color: '#fff', padding: '8px 12px' }}
+                                            />
+                                        </div>
+                                        <Button 
+                                            type="primary" 
+                                            block 
+                                            style={{ background: 'var(--wa-green)', border: 'none', height: 40, fontWeight: 700, color: '#000', marginTop: 8, borderRadius: 8 }}
+                                            onClick={handleOnboardingSubmit}
+                                            disabled={!visitorData.name.trim() || visitorData.phone.length !== 10}
+                                        >
+                                            Start Chatting
+                                        </Button>
+                                    </Space>
+                                </div>
+                            )}
+
                             {isAdminTyping && (
                                 <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, animation: 'fadeIn 0.3s' }}>
                                     <div className="wa-bubble wa-bubble-in" style={{ padding: '8px 12px', minWidth: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -507,40 +424,42 @@ const PublicChat: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Input Area */}
-                        <div style={{ padding: '10px 16px', background: 'var(--wa-panel)', display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 10 }}>
-                            <SmileOutlined style={{ fontSize: 24, color: 'var(--wa-secondary)', cursor: 'pointer' }} onClick={() => setShowEmoji(!showEmoji)} />
-                            {showEmoji && <div style={{ position: 'absolute', bottom: 70, left: 16 }}><EmojiPicker theme={EmojiTheme.DARK} onEmojiClick={onEmojiClick} /></div>}
+                        {/* Input Area - Only show when onboarding is complete */}
+                        {onboardingStep === 3 && (
+                            <div style={{ padding: '10px 16px', background: 'var(--wa-panel)', display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 10, animation: 'fadeIn 0.5s ease-in' }}>
+                                <SmileOutlined style={{ fontSize: 24, color: 'var(--wa-secondary)', cursor: 'pointer' }} onClick={() => setShowEmoji(!showEmoji)} />
+                                {showEmoji && <div style={{ position: 'absolute', bottom: 70, left: 16 }}><EmojiPicker theme={EmojiTheme.DARK} onEmojiClick={onEmojiClick} /></div>}
 
-                            {isRecording ? (
-                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                    <div style={{ color: '#ef5350' }}>{formatTime(recordingTime)}</div>
-                                    <Space>
-                                        <Button type="text" onClick={cancelRecording} icon={<CloseOutlined style={{ color: '#8696a0' }} />} />
-                                        <Button type="text" onClick={sendVoiceMessage} icon={<SendOutlined style={{ color: 'var(--wa-green)' }} />} />
-                                    </Space>
-                                </div>
-                            ) : (
-                                <form onSubmit={handleSendMessage} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-                                    <Input.TextArea
-                                        autoSize={{ minRows: 1, maxRows: 5 }}
-                                        placeholder={onboardingStep === 1 ? "Enter your name..." : onboardingStep === 2 ? "Enter phone/email..." : "Type a message"}
-                                        value={inputText}
-                                        onChange={e => {
-                                            setInputText(e.target.value);
-                                            handleTypingIndicator();
-                                        }}
-                                        onKeyDown={handleKeyDown}
-                                        style={{ background: '#2a3942', border: 'none', borderRadius: 8, color: '#fff', padding: '9px 12px' }}
-                                    />
-                                    {inputText.trim() ? (
-                                        <Button type="text" htmlType="submit" icon={<SendOutlined style={{ fontSize: 22, color: 'var(--wa-secondary)' }} />} />
-                                    ) : (
-                                        <AudioOutlined onClick={startRecording} style={{ fontSize: 22, color: 'var(--wa-secondary)', cursor: 'pointer' }} />
-                                    )}
-                                </form>
-                            )}
-                        </div>
+                                {isRecording ? (
+                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                        <div style={{ color: '#ef5350' }}>{formatTime(recordingTime)}</div>
+                                        <Space>
+                                            <Button type="text" onClick={cancelRecording} icon={<CloseOutlined style={{ color: '#8696a0' }} />} />
+                                            <Button type="text" onClick={sendVoiceMessage} icon={<SendOutlined style={{ color: 'var(--wa-green)' }} />} />
+                                        </Space>
+                                    </div>
+                                ) : (
+                                    <form onSubmit={handleSendMessage} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
+                                        <Input.TextArea
+                                            autoSize={{ minRows: 1, maxRows: 5 }}
+                                            placeholder="Type a message"
+                                            value={inputText}
+                                            onChange={e => {
+                                                setInputText(e.target.value);
+                                                handleTypingIndicator();
+                                            }}
+                                            onKeyDown={handleKeyDown}
+                                            style={{ background: '#2a3942', border: 'none', borderRadius: 8, color: '#fff', padding: '9px 12px' }}
+                                        />
+                                        {inputText.trim() ? (
+                                            <Button type="text" htmlType="submit" icon={<SendOutlined style={{ fontSize: 22, color: 'var(--wa-secondary)' }} />} />
+                                        ) : (
+                                            <AudioOutlined onClick={startRecording} style={{ fontSize: 22, color: 'var(--wa-secondary)', cursor: 'pointer' }} />
+                                        )}
+                                    </form>
+                                )}
+                            </div>
+                        )}
 
                         {/* WA Popup */}
                         <Modal open={showWAPopup} onCancel={() => setShowWAPopup(false)} footer={null} centered styles={{ body: { background: '#202c33', color: '#fff' } }} width={360}>
@@ -548,7 +467,7 @@ const PublicChat: React.FC = () => {
                                 <WhatsAppOutlined style={{ fontSize: 50, color: '#25D366', marginBottom: 20 }} />
                                 <h3 style={{ color: '#fff', fontSize: 18 }}>Continue on WhatsApp?</h3>
                                 <p style={{ color: '#8696a0', marginBottom: 24 }}>Move to WhatsApp for faster replies?</p>
-                                <Button block type="primary" style={{ background: '#25D366', border: 'none', marginBottom: 12, height: 44 }} icon={<WhatsAppOutlined />} onClick={() => { window.open(chatInfo.whatsappLink, '_blank'); setShowWAPopup(false); }}>Open WhatsApp</Button>
+                                <Button block type="primary" style={{ background: '#25D366', border: 'none', marginBottom: 12, height: 44 }} icon={<WhatsAppOutlined />} onClick={() => { window.open(chatInfo?.whatsappLink, '_blank'); setShowWAPopup(false); }}>Open WhatsApp</Button>
                                 <Button block type="text" style={{ color: '#8696a0' }} onClick={() => setShowWAPopup(false)}>Not now</Button>
                             </div>
                         </Modal>

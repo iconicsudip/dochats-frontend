@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, Typography, Space, Card, message, Row, Col, Switch, Tag, Grid } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, LinkOutlined, UserOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, LinkOutlined } from '@ant-design/icons';
 import apiClient from '../../api/apiClient';
 
 const { Title, Text, Paragraph } = Typography;
@@ -120,6 +120,16 @@ const ManagePlans: React.FC = () => {
             )
         },
         {
+            title: 'Visibility',
+            dataIndex: 'isPublic',
+            key: 'isPublic',
+            render: (isPublic: boolean) => (
+                <Tag color={isPublic ? 'blue' : 'warning'} style={{ borderRadius: 12, border: 'none', background: isPublic ? 'rgba(59, 130, 246, 0.1)' : 'rgba(251, 191, 36, 0.1)', color: isPublic ? '#3b82f6' : '#fbbf24' }}>
+                    {isPublic ? 'Public' : 'Private'}
+                </Tag>
+            )
+        },
+        {
             title: 'Lead Capture',
             dataIndex: 'leadCaptureEnabled',
             key: 'leadCaptureEnabled',
@@ -217,7 +227,7 @@ const ManagePlans: React.FC = () => {
                     body: { background: '#121316', padding: '24px' },
                 }}
             >
-                <Form form={form} layout="vertical" onFinish={handleSavePlan} initialValues={{ subUsersLimit: 3, linksLimit: 5, order: 0, leadCaptureEnabled: false }}>
+                <Form form={form} layout="vertical" onFinish={handleSavePlan} initialValues={{ subUsersLimit: 3, linksLimit: 5, order: 0, leadCaptureEnabled: false, isPublic: true }}>
                     <Row gutter={16}>
                         <Col span={16}>
                             <Form.Item
@@ -281,16 +291,32 @@ const ManagePlans: React.FC = () => {
                         </Col>
                     </Row>
 
-                    <Form.Item
-                        label={<span style={{ color: '#a1a1aa' }}>Lead Capture Feature</span>}
-                    >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', padding: '12px', background: '#0b0c0e', border: '1px solid #2d2e33', borderRadius: 8 }}>
-                            <Text style={{ color: '#8696a0', fontSize: 13 }}><UserOutlined style={{ marginRight: 8 }} /> Allow admin to capture visitor name & phone?</Text>
-                            <Form.Item name="leadCaptureEnabled" valuePropName="checked" noStyle>
-                                <Switch size="small" />
+                    <Row gutter={16}>
+                        <Col span={12}>
+                            <Form.Item
+                                label={<span style={{ color: '#a1a1aa' }}>Visibility Status</span>}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#0b0c0e', border: '1px solid #2d2e33', borderRadius: 8 }}>
+                                    <Text style={{ color: '#8696a0', fontSize: 13 }}>Public Plan?</Text>
+                                    <Form.Item name="isPublic" valuePropName="checked" noStyle>
+                                        <Switch size="small" />
+                                    </Form.Item>
+                                </div>
                             </Form.Item>
-                        </div>
-                    </Form.Item>
+                        </Col>
+                        <Col span={12}>
+                            <Form.Item
+                                label={<span style={{ color: '#a1a1aa' }}>Lead Capture</span>}
+                            >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#0b0c0e', border: '1px solid #2d2e33', borderRadius: 8 }}>
+                                    <Text style={{ color: '#8696a0', fontSize: 13 }}>Capture Leads?</Text>
+                                    <Form.Item name="leadCaptureEnabled" valuePropName="checked" noStyle>
+                                        <Switch size="small" />
+                                    </Form.Item>
+                                </div>
+                            </Form.Item>
+                        </Col>
+                    </Row>
 
                     <Form.Item
                         name="description"
