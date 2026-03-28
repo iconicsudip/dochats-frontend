@@ -476,12 +476,12 @@ const LiveChat: React.FC = () => {
 
     return (
         <Layout style={{
-            height: isMobile ? 'calc(100vh - 80px)' : 'calc(100vh - 120px)',
+            height: isMobile ? 'calc(100vh - 85px)' : 'calc(100vh - 120px)',
             background: 'var(--wa-bg)',
             overflow: 'hidden',
             border: isMobile ? 'none' : '1px solid var(--divider)',
             borderRadius: isMobile ? 0 : 4,
-            margin: isMobile ? -16 : 0 // Negate dashboard padding on mobile
+            margin: isMobile ? '-20px -20px 0 -20px' : 0 // Perfect alignment on mobile
         }}>
             {(!isMobile || !selectedId) && (
                 <Sider

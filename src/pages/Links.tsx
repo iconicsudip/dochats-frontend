@@ -115,25 +115,25 @@ const Links: React.FC = () => {
                 display: 'flex',
                 flexDirection: isMobile ? 'column' : 'row',
                 justifyContent: 'space-between',
-                alignItems: isMobile ? 'flex-start' : 'flex-end',
-                marginBottom: isMobile ? 24 : 40,
+                alignItems: isMobile ? 'stretch' : 'flex-end',
+                marginBottom: isMobile ? 32 : 48,
                 gap: isMobile ? 24 : 0
             }}>
                 <div>
-                    <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 20 : 24 }}>My Chat Links</Title>
-                    <Text type="secondary" style={{ fontSize: 13 }}>Manage and share your custom chat URLs.</Text>
+                    <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 22 : 24 }}>My Chat Links</Title>
+                    <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 4 }}>Manage and share your custom chat URLs.</Text>
                 </div>
-                <Space direction="vertical" align={isMobile ? 'start' : 'end'} style={{ minWidth: isMobile ? '100%' : 200 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: isMobile ? '100%' : 260, alignItems: isMobile ? 'stretch' : 'flex-end' }}>
                     <div style={{ width: '100%' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>Usage: {totalLinks} / {user?.linksLimit || 0}</Text>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                            <Text type="secondary" style={{ fontSize: 12 }}>Usage: <Text strong style={{ color: '#fff' }}>{totalLinks}</Text> / {user?.linksLimit || 0}</Text>
                         </div>
                         <Progress
                             percent={Math.min(100, (totalLinks / (user?.linksLimit || 1)) * 100)}
                             showInfo={false}
                             strokeColor="#00df9a"
                             trailColor="rgba(255,255,255,0.05)"
-                            size="small"
+                            strokeWidth={6}
                         />
                     </div>
                     <Button
@@ -143,11 +143,11 @@ const Links: React.FC = () => {
                         className="premium-button"
                         onClick={() => setShowModal(true)}
                         disabled={totalLinks >= (user?.linksLimit || 0)}
-                        style={{ width: isMobile ? '100%' : 'auto' }}
+                        style={{ width: isMobile ? '100%' : 'auto', height: 48 }}
                     >
                         Create New Link
                     </Button>
-                </Space>
+                </div>
             </div>
 
             <div style={{ marginBottom: 32 }}>
@@ -200,8 +200,8 @@ const Links: React.FC = () => {
                                             <div style={{ marginTop: 4, fontStyle: 'italic', fontSize: 13, color: 'rgba(255, 255, 255, 0.9)', lineHeight: 1.4 }}>"{link.welcomeMessage || 'No message set'}"</div>
                                         </div>
 
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <Space size={12}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+                                            <Space size={8} wrap>
                                                 <Button
                                                     icon={copiedId === link.id ? <CheckCircleOutlined /> : <CopyOutlined />}
                                                     onClick={() => copyToClipboard(link.slug, link.id)}

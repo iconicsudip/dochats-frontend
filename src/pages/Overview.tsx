@@ -98,10 +98,17 @@ const Overview: React.FC = () => {
 
     return (
         <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: isMobile ? 24 : 32 }}>
-                <div>
-                    <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 20 : 24 }}>Dashboard Overview</Title>
-                    <Text type="secondary" style={{ fontSize: 13 }}>Welcome back, here's what's happening today.</Text>
+            <div style={{ 
+                display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
+                justifyContent: 'space-between', 
+                alignItems: isMobile ? 'flex-start' : 'flex-end', 
+                marginBottom: isMobile ? 32 : 40,
+                gap: isMobile ? 16 : 0
+            }}>
+                <div style={{ flex: 1 }}>
+                    <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 22 : 24 }}>Dashboard Overview</Title>
+                    <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 4 }}>Welcome back, here's what's happening today.</Text>
                 </div>
                 {user?.plan?.leadCaptureEnabled && (
                     <Button
@@ -110,9 +117,15 @@ const Overview: React.FC = () => {
                         loading={downloading}
                         disabled={downloading}
                         className="premium-button"
-                        style={{ background: 'rgba(59, 130, 246, 0.1)', borderColor: 'rgba(59, 130, 246, 0.2)', color: '#3b82f6' }}
+                        style={{ 
+                            background: 'rgba(59, 130, 246, 0.1)', 
+                            borderColor: 'rgba(59, 130, 246, 0.2)', 
+                            color: '#3b82f6',
+                            width: isMobile ? '100%' : 'auto',
+                            marginTop: isMobile ? 8 : 0
+                        }}
                     >
-                        {!isMobile && (downloading ? "Processing..." : "Download Leads")}
+                        {downloading ? "Processing..." : "Download Leads"}
                     </Button>
                 )}
             </div>

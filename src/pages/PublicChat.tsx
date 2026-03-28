@@ -304,8 +304,8 @@ const PublicChat: React.FC = () => {
     };
 
     return (
-        <Layout style={{ height: '100vh', background: 'var(--wa-bg)', overflow: 'hidden' }}>
-            <Content style={{ display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden' }}>
+        <Layout className="full-height-mobile" style={{ background: 'var(--wa-bg)', overflow: 'hidden', minHeight: '100vh' }}>
+            <Content style={{ display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', flex: 1 }}>
                 <div className="whatsapp-bg"></div>
 
                 {!chatInfo ? (
@@ -315,7 +315,7 @@ const PublicChat: React.FC = () => {
                 ) : (
                     <>
                         {/* Header */}
-                        <div style={{ height: 60, padding: '10px 16px', background: 'var(--wa-panel)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10 }}>
+                        <div style={{ height: 60, padding: '10px 16px', background: 'var(--wa-panel)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10, flexShrink: 0 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 <Avatar
                                     size={40}
@@ -331,7 +331,7 @@ const PublicChat: React.FC = () => {
                         </div>
 
                         {/* Messages Area */}
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 5%', display: 'flex', flexDirection: 'column', zIndex: 5 }} ref={scrollRef}>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: '15px 4% 20px 4%', display: 'flex', flexDirection: 'column', zIndex: 5 }} ref={scrollRef}>
                             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
                                 <div style={{ background: '#182229', padding: '10px 16px', borderRadius: 12, color: '#ffd279', fontSize: 11, textAlign: 'center', maxWidth: '85%' }}>
                                     <CheckOutlined style={{ marginRight: 8 }} /> Messages are end-to-end encrypted.
@@ -344,17 +344,17 @@ const PublicChat: React.FC = () => {
                                         <div style={{ background: 'rgba(32,44,51,0.85)', padding: '6px 12px', borderRadius: 8, color: '#8696a0', fontSize: 11 }}>{getDateLabel(date)}</div>
                                     </div>
                                     {dateMsgs.map((msg: any) => (
-                                        <div key={msg.tempId || msg.id} className={`wa-bubble ${!msg.isFromAdmin ? 'wa-bubble-out' : 'wa-bubble-in'}`} style={{ marginBottom: 16 }}>
+                                        <div key={msg.tempId || msg.id} className={`wa-bubble ${!msg.isFromAdmin ? 'wa-bubble-out' : 'wa-bubble-in'}`} style={{ marginBottom: 12 }}>
                                             {msg.replyTo && (
-                                                <div style={{ background: 'rgba(0,0,0,0.1)', padding: '6px 10px', borderRadius: 4, marginBottom: 8, borderLeft: `4px solid ${!msg.replyTo.isFromAdmin ? '#53bdeb' : '#00df9a'}`, fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
+                                                <div style={{ background: 'rgba(0,0,0,0.1)', padding: '6px 10px', borderRadius: 4, marginBottom: 8, borderLeft: `4px solid ${!msg.replyTo.isFromAdmin ? '#53bdeb' : '#00df9a'}`, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
                                                     <div style={{ fontWeight: 600, color: !msg.replyTo.isFromAdmin ? '#53bdeb' : '#00df9a' }}>{!msg.replyTo.isFromAdmin ? 'You' : 'Agent'}</div>
-                                                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', WebkitLineClamp: 3, display: '-webkit-box', WebkitBoxOrient: 'vertical' }}>
                                                         {msg.replyTo.type === MessageType.AUDIO ? '🎤 Voice Message' : msg.replyTo.content}
                                                     </div>
                                                 </div>
                                             )}
                                             <LinkPreview preview={msg.linkPreview} />
-                                            <div style={{ paddingRight: !msg.isFromAdmin ? 45 : 35, whiteSpace: 'pre-wrap', minHeight: msg.type === MessageType.AUDIO ? 56 : undefined }}>
+                                            <div style={{ paddingRight: !msg.isFromAdmin ? 45 : 35, whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: msg.type === MessageType.AUDIO ? 56 : undefined }}>
                                                 {msg.type === MessageType.AUDIO ? <AudioPlayer src={msg.content} isFromAdmin={msg.isFromAdmin} /> : formatMessageText(msg.content)}
                                             </div>
                                             <div className="wa-timestamp">
@@ -401,7 +401,7 @@ const PublicChat: React.FC = () => {
                                         <Button 
                                             type="primary" 
                                             block 
-                                            style={{ background: 'var(--wa-green)', border: 'none', height: 40, fontWeight: 700, color: '#000', marginTop: 8, borderRadius: 8 }}
+                                            style={{ background: 'var(--wa-green)', border: 'none', height: 44, fontWeight: 700, color: '#000', marginTop: 8, borderRadius: 8 }}
                                             onClick={handleOnboardingSubmit}
                                             disabled={!visitorData.name.trim() || visitorData.phone.length !== 10}
                                         >
@@ -426,7 +426,7 @@ const PublicChat: React.FC = () => {
 
                         {/* Input Area - Only show when onboarding is complete */}
                         {onboardingStep === 3 && (
-                            <div style={{ padding: '10px 16px', background: 'var(--wa-panel)', display: 'flex', alignItems: 'center', gap: 12, position: 'relative', zIndex: 10, animation: 'fadeIn 0.5s ease-in' }}>
+                            <div style={{ padding: '10px 12px', background: 'var(--wa-panel)', display: 'flex', alignItems: 'center', gap: 8, position: 'relative', zIndex: 10, flexShrink: 0 }}>
                                 <SmileOutlined style={{ fontSize: 24, color: 'var(--wa-secondary)', cursor: 'pointer' }} onClick={() => setShowEmoji(!showEmoji)} />
                                 {showEmoji && <div style={{ position: 'absolute', bottom: 70, left: 16 }}><EmojiPicker theme={EmojiTheme.DARK} onEmojiClick={onEmojiClick} /></div>}
 
