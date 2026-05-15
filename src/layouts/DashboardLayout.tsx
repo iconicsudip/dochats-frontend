@@ -5,7 +5,6 @@ import {
     MessageOutlined,
     LogoutOutlined,
     UserOutlined,
-    CheckCircleOutlined,
     TeamOutlined,
     PieChartOutlined,
     CreditCardOutlined,
@@ -13,14 +12,26 @@ import {
     WarningOutlined,
     ThunderboltOutlined,
     RocketOutlined,
-    MenuOutlined
+    MenuOutlined,
+    CalendarOutlined,
+    PlayCircleOutlined,
+    FundOutlined,
+    ApiOutlined,
+    AppstoreOutlined,
+    BulbOutlined,
+    FormOutlined,
+    WhatsAppOutlined,
+    MailOutlined,
+    SettingOutlined,
 } from '@ant-design/icons';
-import { Layout, Menu, Button, Avatar, Space, Typography, ConfigProvider, theme, Drawer, Grid } from 'antd';
-import { useNavigate, useLocation, Outlet } from 'react-router-dom';
+import { Layout, Menu, Button, Avatar, Space, Typography, ConfigProvider, theme, Drawer, Grid, Tag } from 'antd';
+import { useNavigate, useLocation, Outlet, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useModules } from '../contexts/ModuleContext';
 import { ChangePasswordModal } from '../components/ChangePasswordModal';
 import { ProfileDrawer } from '../components/ProfileDrawer';
-import { Role } from '../enums';
+import { Role, Module } from '../enums';
+import FeatureTour from '../components/FeatureTour';
 
 const { Header, Sider, Content } = Layout;
 const { Text, Title } = Typography;
@@ -29,6 +40,7 @@ const DashboardLayout: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { user, logout } = useAuth();
+    const { hasModule } = useModules();
     const [profileOpen, setProfileOpen] = useState(false);
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const screens = Grid.useBreakpoint();
@@ -36,21 +48,146 @@ const DashboardLayout: React.FC = () => {
 
     const defaultPath = user?.role === Role.SUB_USER ? '/dashboard/chat' : '/dashboard';
 
-    const menuItems = [
+    // SuperAdmin menu items
+    const superAdminItems = [
         { key: '/dashboard', icon: <DashboardOutlined />, label: 'System Overview', roles: [Role.SUPER_ADMIN] },
-        { key: '/dashboard/manage-admins', icon: <TeamOutlined />, label: 'Manage Admins', roles: [Role.SUPER_ADMIN] },
-        { key: '/dashboard/manage-plans', icon: <ThunderboltOutlined />, label: 'Subscription Plans', roles: [Role.SUPER_ADMIN] },
+        { key: '/dashboard/manage-admins', icon: <TeamOutlined />, label: 'Manage Admins', roles: [Role.SUPER_ADMIN], tourKey: 'manage-admins' },
+        { key: '/dashboard/manage-plans', icon: <ThunderboltOutlined />, label: 'Subscription Plans', roles: [Role.SUPER_ADMIN], tourKey: 'manage-plans' },
         { key: '/dashboard/upgrade-requests', icon: <RocketOutlined />, label: 'Upgrade Requests', roles: [Role.SUPER_ADMIN] },
         { key: '/dashboard/payments', icon: <DollarOutlined />, label: 'Payments', roles: [Role.SUPER_ADMIN] },
-        { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview', roles: [Role.ADMIN] },
-        { key: '/dashboard/plans', icon: <ThunderboltOutlined />, label: 'My Plan', roles: [Role.ADMIN] },
-        { key: '/dashboard/links', icon: <LinkOutlined />, label: 'My Links', roles: [Role.ADMIN] },
-        { key: '/dashboard/sub-users', icon: <TeamOutlined />, label: 'Sub-Users', roles: [Role.ADMIN] },
-        { key: '/dashboard/reports', icon: <PieChartOutlined />, label: 'Reports', roles: [Role.ADMIN] },
-        { key: '/dashboard/billing', icon: <CreditCardOutlined />, label: 'Billing', roles: [Role.ADMIN] },
-        { key: '/dashboard/chat', icon: <MessageOutlined />, label: 'Live Chat', roles: [Role.ADMIN, Role.SUB_USER] },
-    ].filter(item => (item.roles as Role[]).includes(user?.role));
+        { key: '/dashboard/module-manager', icon: <AppstoreOutlined />, label: 'Module Manager', roles: [Role.SUPER_ADMIN], tourKey: 'module-manager' },
+    ];
 
+    // Admin core menu items (always shown)
+    const adminCoreItems = [
+        { key: '/dashboard', icon: <DashboardOutlined />, label: 'Overview' },
+        {
+            key: 'engagement',
+            icon: <ThunderboltOutlined />,
+            label: 'Engagement',
+            children: [
+                { key: '/dashboard/chat', icon: <MessageOutlined />, label: 'Live Chat', module: Module.LIVE_CHAT, tourKey: 'live-chat' },
+                { key: '/dashboard/links', icon: <LinkOutlined />, label: 'Smart Links', module: Module.LINKS, tourKey: 'smart-links' },
+            ]
+        }
+    ];
+
+    // Admin module items — top-level (no Neural Hub wrapper)
+    const adminModuleItems = [
+        {
+            key: 'channels',
+            icon: <AppstoreOutlined />,
+            label: 'Channels',
+            children: [
+                { key: '/dashboard/whatsapp', icon: <WhatsAppOutlined />, label: 'WhatsApp', module: Module.WHATSAPP, isNew: true },
+                { key: 'rcs-external', icon: <ThunderboltOutlined />, label: 'RCS Business', onClick: () => window.open('https://mrcs.madmarketer.net', '_blank') },
+            ]
+        },
+        { key: '/dashboard/crm', icon: <FundOutlined />, label: 'CRM & Pipeline', module: Module.CRM, tourKey: 'crm' },
+        { key: '/dashboard/bookings', icon: <CalendarOutlined />, label: 'Bookings', module: Module.BOOKINGS, tourKey: 'bookings' },
+        { key: '/dashboard/automation', icon: <PlayCircleOutlined />, label: 'Automation', module: Module.AUTOMATION },
+        { key: '/dashboard/forms', icon: <FormOutlined />, label: 'Dynamic Forms', module: Module.FORMS, tourKey: 'dynamic-forms' },
+        { key: '/dashboard/email', icon: <MailOutlined />, label: 'Email Marketing', module: Module.EMAIL },
+        { key: '/dashboard/analytics', icon: <PieChartOutlined />, label: 'Analytics', module: Module.ANALYTICS },
+    ];
+
+    // Admin management items
+    const adminManageItems = [
+        {
+            key: 'workspace',
+            icon: <SettingOutlined />,
+            label: 'Workspace',
+            children: [
+                { key: '/dashboard/sub-users', icon: <TeamOutlined />, label: 'Team', module: Module.SUB_USERS },
+                { key: '/dashboard/plans', icon: <ThunderboltOutlined />, label: 'My Plan', module: Module.PLANS },
+                { key: '/dashboard/billing', icon: <CreditCardOutlined />, label: 'Billing', module: Module.BILLING },
+            ]
+        }
+    ];
+
+    // Sub-User items
+    const subUserItems = [
+        {
+            key: 'engagement',
+            icon: <ThunderboltOutlined />,
+            label: 'Engagement',
+            children: [
+                { key: '/dashboard/chat', icon: <MessageOutlined />, label: 'Live Chat', module: Module.LIVE_CHAT },
+                { key: '/dashboard/links', icon: <LinkOutlined />, label: 'Smart Links', module: Module.LINKS },
+            ]
+        },
+        {
+            key: 'channels',
+            icon: <AppstoreOutlined />,
+            label: 'Channels',
+            children: [
+                { key: '/dashboard/whatsapp', icon: <WhatsAppOutlined />, label: 'WhatsApp', module: Module.WHATSAPP },
+                { key: 'rcs-external', icon: <ThunderboltOutlined />, label: 'RCS Business', onClick: () => window.open('https://mrcs.madmarketer.net', '_blank') },
+            ]
+        },
+        { key: '/dashboard/crm', icon: <FundOutlined />, label: 'CRM', module: Module.CRM },
+        { key: '/dashboard/bookings', icon: <CalendarOutlined />, label: 'Bookings', module: Module.BOOKINGS },
+    ];
+
+    const buildMenuItems = (items: any[]): any[] =>
+        items.map(item => {
+            // Check module permission for the item itself
+            if (item.module && !hasModule(item.module)) return null;
+
+            const children = item.children ? buildMenuItems(item.children) : undefined;
+
+            // If it has children but none are visible, hide the parent
+            if (item.children && (!children || children.length === 0)) return null;
+
+            return {
+                key: item.key,
+                icon: item.icon,
+                onClick: item.onClick,
+                label: (
+                    <span data-tour={item.tourKey} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        {item.key && item.key.startsWith('/') ? (
+                            <Link to={item.key} style={{ color: 'inherit', textDecoration: 'none' }} onClick={(e) => e.stopPropagation()}>
+                                {item.label}
+                            </Link>
+                        ) : (
+                            item.label
+                        )}
+                        {item.isNew && (
+                            <Tag color="#00df9a" style={{ color: '#000', fontSize: 9, padding: '0 5px', lineHeight: '16px', marginLeft: 6, borderRadius: 4, fontWeight: 700 }}>NEW</Tag>
+                        )}
+                    </span>
+                ),
+                children: children,
+            };
+        }).filter(Boolean) as any[];
+
+    let menuSections: { label?: string; items: any[] }[] = [];
+
+    if (user?.role === Role.SUPER_ADMIN) {
+        menuSections = [{ items: buildMenuItems(superAdminItems) }];
+    } else if (user?.role === Role.ADMIN) {
+        menuSections = [
+            { items: buildMenuItems(adminCoreItems) },
+            { items: buildMenuItems(adminModuleItems) },
+            { items: buildMenuItems(adminManageItems) },
+        ];
+    } else if (user?.role === Role.SUB_USER) {
+        menuSections = [{ items: buildMenuItems(subUserItems) }];
+    }
+
+    // Hide sections that have no items (e.g. if all modules in that section are disabled)
+    menuSections = menuSections.filter(s => s.items.length > 0);
+
+    const allMenuItems = menuSections.flatMap((s, si) => {
+        const sectionItems = s.items;
+        if (s.label) {
+            return [
+                { key: `divider-${si}`, type: 'divider' as const },
+                { key: `group-${si}`, type: 'group' as const, label: <span style={{ fontSize: 10, letterSpacing: 1.2, color: '#475569', fontWeight: 700, paddingLeft: 4 }}>{s.label}</span>, children: sectionItems },
+            ];
+        }
+        return sectionItems;
+    });
 
     const subscriptionWarning = user?.role === Role.ADMIN && user?.subscription;
     const isOverdue = subscriptionWarning && user.subscription.isOverdue;
@@ -74,7 +211,7 @@ const DashboardLayout: React.FC = () => {
                 {!isMobile && (
                     <Sider
                         collapsed={false}
-                        width={280}
+                        width={260}
                         collapsedWidth={80}
                         className="premium-sider"
                         style={{
@@ -87,12 +224,11 @@ const DashboardLayout: React.FC = () => {
                             zIndex: 100,
                         }}
                     >
-                        {/* Sidebar Content */}
                         <SidebarContent
                             user={user}
                             navigate={navigate}
                             logout={logout}
-                            menuItems={menuItems}
+                            menuItems={allMenuItems}
                             location={location}
                             defaultPath={defaultPath}
                             onMenuClick={() => { }}
@@ -104,7 +240,7 @@ const DashboardLayout: React.FC = () => {
                     placement="left"
                     onClose={() => setMobileMenuOpen(false)}
                     open={mobileMenuOpen}
-                    width={280}
+                    width={260}
                     styles={{ body: { padding: 0 }, header: { display: 'none' } }}
                     contentWrapperStyle={{ background: '#000000' }}
                 >
@@ -112,7 +248,7 @@ const DashboardLayout: React.FC = () => {
                         user={user}
                         navigate={navigate}
                         logout={logout}
-                        menuItems={menuItems}
+                        menuItems={allMenuItems}
                         location={location}
                         defaultPath={defaultPath}
                         onMenuClick={() => setMobileMenuOpen(false)}
@@ -120,14 +256,14 @@ const DashboardLayout: React.FC = () => {
                 </Drawer>
 
                 <Layout style={{
-                    marginLeft: isMobile ? 0 : 280,
+                    marginLeft: isMobile ? 0 : 260,
                     transition: 'margin-left 0.25s cubic-bezier(0.4, 0, 0, 1)',
                     background: 'var(--background)'
                 }}>
                     <Header style={{
                         background: 'rgba(11, 12, 14, 0.8)',
-                        padding: isMobile ? '0 20px' : '0 48px',
-                        height: 85,
+                        padding: isMobile ? '0 20px' : '0 40px',
+                        height: 72,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
@@ -144,11 +280,16 @@ const DashboardLayout: React.FC = () => {
                                 onClick={() => setMobileMenuOpen(true)}
                                 style={{ width: 40, height: 40 }}
                             />
-                        ) : <div />}
+                        ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <BulbOutlined style={{ color: '#00df9a', fontSize: 16 }} />
+                                <Text style={{ color: 'var(--text-secondary)', fontSize: 13 }}>Neural Business Operating System</Text>
+                            </div>
+                        )}
 
-                        <Space size={isMobile ? 12 : 32}>
+                        <Space size={isMobile ? 12 : 20}>
                             <div
-                                style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 16, cursor: 'pointer' }}
+                                style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 12, cursor: 'pointer' }}
                                 onClick={() => setProfileOpen(true)}
                             >
                                 <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column' }}>
@@ -160,18 +301,20 @@ const DashboardLayout: React.FC = () => {
                                 <Avatar
                                     src={user?.logoUrl}
                                     icon={<UserOutlined />}
-                                    size={isMobile ? 40 : 48}
-                                    style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid var(--divider)' }}
+                                    size={isMobile ? 38 : 42}
+                                    style={{ background: 'rgba(0, 223, 154, 0.1)', border: '1px solid rgba(0, 223, 154, 0.2)', color: '#00df9a' }}
+                                    className="tour-avatar"
                                 />
                             </div>
                         </Space>
                     </Header>
-                    <Content style={{ padding: isMobile ? '20px' : '32px 48px', overflowY: 'auto' }}>
+
+                    <Content style={{ padding: isMobile ? '20px 16px' : '32px 40px', overflowY: 'auto' }}>
                         {/* Subscription Warning Banners */}
                         {isOverdue && (
                             <div style={{
-                                background: 'rgba(239, 68, 68, 0.1)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                background: 'rgba(239, 68, 68, 0.08)',
+                                border: '1px solid rgba(239, 68, 68, 0.25)',
                                 borderRadius: 12,
                                 padding: '12px 20px',
                                 marginBottom: 24,
@@ -188,8 +331,8 @@ const DashboardLayout: React.FC = () => {
                         )}
                         {showWarning && (
                             <div style={{
-                                background: 'rgba(250, 204, 21, 0.08)',
-                                border: '1px solid rgba(250, 204, 21, 0.25)',
+                                background: 'rgba(250, 204, 21, 0.06)',
+                                border: '1px solid rgba(250, 204, 21, 0.2)',
                                 borderRadius: 12,
                                 padding: '12px 20px',
                                 marginBottom: 24,
@@ -208,6 +351,7 @@ const DashboardLayout: React.FC = () => {
                     </Content>
                 </Layout>
             </Layout>
+            <FeatureTour />
             <ChangePasswordModal />
             <ProfileDrawer open={profileOpen} onClose={() => setProfileOpen(false)} />
         </ConfigProvider>
@@ -226,106 +370,138 @@ const SidebarContent: React.FC<{
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: '#000000' }}>
         {/* Logo Section */}
         <div
-            style={{ height: 100, display: 'flex', alignItems: 'center', padding: '0 28px', justifyContent: 'center', gap: 12, flexShrink: 0, cursor: 'pointer' }}
+            style={{ height: 72, display: 'flex', alignItems: 'center', padding: '0 20px', gap: 12, flexShrink: 0, cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.04)' }}
             onClick={() => {
                 navigate(defaultPath);
                 onMenuClick();
             }}
         >
-            <div style={{ width: 42, height: 42, background: '#00df9a', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(0, 223, 154, 0.2)' }}>
-                <CheckCircleOutlined style={{ color: '#000', fontSize: 24 }} />
+            <div style={{
+                width: 38, height: 38,
+                background: 'linear-gradient(135deg, #00df9a 0%, #00b37d 100%)',
+                borderRadius: 10,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                flexShrink: 0,
+                boxShadow: '0 4px 14px rgba(0, 223, 154, 0.3)'
+            }}>
+                <ApiOutlined style={{ color: '#000', fontSize: 20 }} />
             </div>
-            <Title level={4} style={{ margin: 0, fontWeight: 800, color: '#fff', fontSize: 22, letterSpacing: -0.8 }}>
-                DoChats
-            </Title>
+            <div>
+                <Title level={5} style={{ margin: 0, fontWeight: 800, color: '#fff', fontSize: 16, letterSpacing: -0.5, lineHeight: 1 }}>
+                    MadMarketer
+                </Title>
+                <Text style={{ fontSize: 10, color: '#00df9a', fontWeight: 600, letterSpacing: 0.5 }}>AI BOS</Text>
+            </div>
         </div>
 
-        {/* Menu Section - Grow to fill space */}
-        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '0 8px' }}>
+        {/* Menu Section */}
+        <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '8px 6px' }}>
             <Menu
                 mode="inline"
-                selectedKeys={[location.pathname]}
+                selectedKeys={[location.pathname + location.search]}
                 items={menuItems}
                 onClick={({ key }) => {
-                    navigate(key);
+                    // If it's a path, navigate
+                    if (key && key.startsWith('/')) {
+                        navigate(key);
+                        onMenuClick();
+                        return;
+                    }
+
+                    // Otherwise, look for custom onClick (like for RCS)
+                    const findItem = (items: any[]): any => {
+                        for (const item of items) {
+                            if (item.key === key) return item;
+                            if (item.children) {
+                                const found = findItem(item.children);
+                                if (found) return found;
+                            }
+                        }
+                        return null;
+                    };
+
+                    const menuItem = findItem(menuItems);
+                    if (menuItem?.onClick) {
+                        menuItem.onClick();
+                    }
                     onMenuClick();
                 }}
                 style={{ border: 'none', background: 'transparent' }}
-                inlineIndent={24}
+                inlineIndent={20}
             />
         </div>
 
-        {/* Footer Section - Stick to bottom but flow naturally in flex */}
-        <div style={{ paddingBottom: 20, flexShrink: 0 }}>
+        {/* Footer Section */}
+        <div style={{ paddingBottom: 16, flexShrink: 0 }}>
             {user?.role === Role.ADMIN && (
-                <div style={{ padding: '0 16px', marginBottom: 16 }}>
+                <div style={{ padding: '0 12px', marginBottom: 12 }}>
                     <div style={{
-                        background: 'linear-gradient(135deg, #121316 0%, #1a1b1e 100%)',
-                        border: '1px solid #2d2e33',
+                        background: 'linear-gradient(135deg, rgba(0, 223, 154, 0.06) 0%, rgba(0, 179, 125, 0.03) 100%)',
+                        border: '1px solid rgba(0, 223, 154, 0.15)',
                         borderRadius: 12,
-                        padding: '16px',
-                        position: 'relative',
-                        overflow: 'hidden'
+                        padding: '14px',
                     }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
                             <div style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 8,
+                                width: 28, height: 28, borderRadius: 7,
                                 background: 'rgba(0, 223, 154, 0.1)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
+                                display: 'flex', alignItems: 'center', justifyContent: 'center'
                             }}>
-                                <ThunderboltOutlined style={{ color: '#00df9a', fontSize: 16 }} />
+                                <ThunderboltOutlined style={{ color: '#00df9a', fontSize: 14 }} />
                             </div>
                             <div>
-                                <div style={{ fontSize: 11, color: '#8696a0', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700 }}>Active Plan</div>
-                                <div style={{ fontSize: 14, color: '#fff', fontWeight: 600 }}>{user?.plan?.name || 'Custom Plan'}</div>
+                                <div style={{ fontSize: 10, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.5, fontWeight: 700 }}>Active Plan</div>
+                                <div style={{ fontSize: 13, color: '#fff', fontWeight: 600 }}>{user?.plan?.name || 'Basic'}</div>
                             </div>
                         </div>
-
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ fontSize: 10, color: '#8696a0', opacity: 0.8 }}>
-                                {user?.subUsersLimit} Users | {user?.linksLimit} Links
+                            <div style={{ fontSize: 10, color: '#475569' }}>
+                                {user?.subUsersLimit} agents · {user?.linksLimit} links
                             </div>
                             {(!user?.planId || user?.plan?.name?.toLowerCase().includes('basic')) && (
                                 <Button
                                     type="link"
                                     size="small"
-                                    onClick={() => {
-                                        navigate('/dashboard/plans');
-                                        onMenuClick();
-                                    }}
-                                    style={{ padding: 0, color: '#00df9a', fontSize: 12, fontWeight: 700, height: 'auto' }}
+                                    onClick={() => navigate('/dashboard/plans')}
+                                    style={{ padding: 0, color: '#00df9a', fontSize: 11, fontWeight: 700, height: 'auto' }}
                                 >
-                                    Upgrade
+                                    Upgrade ↑
                                 </Button>
                             )}
                         </div>
                     </div>
                 </div>
             )}
-            <div style={{ padding: '0 16px', display: 'flex', justifyContent: 'center' }}>
+            <div style={{ padding: '0 12px' }}>
                 <Button
-                    icon={<LogoutOutlined style={{ fontSize: 18 }} />}
+                    icon={<LogoutOutlined style={{ fontSize: 16 }} />}
                     block
                     onClick={logout}
                     type="text"
                     style={{
-                        color: '#ef4444',
-                        height: 48,
+                        color: '#64748b',
+                        height: 44,
                         width: '100%',
                         borderRadius: 8,
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: 14,
-                        padding: '0 16px',
-                        fontWeight: 600
+                        justifyContent: 'flex-start',
+                        gap: 10,
+                        fontSize: 13,
+                        padding: '0 12px',
+                        fontWeight: 500,
+                        transition: 'all 0.2s ease',
+                    }}
+                    onMouseEnter={e => {
+                        (e.currentTarget as HTMLButtonElement).style.color = '#ef4444';
+                        (e.currentTarget as HTMLButtonElement).style.background = 'rgba(239, 68, 68, 0.06)';
+                    }}
+                    onMouseLeave={e => {
+                        (e.currentTarget as HTMLButtonElement).style.color = '#64748b';
+                        (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
                     }}
                 >
-                    <span style={{ marginLeft: 12 }}>Logout</span>
+                    <span>Sign out</span>
                 </Button>
             </div>
         </div>

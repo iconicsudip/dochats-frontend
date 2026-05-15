@@ -8,6 +8,8 @@ interface AuthContextType {
     logout: () => void;
     loading: boolean;
     setUser: (u: any) => void;
+    completeTour: () => Promise<void>;
+    updateMe: (data: any) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,8 +45,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(null);
     };
 
+    const completeTour = async () => {
+        try {
+            await apiClient.patch('/auth/update-tour');
+            setUser((prev: any) => ({ ...prev, hasSeenTour: true }));
+        } catch (error) {
+            console.error('Failed to update tour status', error);
+        }
+    };
+
+    const updateMe = async (data: any) => {
+        try {
+            const res = await apiClient.put('/auth/update-me', data);
+            setUser(res.data);
+        } catch (error) {
+            console.error('Failed to update profile', error);
+            throw error;
+        }
+    };
+
     return (
-        <AuthContext.Provider value={{ user, token, login, logout, loading, setUser }}>
+        <AuthContext.Provider value={{ user, token, login, logout, loading, setUser, completeTour, updateMe }}>
             {children}
         </AuthContext.Provider>
     );

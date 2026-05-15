@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Typography, Space, Card, message, Row, Col, Switch, Tag, Grid } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, LinkOutlined } from '@ant-design/icons';
+import { Table, Button, Modal, Form, Input, Typography, Space, Card, message, Row, Col, Switch, Tag, Grid, Checkbox } from 'antd';
+import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, LinkOutlined, AppstoreOutlined } from '@ant-design/icons';
 import apiClient from '../../api/apiClient';
+import { Module, ModuleLabel } from '../../enums';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -140,6 +141,16 @@ const ManagePlans: React.FC = () => {
             )
         },
         {
+            title: 'Modules',
+            dataIndex: 'enabledModules',
+            key: 'enabledModules',
+            render: (modules: string[]) => (
+                <Tag color="purple" style={{ borderRadius: 12, border: 'none', background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
+                    {modules?.length || 0} Modules
+                </Tag>
+            )
+        },
+        {
             title: 'Description',
             dataIndex: 'description',
             key: 'description',
@@ -205,6 +216,7 @@ const ManagePlans: React.FC = () => {
 
             <Card styles={{ body: { padding: 0 } }} style={{ background: '#121316', border: '1px solid #2d2e33', borderRadius: 12, overflow: 'hidden' }}>
                 <Table
+                    className="premium-table"
                     columns={columns}
                     dataSource={plans}
                     rowKey="id"
@@ -227,7 +239,7 @@ const ManagePlans: React.FC = () => {
                     body: { background: '#121316', padding: '24px' },
                 }}
             >
-                <Form form={form} layout="vertical" onFinish={handleSavePlan} initialValues={{ subUsersLimit: 3, linksLimit: 5, order: 0, leadCaptureEnabled: false, isPublic: true }}>
+                <Form form={form} layout="vertical" onFinish={handleSavePlan} initialValues={{ subUsersLimit: 3, linksLimit: 5, order: 0, leadCaptureEnabled: false, isPublic: true, enabledModules: Object.values(Module) }}>
                     <Row gutter={16}>
                         <Col span={16}>
                             <Form.Item
@@ -325,9 +337,29 @@ const ManagePlans: React.FC = () => {
                         <Input.TextArea
                             placeholder="What's included in this plan?"
                             className="premium-input"
-                            autoSize={{ minRows: 3, maxRows: 6 }}
+                            autoSize={{ minRows: 2, maxRows: 4 }}
                             style={{ background: '#0b0c0e', border: '1px solid #2d2e33', borderRadius: 8, padding: '12px' }}
                         />
+                    </Form.Item>
+
+                    <Form.Item
+                        name="enabledModules"
+                        label={<span style={{ color: '#a1a1aa' }}>Plan Modules</span>}
+                        rules={[{ required: true, message: 'Please select at least one module' }]}
+                    >
+                        <Checkbox.Group style={{ width: '100%' }}>
+                            <div style={{ background: '#0b0c0e', border: '1px solid #2d2e33', borderRadius: 8, padding: '16px' }}>
+                                <Row gutter={[12, 12]}>
+                                    {Object.values(Module).map(m => (
+                                        <Col span={12} key={m}>
+                                            <Checkbox value={m} style={{ color: '#8696a0' }}>
+                                                <span style={{ fontSize: 13 }}>{ModuleLabel[m]}</span>
+                                            </Checkbox>
+                                        </Col>
+                                    ))}
+                                </Row>
+                            </div>
+                        </Checkbox.Group>
                     </Form.Item>
 
                     <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: 24 }}>

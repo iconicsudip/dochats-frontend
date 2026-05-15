@@ -50,7 +50,9 @@ const PublicChat: React.FC = () => {
     const [isSocketConnected, setIsSocketConnected] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [showOnboardingForm, setShowOnboardingForm] = useState(false);
+    const [showLeadCaptureForm, setShowLeadCaptureForm] = useState(false);
     const hasTriggeredOnboarding = useRef(false);
+    const hasShownFormRef = useRef(false);
     const typingTimeoutRef = useRef<any>(null);
     const pollIntervalRef = useRef<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
@@ -248,12 +250,36 @@ const PublicChat: React.FC = () => {
     useEffect(() => {
         setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 100);
         const customerMsgs = messages.filter(m => !m.isFromAdmin);
-        const threshold = chatInfo?.whatsappThreshold || 5;
-        if (chatInfo?.whatsappLink && customerMsgs.length >= threshold) {
+        
+        // Lead Capture Form Trigger
+        const formThreshold = chatInfo?.leadCaptureDelay ?? 3;
+        if (chatInfo?.leadCaptureFormId && customerMsgs.length === formThreshold && !hasShownFormRef.current) {
+            const lastMsg = messages[messages.length - 1];
+            if (lastMsg && !lastMsg.isFromAdmin) {
+                hasShownFormRef.current = true;
+                setShowLeadCaptureForm(true);
+                return;
+            }
+        }
+
+        // WA Popup Trigger
+        const waThreshold = chatInfo?.whatsappThreshold || 5;
+        if (chatInfo?.whatsappLink && customerMsgs.length === waThreshold) {
             const lastMsg = messages[messages.length - 1];
             if (lastMsg && !lastMsg.isFromAdmin) { setShowWAPopup(true); }
         }
     }, [messages.length]);
+
+    // Listen for form submission from iframe
+    useEffect(() => {
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data?.type === 'LEAD_CAPTURE_SUCCESS') {
+                setShowLeadCaptureForm(false);
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, []);
 
     const onEmojiClick = (emojiData: any) => { setInputText(prev => prev + emojiData.emoji); handleTypingIndicator(); };
 
@@ -411,6 +437,19 @@ const PublicChat: React.FC = () => {
                                 </div>
                             )}
 
+                            {showLeadCaptureForm && (
+                                <div className="wa-bubble wa-bubble-in" style={{ padding: '0', maxWidth: '400px', width: '90%', marginBottom: 16, alignSelf: 'flex-start', animation: 'fadeIn 0.6s ease-out', overflow: 'hidden', borderRadius: 8 }}>
+                                    <div style={{ padding: '12px 16px', background: '#202c33', borderBottom: '1px solid #111b21', color: 'var(--wa-text)', fontSize: 13, fontWeight: 500 }}>
+                                        Please complete this form to continue:
+                                    </div>
+                                    <iframe 
+                                        src={`/f/${chatInfo?.leadCaptureFormId}?embed=true`} 
+                                        style={{ width: '100%', height: '500px', border: 'none', background: 'transparent' }}
+                                        title="Lead Capture"
+                                    />
+                                </div>
+                            )}
+
                             {isAdminTyping && (
                                 <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, animation: 'fadeIn 0.3s' }}>
                                     <div className="wa-bubble wa-bubble-in" style={{ padding: '8px 12px', minWidth: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -424,8 +463,8 @@ const PublicChat: React.FC = () => {
                             )}
                         </div>
 
-                        {/* Input Area - Only show when onboarding is complete */}
-                        {onboardingStep === 3 && (
+                        {/* Input Area - Only show when onboarding is complete and no lead capture is blocking */}
+                        {onboardingStep === 3 && !showLeadCaptureForm && (
                             <div style={{ padding: '10px 12px', background: 'var(--wa-panel)', display: 'flex', alignItems: 'center', gap: 8, position: 'relative', zIndex: 10, flexShrink: 0 }}>
                                 <SmileOutlined style={{ fontSize: 24, color: 'var(--wa-secondary)', cursor: 'pointer' }} onClick={() => setShowEmoji(!showEmoji)} />
                                 {showEmoji && <div style={{ position: 'absolute', bottom: 70, left: 16 }}><EmojiPicker theme={EmojiTheme.DARK} onEmojiClick={onEmojiClick} /></div>}

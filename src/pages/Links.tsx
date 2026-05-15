@@ -16,7 +16,8 @@ import {
     Pagination,
     Space,
     Progress,
-    Grid
+    Grid,
+    Select,
 } from 'antd';
 import {
     PlusOutlined,
@@ -30,6 +31,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
+import { formsApi } from '../api/forms';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -51,6 +53,12 @@ const Links: React.FC = () => {
     });
     const links = linksResponse?.data || [];
     const totalLinks = linksResponse?.total || 0;
+
+    const { data: formsResponse } = useQuery({
+        queryKey: ['forms_for_links'],
+        queryFn: () => formsApi.getForms().then(res => res.data)
+    });
+    const forms = formsResponse || [];
 
     const createMutation = useMutation({
         mutationFn: (values: any) => apiClient.post('/links', values),
@@ -277,7 +285,8 @@ const Links: React.FC = () => {
                     }}
                     initialValues={{
                         welcomeMessage: 'Hello! How can I help you today?',
-                        whatsappThreshold: 5
+                        whatsappThreshold: 5,
+                        leadCaptureDelay: 3
                     }}
                     style={{ marginTop: 20 }}
                 >
@@ -365,6 +374,60 @@ const Links: React.FC = () => {
                                     color: '#fff'
                                 }}
                             />
+                        </Form.Item>
+                    </div>
+
+                    <div style={{ padding: '16px 0', borderTop: '1px solid var(--divider)', marginTop: 16 }}>
+                        <Title level={5} style={{ fontSize: 14, color: '#00df9a', marginBottom: 16 }}>Lead Capture (Optional)</Title>
+
+                        <Form.Item
+                            label="Lead Capture Form"
+                            name="leadCaptureFormId"
+                            extra="Select a form to display to the visitor."
+                        >
+                            <Select 
+                                placeholder="Select a form..."
+                                variant="borderless"
+                                style={{
+                                    height: 48,
+                                    background: 'rgba(255,255,255,0.03)',
+                                    border: '1px solid var(--divider)',
+                                    borderRadius: 8,
+                                    color: '#fff'
+                                }}
+                            >
+                                <Select.Option value="">None (Disabled)</Select.Option>
+                                {forms.map((f: any) => (
+                                    <Select.Option key={f.id} value={f.id}>{f.title}</Select.Option>
+                                ))}
+                            </Select>
+                        </Form.Item>
+
+                        <Form.Item
+                            noStyle
+                            shouldUpdate={(prev, curr) => prev.leadCaptureFormId !== curr.leadCaptureFormId}
+                        >
+                            {({ getFieldValue }) => getFieldValue('leadCaptureFormId') && (
+                                <Form.Item
+                                    label="Show Form After (Messages)"
+                                    name="leadCaptureDelay"
+                                    extra="Wait for this many messages before presenting the form."
+                                    style={{ marginTop: 16 }}
+                                >
+                                    <Input
+                                        type="number"
+                                        placeholder="e.g. 3"
+                                        variant="borderless"
+                                        style={{
+                                            height: 48,
+                                            background: 'rgba(255,255,255,0.03)',
+                                            border: '1px solid var(--divider)',
+                                            borderRadius: 8,
+                                            color: '#fff'
+                                        }}
+                                    />
+                                </Form.Item>
+                            )}
                         </Form.Item>
                     </div>
 

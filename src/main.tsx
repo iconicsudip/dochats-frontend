@@ -4,6 +4,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { BrowserRouter } from 'react-router-dom'
 import { ConfigProvider, theme, App as AntApp } from 'antd'
 import { AuthProvider } from './contexts/AuthContext'
+import { ModuleProvider } from './contexts/ModuleContext'
 import App from './App'
 import './index.css'
 
@@ -34,9 +35,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     >
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <AntApp>
-            <App />
-          </AntApp>
+          <ModuleProvider>
+            <AntApp>
+              <App />
+            </AntApp>
+          </ModuleProvider>
         </AuthProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>

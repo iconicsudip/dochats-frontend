@@ -1,3 +1,4 @@
+import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import Overview from './pages/Overview';
@@ -17,65 +18,102 @@ import ManageAdmins from './pages/SuperAdmin/ManageAdmins';
 import ManagePlans from './pages/SuperAdmin/ManagePlans';
 import Payments from './pages/SuperAdmin/Payments';
 import UpgradeRequests from './pages/SuperAdmin/UpgradeRequests';
+import CRM from './pages/modules/CRM';
+import Bookings from './pages/modules/Bookings';
+import Automation from './pages/modules/Automation';
+import Analytics from './pages/modules/Analytics';
+import WhatsApp from './pages/modules/WhatsApp';
+import ModuleManager from './pages/SuperAdmin/ModuleManager';
+import FormList from './pages/modules/FormList';
+import FormBuilder from './pages/modules/FormBuilder';
+import FormResponses from './pages/modules/FormResponses';
+import PublicForm from './pages/PublicForm';
+import Email from './pages/modules/Email';
+import EmailBuilder from './pages/modules/EmailBuilder';
+
 
 function App() {
-  const { token, loading, user } = useAuth();
+    const { token, loading, user } = useAuth();
 
-  if (loading) return (
-    <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#09090b' }}>
-      <Spin size="large" />
-    </div>
-  );
+    if (loading) return (
+        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#09090b' }}>
+            <Spin size="large" />
+        </div>
+    );
 
-  const defaultPath = user?.role === Role.SUB_USER ? "/dashboard/chat" : "/dashboard";
-  const isOverdue = user?.role === Role.ADMIN && user?.subscription?.isOverdue;
+    const defaultPath = user?.role === Role.SUB_USER ? "/dashboard/chat" : "/dashboard";
+    const isOverdue = user?.role === Role.ADMIN && user?.subscription?.isOverdue;
 
-  return (
-    <Routes>
-      <Route path="/auth" element={!token ? <Auth /> : <Navigate to={defaultPath} />} />
+    return (
+        <Routes>
+            <Route path="/auth" element={!token ? <Auth /> : <Navigate to={defaultPath} />} />
 
-      {/* Admin Dashboard */}
-      <Route path="/dashboard" element={token ? <DashboardLayout /> : <Navigate to="/auth" />}>
-        {user?.role === Role.SUPER_ADMIN && (
-          <>
-            <Route index element={<SuperAdminOverview />} />
-            <Route path="manage-admins" element={<ManageAdmins />} />
-            <Route path="manage-plans" element={<ManagePlans />} />
-            <Route path="payments" element={<Payments />} />
-            <Route path="upgrade-requests" element={<UpgradeRequests />} />
-          </>
-        )}
+            {/* Admin Dashboard */}
+            <Route path="/dashboard" element={token ? <DashboardLayout /> : <Navigate to="/auth" />}>
+                {user?.role === Role.SUPER_ADMIN && (
+                    <>
+                        <Route index element={<SuperAdminOverview />} />
+                        <Route path="manage-admins" element={<ManageAdmins />} />
+                        <Route path="manage-plans" element={<ManagePlans />} />
+                        <Route path="payments" element={<Payments />} />
+                        <Route path="upgrade-requests" element={<UpgradeRequests />} />
+                        <Route path="module-manager" element={<ModuleManager />} />
+                    </>
+                )}
 
-        {user?.role === Role.ADMIN && (
-          <>
-            <Route index element={<Overview />} />
-            <Route path="billing" element={<Billing />} />
-            <Route path="plans" element={<Plans />} />
-            {/* These routes are accessible but will show blurred/locked content if overdue */}
-            <Route path="links" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Links />} />
-            <Route path="sub-users" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <SubUsers />} />
-            <Route path="reports" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Reports />} />
-          </>
-        )}
+                {user?.role === Role.ADMIN && (
+                    <>
+                        <Route index element={<Overview />} />
+                        <Route path="billing" element={<Billing />} />
+                        <Route path="plans" element={<Plans />} />
+                        {/* Gated routes */}
+                        <Route path="links" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Links />} />
+                        <Route path="sub-users" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <SubUsers />} />
+                        <Route path="reports" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Reports />} />
+                        {/* AI BOS Modules */}
+                        <Route path="crm" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <CRM />} />
+                        <Route path="bookings" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Bookings />} />
+                        <Route path="automation" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Automation />} />
+                        <Route path="analytics" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Analytics />} />
+                        <Route path="whatsapp" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <WhatsApp />} />
+                        <Route path="forms" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <FormList />} />
+                        <Route path="forms/new" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <FormBuilder />} />
+                        <Route path="forms/predefined" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <FormList predefined={true} />} />
+                        <Route path="forms/edit/:id" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <FormBuilder />} />
+                        <Route path="forms/:id/responses" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <FormResponses />} />
+                        <Route path="email" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Email />} />
+                        <Route path="email/new" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <EmailBuilder />} />
+                        <Route path="email/edit/:id" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <EmailBuilder />} />
+                    </>
+                )}
 
-        {/* Both Admin and Sub-User can access Chat */}
-        {(user?.role === Role.ADMIN || user?.role === Role.SUB_USER) && (
-          <Route path="chat" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <LiveChat />} />
-        )}
+                {/* Both Admin and Sub-User can access Chat and some modules */}
+                {(user?.role === Role.ADMIN || user?.role === Role.SUB_USER) && (
+                    <>
+                        <Route path="chat" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <LiveChat />} />
+                        {user?.role === Role.SUB_USER && (
+                            <>
+                                <Route path="crm" element={<CRM />} />
+                                <Route path="bookings" element={<Bookings />} />
+                            </>
+                        )}
+                    </>
+                )}
 
-        {/* Dashboard 404 - Redirect to default home */}
-        <Route path="*" element={<Navigate to={defaultPath} replace />} />
-      </Route>
+                {/* Dashboard 404 - Redirect to default home */}
+                <Route path="*" element={<Navigate to={defaultPath} replace />} />
+            </Route>
 
-      {/* Visitor Chat Link */}
-      <Route path="/chat/:slug" element={<PublicChat />} />
+            {/* Visitor Chat Link */}
+            <Route path="/chat/:slug" element={<PublicChat />} />
+            <Route path="/f/:id" element={<PublicForm />} />
 
-      <Route path="/" element={<Navigate to={token ? defaultPath : "/auth"} />} />
+            <Route path="/" element={<Navigate to={token ? defaultPath : "/auth"} />} />
 
-      {/* Global 404 - Redirect to home */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
+            {/* Global 404 - Redirect to home */}
+            <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+    );
 }
 
 export default App;

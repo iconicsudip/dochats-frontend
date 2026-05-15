@@ -10,3 +10,36 @@ export const MessageType = {
     AUDIO: 'AUDIO'
 } as const;
 export type MessageType = typeof MessageType[keyof typeof MessageType];
+
+export const Module = {
+    OVERVIEW: 'OVERVIEW',
+    LIVE_CHAT: 'LIVE_CHAT',
+    CRM: 'CRM',
+    BOOKINGS: 'BOOKINGS',
+    AUTOMATION: 'AUTOMATION',
+    ANALYTICS: 'ANALYTICS',
+    LINKS: 'LINKS',
+    SUB_USERS: 'SUB_USERS',
+    BILLING: 'BILLING',
+    PLANS: 'PLANS',
+    FORMS: 'FORMS',
+    WHATSAPP: 'WHATSAPP',
+    EMAIL: 'EMAIL',
+} as const;
+export type Module = typeof Module[keyof typeof Module];
+
+export const ModuleLabel: Record<Module, string> = {
+    OVERVIEW: 'Overview',
+    LIVE_CHAT: 'Live Chat',
+    CRM: 'CRM & Pipeline',
+    BOOKINGS: 'Bookings',
+    AUTOMATION: 'Automation',
+    ANALYTICS: 'Analytics',
+    LINKS: 'Smart Links',
+    SUB_USERS: 'Team',
+    BILLING: 'Billing',
+    PLANS: 'Plans',
+    FORMS: 'Dynamic Forms',
+    WHATSAPP: 'WhatsApp Business',
+    EMAIL: 'Email Marketing',
+};

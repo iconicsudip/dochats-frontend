@@ -12,7 +12,9 @@
   --card-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
   --radius: 8px;
   --radius-sm: 6px;
-  --radius-lg: 12px;
+  --radius-lg: 16px;
+  --glass: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.05);
 
   /* WhatsApp Theme Colors */
   --wa-bg: #0b141a;
@@ -112,17 +114,19 @@ h5,
 
 /* Premium Component Styling */
 .premium-card {
-  background: var(--surface) !important;
-  border: 1px solid var(--divider) !important;
-  border-radius: var(--radius) !important;
-  box-shadow: var(--card-shadow) !important;
-  transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+  background: rgba(18, 19, 22, 0.4) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-lg) !important;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
   overflow: hidden;
 }
 
 .premium-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 48px 0 rgba(0, 0, 0, 0.5);
+  transform: translateY(-4px);
+  border-color: rgba(0, 223, 154, 0.2) !important;
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.6) !important;
 }
 
 @media (max-width: 576px) {
@@ -253,6 +257,46 @@ h5,
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* Glass Effect for Sidebar Groups */
+.premium-sider .ant-menu-item-group-title {
+    padding: 24px 16px 8px !important;
+}
+
+/* Input Addon Styling */
+.ant-input-group-wrapper.premium-input {
+    background: transparent !important;
+    border: none !important;
+    padding: 0 !important;
+}
+
+.ant-input-group-addon {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-right: none !important;
+    color: #00df9a !important;
+    font-weight: 700 !important;
+    border-top-left-radius: 12px !important;
+    border-bottom-left-radius: 12px !important;
+    padding: 0 16px !important;
+}
+
+.ant-input-group-wrapper.premium-input .ant-input {
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+}
+
+.ant-input-affix-wrapper .ant-input-prefix {
+    color: #00df9a !important;
+    margin-right: 8px !important;
+}
+
+.ant-menu-item-group-title {
+  margin-bottom: 4px !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  opacity: 0.5;
 }
 
 .premium-button {
@@ -530,4 +574,58 @@ h5,
   .ant-table-tbody > tr > td {
     padding: 12px 16px !important;
   }
+}
+
+/* Rich Text Editor - Quill Dark Mode */
+.premium-quill .ql-toolbar.ql-snow {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  border-top-left-radius: 12px;
+  border-top-right-radius: 12px;
+  padding: 12px !important;
+}
+
+.premium-quill .ql-container.ql-snow {
+  background: rgba(255, 255, 255, 0.01) !important;
+  border-color: rgba(255, 255, 255, 0.05) !important;
+  border-bottom-left-radius: 12px;
+  border-bottom-right-radius: 12px;
+  min-height: 150px;
+  font-family: 'Inter', sans-serif !important;
+  font-size: 14px;
+}
+
+.premium-quill .ql-editor {
+  color: #fff !important;
+  min-height: 150px;
+}
+
+.premium-quill .ql-editor.ql-blank::before {
+  color: rgba(255, 255, 255, 0.2) !important;
+  font-style: normal;
+}
+
+.premium-quill .ql-snow .ql-stroke {
+  stroke: #94a3b8 !important;
+}
+
+.premium-quill .ql-snow .ql-fill {
+  fill: #94a3b8 !important;
+}
+
+.premium-quill .ql-snow.ql-toolbar button:hover .ql-stroke,
+.premium-quill .ql-snow.ql-toolbar button:hover .ql-fill,
+.premium-quill .ql-snow.ql-toolbar button.ql-active .ql-stroke,
+.premium-quill .ql-snow.ql-toolbar button.ql-active .ql-fill {
+  stroke: var(--primary) !important;
+  fill: var(--primary) !important;
+}
+
+.premium-quill .ql-snow .ql-picker {
+  color: #94a3b8 !important;
+}
+
+.premium-quill .ql-snow .ql-picker-options {
+  background-color: #1a1b1e !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
 }
