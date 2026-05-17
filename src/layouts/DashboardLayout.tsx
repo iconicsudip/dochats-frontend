@@ -10,7 +10,8 @@ import {
     LayoutDashboard, Link as LinkIcon, MessageSquare, LogOut, 
     Users, PieChart, CreditCard, DollarSign, AlertTriangle, 
     Zap, Rocket, Menu, Calendar, PlayCircle, BarChart3, AppWindow, 
-    FileText, Phone, Mail, Settings as SettingsIcon, ChevronDown, X, Plug, Search, Bell, HelpCircle, LayoutGrid, MessageCircle
+    FileText, Phone, Mail, Settings as SettingsIcon, ChevronDown, X, Plug, Search, Bell, HelpCircle, LayoutGrid, MessageCircle,
+    Building2, Briefcase, LifeBuoy, ShoppingBag
 } from 'lucide-react';
 
 const DashboardLayout: React.FC = () => {
@@ -22,6 +23,7 @@ const DashboardLayout: React.FC = () => {
     const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
         engagement: true,
         channels: true,
+        crm: true,
         workspace: true
     });
 
@@ -64,7 +66,20 @@ const DashboardLayout: React.FC = () => {
                 { key: 'rcs-external', icon: Rocket, label: 'RCS Campaigns', onClick: () => window.open('https://mrcs.madmarketer.net', '_blank') },
             ]
         },
-        { key: '/dashboard/crm', icon: Users, label: 'CRM & Pipeline', module: Module.CRM, tourKey: 'crm' },
+        {
+            key: 'crm',
+            icon: Users,
+            label: 'CRM',
+            module: Module.CRM,
+            tourKey: 'crm',
+            children: [
+                { key: '/dashboard/crm', icon: Users, label: 'Contacts' },
+                { key: '/dashboard/crm/companies', icon: Building2, label: 'Companies' },
+                { key: '/dashboard/crm/deals', icon: Briefcase, label: 'Deals' },
+                { key: '/dashboard/crm/tickets', icon: LifeBuoy, label: 'Tickets' },
+                { key: '/dashboard/crm/orders', icon: ShoppingBag, label: 'Orders' },
+            ]
+        },
         { key: '/dashboard/bookings', icon: Calendar, label: 'Bookings', module: Module.BOOKINGS, tourKey: 'bookings' },
         { key: '/dashboard/automation', icon: PlayCircle, label: 'Automation', module: Module.AUTOMATION },
         { key: '/dashboard/forms', icon: FileText, label: 'Dynamic Forms', module: Module.FORMS, tourKey: 'dynamic-forms' },
@@ -85,7 +100,19 @@ const DashboardLayout: React.FC = () => {
     // Strictly preserved Sub User items
     const subUserItems = [
         { key: '/dashboard/chat', icon: MessageSquare, label: 'Live Inbox', module: Module.LIVE_CHAT },
-        { key: '/dashboard/crm', icon: Users, label: 'CRM Pipeline', module: Module.CRM },
+        {
+            key: 'crm',
+            icon: Users,
+            label: 'CRM',
+            module: Module.CRM,
+            children: [
+                { key: '/dashboard/crm', icon: Users, label: 'Contacts' },
+                { key: '/dashboard/crm/companies', icon: Building2, label: 'Companies' },
+                { key: '/dashboard/crm/deals', icon: Briefcase, label: 'Deals' },
+                { key: '/dashboard/crm/tickets', icon: LifeBuoy, label: 'Tickets' },
+                { key: '/dashboard/crm/orders', icon: ShoppingBag, label: 'Orders' },
+            ]
+        },
         { key: '/dashboard/bookings', icon: Calendar, label: 'Appointments', module: Module.BOOKINGS },
         { key: '/dashboard/settings', icon: SettingsIcon, label: 'Settings' },
     ];

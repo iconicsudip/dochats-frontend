@@ -107,7 +107,7 @@ const FormResponses: React.FC = () => {
                             <BarChart3 className="w-5 h-5" />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-slate-900 tracking-tight">{responses.length}</div>
+                    <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{responses.length}</div>
                 </div>
                 <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs">
                     <div className="flex justify-between items-start mb-3">
@@ -116,7 +116,7 @@ const FormResponses: React.FC = () => {
                             <Clock className="w-5 h-5" />
                         </div>
                     </div>
-                    <div className="text-2xl font-bold text-slate-900 tracking-tight">{todayResponses}</div>
+                    <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{todayResponses}</div>
                 </div>
             </div>
 

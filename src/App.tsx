@@ -19,6 +19,11 @@ import ManagePlans from './pages/SuperAdmin/ManagePlans';
 import Payments from './pages/SuperAdmin/Payments';
 import UpgradeRequests from './pages/SuperAdmin/UpgradeRequests';
 import CRM from './pages/modules/CRM';
+import ContactDetail from './pages/modules/ContactDetail';
+import Companies from './pages/modules/Companies';
+import Deals from './pages/modules/Deals';
+import Tickets from './pages/modules/Tickets';
+import Orders from './pages/modules/Orders';
 import Bookings from './pages/modules/Bookings';
 import Automation from './pages/modules/Automation';
 import WhatsApp from './pages/modules/WhatsApp';
@@ -73,6 +78,11 @@ function App() {
                         <Route path="reports" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Reports />} />
                         {/* Business OS Modules */}
                         <Route path="crm" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <CRM />} />
+                        <Route path="crm/contact/:id" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <ContactDetail />} />
+                        <Route path="crm/companies" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Companies />} />
+                        <Route path="crm/deals" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Deals />} />
+                        <Route path="crm/tickets" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Tickets />} />
+                        <Route path="crm/orders" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Orders />} />
                         <Route path="bookings" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Bookings />} />
                         <Route path="automation" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Automation />} />
                         <Route path="whatsapp" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <WhatsApp />} />
@@ -94,6 +104,11 @@ function App() {
                         {user?.role === Role.SUB_USER && (
                             <>
                                 <Route path="crm" element={<CRM />} />
+                                <Route path="crm/contact/:id" element={<ContactDetail />} />
+                                <Route path="crm/companies" element={<Companies />} />
+                                <Route path="crm/deals" element={<Deals />} />
+                                <Route path="crm/tickets" element={<Tickets />} />
+                                <Route path="crm/orders" element={<Orders />} />
                                 <Route path="bookings" element={<Bookings />} />
                                 <Route path="settings" element={<Settings />} />
                             </>

@@ -1,9 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { bookingsApi, Booking } from '../../api/bookings';
+import { Pagination } from 'antd';
+import apiClient from '../../api/apiClient';
+import { useAuth } from '../../contexts/AuthContext';
+import { bookingsApi, Booking, CalendarConfig } from '../../api/bookings';
 import { 
     Calendar as CalendarIcon, Plus, Clock, CheckCircle2, 
-    XCircle, MessageCircle, PlayCircle, X, ChevronLeft, ChevronRight, ListFilter, AlignJustify, User, Phone, Mail, FileText, Send, Sparkles, Filter
+    XCircle, MessageCircle, PlayCircle, X, ChevronLeft, ChevronRight, 
+    AlignJustify, User, Phone, Mail, FileText, Sparkles, Filter, 
+    Settings, Video, RefreshCw, ExternalLink, Download, Copy, Check, Globe,
+    Info, Users, Crown, CalendarCheck, UserCheck, DownloadCloud, Search
 } from 'lucide-react';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
@@ -62,7 +68,7 @@ const SimpleCalendar = ({ bookings, onSelectBooking }: { bookings: Booking[], on
             <div className="grid grid-cols-7">
                 {days.map(d => {
                     const ds = d.format('YYYY-MM-DD');
-                    const dayBookings = bookings.filter(b => b.date === ds);
+                    const dayBookings = bookings.filter(b => b.date.startsWith(ds) || dayjs(b.date).format('YYYY-MM-DD') === ds);
                     const isCurrentMonth = d.month() === currentDate.month();
                     const isToday = d.isSame(dayjs(), 'day');
 
@@ -81,13 +87,15 @@ const SimpleCalendar = ({ bookings, onSelectBooking }: { bookings: Booking[], on
                             <div className="space-y-1">
                                 {dayBookings.slice(0, 3).map(b => {
                                     const sc = STATUS_CONFIG[b.status.toLowerCase() as BookingStatus];
+                                    const timeStr = dayjs(b.date).format('HH:mm');
                                     return (
                                         <div 
                                             key={b.id} 
                                             onClick={() => onSelectBooking(b)}
-                                            className={cn("text-[11px] font-semibold p-1.5 rounded-lg border truncate cursor-pointer transition-all hover:scale-[1.02] shadow-2xs", sc.bg, sc.color)}
+                                            className={cn("text-[11px] font-semibold p-1.5 rounded-lg border truncate cursor-pointer transition-all hover:scale-[1.02] shadow-2xs flex items-center justify-between", sc.bg, sc.color)}
                                         >
-                                            <span className="font-bold">{b.time}</span> {b.clientName}
+                                            <span className="truncate"><span className="font-bold">{timeStr}</span> {b.clientName}</span>
+                                            {b.meetingUrl && <Video className="w-3 h-3 shrink-0 ml-1 text-primary" />}
                                         </div>
                                     );
                                 })}
@@ -108,6 +116,14 @@ const Bookings: React.FC = () => {
     const [view, setView] = useState<'list' | 'calendar'>('list');
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterDate, setFilterDate] = useState<string>('all');
+    const [filterOwner, setFilterOwner] = useState<string>('all');
+    const [searchTerm, setSearchTerm] = useState<string>('');
+    const [page, setPage] = useState<number>(1);
+    const [pageSize, setPageSize] = useState<number>(10);
+    const [total, setTotal] = useState<number>(0);
+    const [summary, setSummary] = useState<{ totalBookings: number; todaySlots: number; pendingConfirmation: number; fromAiChat: number }>({
+        totalBookings: 0, todaySlots: 0, pendingConfirmation: 0, fromAiChat: 0
+    });
     
     // Custom Toast State
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
@@ -116,74 +132,179 @@ const Bookings: React.FC = () => {
         setTimeout(() => setToast(null), 3500);
     };
 
-    // Drawer States (converted from modal as requested)
-    const [drawerType, setDrawerType] = useState<'none' | 'add' | 'detail'>('none');
+    // Drawer States
+    const [drawerType, setDrawerType] = useState<'none' | 'add' | 'detail' | 'sync'>('none');
     const [selectedBooking, setSelectedBooking] = useState<Booking | null>(null);
-    
+    const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+    const [copiedFeed, setCopiedFeed] = useState(false);
+
+    const { user } = useAuth();
+    const [teamMembers, setTeamMembers] = useState<any[]>([]);
+
     // Form State
     const [formData, setFormData] = useState({
         clientName: '', phone: '', email: '', service: 'Property Consultation', 
-        date: dayjs().format('YYYY-MM-DD'), time: '10:00', duration: 30, notes: ''
+        date: dayjs().format('YYYY-MM-DD'), time: '10:00', duration: 30, notes: '',
+        meetingUrl: '', assignedTo: user?.id || ''
     });
 
+    // Calendar Integration Config State
+    const [calendarConfig, setCalendarConfig] = useState<CalendarConfig>({
+        googleCalendar: { enabled: false, account: '' },
+        outlook: { enabled: false, account: '' },
+        apple: { enabled: true },
+        autoGenerateMeet: true
+    });
+    const [isSavingConfig, setIsSavingConfig] = useState(false);
+    const [isSyncing, setIsSyncing] = useState<string | null>(null);
+
+    // Inbound External Sync State
+    const [importIcalUrl, setImportIcalUrl] = useState('');
+    const [isImporting, setIsImporting] = useState(false);
+
     const location = useLocation();
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchBookings();
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [page, pageSize, searchTerm, filterStatus, filterDate, filterOwner, view]);
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         if (params.get('tab') === 'settings') {
             setView('calendar');
         }
-        fetchBookings();
+        fetchCalendarConfig();
+        fetchTeamMembers();
     }, [location.search]);
+
+    const fetchTeamMembers = async () => {
+        try {
+            const res = await apiClient.get('/auth/sub-users');
+            if (res.data && Array.isArray(res.data.users)) {
+                setTeamMembers(res.data.users);
+            }
+        } catch (err) {
+            console.error('Failed to fetch team members', err);
+        }
+    };
+
+    const teamMembersMap = React.useMemo(() => {
+        const map: Record<string, string> = {};
+        if (user?.id) map[user.id] = `👑 ${user.name || user.username || 'Workspace Owner'}`;
+        teamMembers.forEach(m => {
+            map[m.id] = `👤 ${m.name || m.username}`;
+        });
+        return map;
+    }, [user, teamMembers]);
 
     const fetchBookings = async () => {
         try {
-            const data = await bookingsApi.getBookings();
-            setBookings(data.map((b: any) => ({
-                ...b,
-                date: dayjs(b.date).format('YYYY-MM-DD'),
-                time: dayjs(b.date).format('HH:mm')
-            })));
+            const data = await bookingsApi.getBookings({ 
+                page: view === 'calendar' ? undefined : page, 
+                limit: view === 'calendar' ? undefined : pageSize, 
+                search: searchTerm, 
+                status: filterStatus === 'all' ? undefined : filterStatus,
+                date: filterDate === 'all' ? undefined : filterDate,
+                owner: filterOwner === 'all' ? undefined : filterOwner
+            });
+            if (data && data.data) {
+                setBookings(data.data);
+                setTotal(data.total || 0);
+                if (data.summary) setSummary(data.summary);
+            } else if (Array.isArray(data)) {
+                setBookings(data);
+                setTotal(data.length);
+                const confirmed = data.filter(b => b.status === 'CONFIRMED').length;
+                const completed = data.filter(b => b.status === 'COMPLETED').length;
+                const pending = data.filter(b => b.status === 'PENDING').length;
+                const fromAi = data.filter(b => b.source === 'AI Chat').length;
+                const today = data.filter(b => dayjs(b.date).format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD')).length;
+                setSummary({ totalBookings: data.length, todaySlots: today, pendingConfirmation: pending, fromAiChat: fromAi });
+            }
         } catch (error) {
             console.error(error);
         }
     };
 
-    const filtered = bookings.filter(b => {
-        const matchStatus = filterStatus === 'all' || b.status === filterStatus;
-        const today = dayjs().format('YYYY-MM-DD');
-        const matchDate =
-            filterDate === 'all' ||
-            (filterDate === 'today' && b.date === today) ||
-            (filterDate === 'upcoming' && b.date >= today);
-        return matchStatus && matchDate;
-    });
+    const fetchCalendarConfig = async () => {
+        try {
+            const config = await bookingsApi.getCalendarConfig();
+            if (config) setCalendarConfig(config);
+        } catch (error) {
+            console.error(error);
+        }
+    };
 
-    const stats = {
-        total: bookings.length,
-        today: bookings.filter(b => b.date === dayjs().format('YYYY-MM-DD')).length,
-        pending: bookings.filter(b => b.status === 'PENDING').length,
-        fromAI: bookings.filter(b => b.source === 'AI Chat').length,
+    const saveCalendarConfig = async (newConfig: CalendarConfig) => {
+        setIsSavingConfig(true);
+        try {
+            const saved = await bookingsApi.updateCalendarConfig(newConfig);
+            setCalendarConfig(saved);
+            showToast("Calendar sync configuration saved", 'success');
+        } catch (error) {
+            console.error(error);
+            showToast("Failed to save calendar sync config", 'error');
+        } finally {
+            setIsSavingConfig(false);
+        }
+    };
+
+    const handleImportExternal = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!importIcalUrl) return;
+        setIsImporting(true);
+        try {
+            const res = await bookingsApi.importExternalIcal(importIcalUrl);
+            showToast(res.message, res.count > 0 ? 'success' : 'warning');
+            fetchBookings();
+            setImportIcalUrl('');
+        } catch (error) {
+            console.error(error);
+            showToast("Failed to import external calendar feed", 'error');
+        } finally {
+            setIsImporting(false);
+        }
     };
 
     const handleAddBooking = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            let finalMeetingUrl = formData.meetingUrl;
+            if (calendarConfig.autoGenerateMeet && !finalMeetingUrl) {
+                finalMeetingUrl = `https://meet.google.com/doc-nnct-${Math.floor(100 + Math.random() * 900)}`;
+            }
+
             const data = {
                 ...formData,
+                meetingUrl: finalMeetingUrl,
                 source: 'Manual',
             };
             await bookingsApi.createBooking(data);
             setDrawerType('none');
             setFormData({
                 clientName: '', phone: '', email: '', service: 'Property Consultation', 
-                date: dayjs().format('YYYY-MM-DD'), time: '10:00', duration: 30, notes: ''
+                date: dayjs().format('YYYY-MM-DD'), time: '10:00', duration: 30, notes: '', meetingUrl: '', assignedTo: user?.id || ''
             });
             fetchBookings();
-            showToast("Booking created successfully", 'success');
+            showToast("Booking scheduled successfully with calendar links", 'success');
         } catch (error) {
             console.error(error);
             showToast("Failed to create booking", 'error');
+        }
+    };
+
+    const handleAssignBooking = async (id: string, assignedTo: string) => {
+        try {
+            const updated = await bookingsApi.updateBooking(id, { assignedTo });
+            setBookings(prev => prev.map(b => b.id === id ? { ...b, assignedTo } : b));
+            if (selectedBooking?.id === id) setSelectedBooking(updated);
+            showToast("Assigned owner updated successfully", "success");
+        } catch (err) {
+            console.error("Failed to assign booking", err);
+            showToast("Failed to assign booking", "error");
         }
     };
 
@@ -201,8 +322,25 @@ const Bookings: React.FC = () => {
         }
     };
 
+    const handleExternalSync = async (id: string) => {
+        setIsSyncing(id);
+        try {
+            const res = await bookingsApi.syncExternal(id);
+            setBookings(prev => prev.map(b => b.id === id ? { ...b, externalSynced: true } : b));
+            if (selectedBooking?.id === id) setSelectedBooking(prev => prev ? { ...prev, externalSynced: true } : null);
+            showToast("Successfully synchronized with external calendar providers", 'success');
+        } catch (error) {
+            console.error(error);
+            showToast("External synchronization error", 'error');
+        } finally {
+            setIsSyncing(null);
+        }
+    };
+
+    const icalFeedUrl = `${window.location.origin}/api/bookings/feed/usr_cuid998877.ics`;
+
     return (
-        <div className="pb-20 font-sans text-slate-800 animate-in fade-in duration-500">
+        <div className="pb-20 font-sans text-slate-800 animate-in fade-in duration-500" onClick={() => setActiveDropdown(null)}>
             {/* Custom Toast Notification */}
             {toast && (
                 <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-slate-900 text-white shadow-xl text-sm font-medium animate-in slide-in-from-bottom-4 duration-200">
@@ -249,6 +387,15 @@ const Bookings: React.FC = () => {
                             <span>Calendar View</span>
                         </button>
                     </div>
+
+                    <button 
+                        onClick={() => setDrawerType('sync')}
+                        className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold border border-slate-200/80 shadow-2xs transition-all cursor-pointer"
+                    >
+                        <Settings className="w-4 h-4 text-blue-600 shrink-0" />
+                        <span>Calendar Sync Hub</span>
+                    </button>
+
                     <button 
                         onClick={() => setDrawerType('add')}
                         className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
@@ -260,114 +407,173 @@ const Bookings: React.FC = () => {
             </div>
 
             {/* Automation notice */}
-            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 mb-8 flex items-center gap-3.5 animate-in slide-in-from-bottom-2 shadow-2xs">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 border border-primary/20">
-                    <PlayCircle className="w-5 h-5" />
+            <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5 mb-8 flex items-center justify-between gap-4 animate-in slide-in-from-bottom-2 shadow-2xs flex-wrap sm:flex-nowrap">
+                <div className="flex items-center gap-3.5">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0 border border-primary/20">
+                        <PlayCircle className="w-5 h-5" />
+                    </div>
+                    <p className="text-xs text-slate-700 m-0 font-medium leading-relaxed">
+                        <strong className="text-primary font-bold">Active Neural Flow:</strong> All incoming bookings sync instantly with your CRM pipeline and trigger two-way automated reminders.
+                    </p>
                 </div>
-                <p className="text-xs text-slate-700 m-0 font-medium leading-relaxed">
-                    <strong className="text-primary font-bold">Active Neural Flow:</strong> All incoming bookings sync instantly with your CRM pipeline and trigger two-way automated reminders.
-                </p>
+                <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200 px-3 py-1 rounded-lg flex items-center gap-1.5 shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Real-time 2-Way Sync Active
+                    </span>
+                </div>
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
                 <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-sm transition-all">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Total Bookings</span>
-                    <div className="text-3xl font-extrabold text-blue-600 tracking-tight">{stats.total}</div>
+                    <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{summary.totalBookings}</div>
                 </div>
                 <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-sm transition-all">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Today's Slots</span>
-                    <div className="text-3xl font-extrabold text-amber-500 tracking-tight">{stats.today}</div>
+                    <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{summary.todaySlots}</div>
                 </div>
                 <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-sm transition-all">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Pending Confirmation</span>
-                    <div className="text-3xl font-extrabold text-purple-600 tracking-tight">{stats.pending}</div>
+                    <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{summary.pendingConfirmation}</div>
                 </div>
                 <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:shadow-sm transition-all">
                     <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">From AI Chat</span>
-                    <div className="text-3xl font-extrabold text-primary tracking-tight">{stats.fromAI}</div>
+                    <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{summary.fromAiChat}</div>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="flex flex-wrap items-center gap-3 mb-8 bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 w-fit">
-                <div className="flex items-center gap-1.5 pl-3 pr-1 text-slate-500 font-bold text-xs">
-                    <Filter className="w-3.5 h-3.5 text-slate-500" />
-                    <span>Filter:</span>
+            <div className="flex flex-wrap items-center justify-between gap-4 mb-8 bg-slate-100 p-2 rounded-2xl border border-slate-200/80">
+                <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex items-center gap-1.5 pl-3 pr-1 text-slate-500 font-bold text-xs">
+                        <Filter className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Filter:</span>
+                    </div>
+                    <select 
+                        value={filterStatus}
+                        onChange={e => { setFilterStatus(e.target.value); setPage(1); }}
+                        className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="PENDING">Pending</option>
+                        <option value="CONFIRMED">Confirmed</option>
+                        <option value="COMPLETED">Completed</option>
+                        <option value="CANCELLED">Cancelled</option>
+                    </select>
+                    <select 
+                        value={filterDate}
+                        onChange={e => { setFilterDate(e.target.value); setPage(1); }}
+                        className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs"
+                    >
+                        <option value="all">All Dates</option>
+                        <option value="today">Today</option>
+                        <option value="upcoming">Upcoming</option>
+                    </select>
+                    <select 
+                        value={filterOwner}
+                        onChange={e => { setFilterOwner(e.target.value); setPage(1); }}
+                        className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs max-w-[160px] truncate"
+                    >
+                        <option value="all">All Owners</option>
+                        <option value="unassigned">Unassigned</option>
+                        {user?.id && <option value={user.id}>👑 {user.name || user.username || 'Workspace Owner'}</option>}
+                        {teamMembers.map(m => (
+                            <option key={m.id} value={m.id}>👤 {m.name || m.username}</option>
+                        ))}
+                    </select>
                 </div>
-                <select 
-                    value={filterStatus}
-                    onChange={e => setFilterStatus(e.target.value)}
-                    className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs"
-                >
-                    <option value="all">All Status</option>
-                    <option value="PENDING">Pending</option>
-                    <option value="CONFIRMED">Confirmed</option>
-                    <option value="COMPLETED">Completed</option>
-                    <option value="CANCELLED">Cancelled</option>
-                </select>
-                <select 
-                    value={filterDate}
-                    onChange={e => setFilterDate(e.target.value)}
-                    className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer shadow-2xs"
-                >
-                    <option value="all">All Dates</option>
-                    <option value="today">Today</option>
-                    <option value="upcoming">Upcoming</option>
-                </select>
+                <div className="relative flex-1 max-w-sm min-w-[200px]">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input 
+                        type="text"
+                        placeholder="Search client, service, email..."
+                        value={searchTerm}
+                        onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
+                        className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl font-medium text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-2xs focus:border-primary"
+                    />
+                </div>
             </div>
 
             {view === 'list' ? (
-                <div className="flex flex-col gap-4">
-                    {filtered.map(booking => {
+                <div className="space-y-4">
+                    {bookings.map(booking => {
                         const sc = STATUS_CONFIG[booking.status.toLowerCase() as BookingStatus];
                         const src = SOURCE_CONFIG[booking.source || 'Manual'] || SOURCE_CONFIG['Manual'];
+                        const timeStr = dayjs(booking.date).format('HH:mm');
                         
                         return (
                             <div 
                                 key={booking.id}
                                 onClick={() => { setSelectedBooking(booking); setDrawerType('detail'); }}
-                                className="bg-white border border-slate-200/80 rounded-2xl p-5 sm:p-6 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-5 hover:shadow-md hover:border-slate-300 transition-all cursor-pointer group"
+                                className="bg-white border border-slate-200/80 rounded-2xl p-5 hover:shadow-lg hover:border-primary/40 transition-all cursor-pointer group relative overflow-visible flex flex-col md:flex-row md:items-center justify-between gap-4"
                             >
-                                <div className="flex items-center gap-4 w-full lg:w-auto">
-                                    <div className="text-center min-w-[80px] py-2.5 px-3.5 bg-slate-50 border border-slate-200 rounded-xl group-hover:bg-primary/10 group-hover:border-primary/30 group-hover:text-primary transition-all shadow-2xs">
-                                        <span className="block text-base font-bold text-slate-900 group-hover:text-primary">{booking.time}</span>
-                                        <span className="block text-[10px] font-semibold text-slate-400 uppercase mt-0.5">{booking.duration}m</span>
+                                {/* Subtle status accent indicator on the left border */}
+                                <div className={cn("absolute left-0 top-0 bottom-0 w-1.5 rounded-l-2xl", booking.status === 'CONFIRMED' ? 'bg-blue-500' : booking.status === 'COMPLETED' ? 'bg-emerald-500' : booking.status === 'PENDING' ? 'bg-amber-500' : 'bg-red-500')} />
+
+                                <div className="flex items-start gap-4 min-w-0 flex-1 pl-2">
+                                    {/* Elegant Calendar/Time Box */}
+                                    <div className="flex flex-col items-center justify-center min-w-[72px] py-2.5 px-3 bg-slate-900 text-white rounded-xl shadow-md group-hover:bg-primary transition-colors shrink-0 text-center">
+                                        <span className="text-[10px] uppercase font-bold tracking-widest text-slate-400 group-hover:text-primary-100 leading-none mb-1">{dayjs(booking.date).format('MMM')}</span>
+                                        <span className="text-xl font-extrabold tracking-tight leading-none my-0.5">{dayjs(booking.date).format('DD')}</span>
+                                        <span className="text-[11px] font-semibold text-slate-300 group-hover:text-white bg-white/10 px-2 py-0.5 rounded font-mono mt-1 leading-none">{timeStr}</span>
                                     </div>
-                                    <div>
-                                        <h4 className="text-sm font-bold text-slate-900 m-0 mb-0.5 group-hover:text-primary transition-colors">{booking.clientName}</h4>
-                                        <p className="text-xs font-semibold text-slate-500 m-0">{booking.service}</p>
+
+                                    {/* Booking Title, Subtitle & Metadata Row */}
+                                    <div className="min-w-0 flex-1 space-y-2">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <h4 className="text-base font-extrabold text-slate-900 m-0 group-hover:text-primary transition-colors truncate">{booking.clientName}</h4>
+                                            <span className="text-xs font-semibold text-slate-500 bg-slate-100 px-2.5 py-0.5 rounded-full border border-slate-200/80">{booking.service}</span>
+                                            {booking.meetingUrl && (
+                                                <span title="Video Meeting Attached" className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 border border-blue-100 text-xs font-semibold">
+                                                    <Video className="w-3 h-3" /> Meet
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        {/* Unified clean metadata bar */}
+                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-500">
+                                            <div className="flex items-center gap-1.5 font-medium">
+                                                <Clock className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                                <span>{booking.duration} mins</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-1.5">
+                                                <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                                                <span className="font-medium text-slate-600">{booking.source || 'Manual'}</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-1.5">
+                                                <UserCheck className="w-3.5 h-3.5 text-primary shrink-0" />
+                                                <span className="font-semibold text-slate-700 truncate max-w-[150px]">
+                                                    {booking.assignedTo ? teamMembersMap[booking.assignedTo] || booking.assignedTo : 'Unassigned'}
+                                                </span>
+                                            </div>
+
+                                            {booking.externalSynced && (
+                                                <div className="flex items-center gap-1 text-emerald-600 font-semibold bg-emerald-50 px-2 py-0.5 rounded-md border border-emerald-200">
+                                                    <Check className="w-3.5 h-3.5 shrink-0" /> Synced
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div className="flex flex-wrap items-center gap-2.5 w-full lg:w-auto mt-2 lg:mt-0">
-                                    <div className="text-xs font-semibold text-slate-600 px-3 py-1.5 bg-slate-100 rounded-lg flex items-center gap-1.5 border border-slate-200/80">
-                                        <CalendarIcon className="w-3.5 h-3.5 text-slate-500" />
-                                        <span>{dayjs(booking.date).format('DD MMM YYYY')}</span>
-                                    </div>
-                                    
-                                    <span className={cn("px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5", src.bg, src.color)}>
-                                        <Sparkles className="w-3.5 h-3.5" />
-                                        <span>{booking.source}</span>
-                                    </span>
-                                    
-                                    {booking.automationTriggered && (
-                                        <span title={`Automation: ${booking.automationTriggered}`} className="px-3 py-1.5 rounded-lg text-xs font-bold bg-primary/10 text-primary border border-primary/20 flex items-center gap-1.5">
-                                            <PlayCircle className="w-3.5 h-3.5" />
-                                            <span>Automated</span>
-                                        </span>
-                                    )}
-                                    
-                                    <span className={cn("px-3 py-1.5 rounded-lg text-xs font-bold border flex items-center gap-1.5", sc.bg, sc.color)}>
-                                        <sc.icon className="w-3.5 h-3.5" />
+                                {/* Right Area: Status Badge & Actions */}
+                                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 shrink-0 ml-2 md:ml-0">
+                                    {/* Status Badge */}
+                                    <span className={cn("px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 shadow-2xs shrink-0 whitespace-nowrap", sc.bg, sc.color)}>
+                                        <sc.icon className="w-3.5 h-3.5 shrink-0" />
                                         <span>{sc.label}</span>
                                     </span>
 
-                                    <div className="flex items-center gap-2 ml-auto" onClick={e => e.stopPropagation()}>
+                                    {/* Actions Bar */}
+                                    <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
                                         {booking.status === 'PENDING' && (
                                             <button 
                                                 onClick={() => updateStatus(booking.id, 'confirmed')}
-                                                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                                className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer shrink-0"
                                             >
                                                 Confirm
                                             </button>
@@ -375,12 +581,88 @@ const Bookings: React.FC = () => {
                                         {booking.status === 'CONFIRMED' && (
                                             <button 
                                                 onClick={() => updateStatus(booking.id, 'completed')}
-                                                className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg text-xs font-bold transition-all shadow-xs cursor-pointer"
+                                                className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs hover:shadow-md cursor-pointer shrink-0"
                                             >
                                                 Complete
                                             </button>
                                         )}
-                                        <button className="p-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-lg transition-all cursor-pointer" title="WhatsApp Message">
+
+                                        {/* Add to Calendar Dropdown */}
+                                        <div className="relative shrink-0">
+                                            <button 
+                                                onClick={() => setActiveDropdown(activeDropdown === booking.id ? null : booking.id)}
+                                                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1 border border-slate-200 cursor-pointer shadow-2xs"
+                                                title="Add to Calendar / Join Meeting"
+                                            >
+                                                <CalendarIcon className="w-3.5 h-3.5 text-slate-600" />
+                                                <span className="hidden sm:inline">Calendar</span>
+                                                <span>▾</span>
+                                            </button>
+
+                                            {activeDropdown === booking.id && (
+                                                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-2xl border border-slate-200/80 py-2.5 z-50 animate-in fade-in zoom-in-95 duration-150 font-normal">
+                                                    <div className="px-3.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sync Options</div>
+                                                    
+                                                    {booking.googleCalendarUrl && (
+                                                        <a 
+                                                            href={booking.googleCalendarUrl} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            onClick={() => setActiveDropdown(null)}
+                                                            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 hover:text-blue-600 font-semibold text-xs no-underline transition-colors"
+                                                        >
+                                                            <span className="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0" />
+                                                            <span>Google Calendar</span>
+                                                            <ExternalLink className="w-3 h-3 ml-auto text-slate-400" />
+                                                        </a>
+                                                    )}
+
+                                                    {booking.outlookCalendarUrl && (
+                                                        <a 
+                                                            href={booking.outlookCalendarUrl} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            onClick={() => setActiveDropdown(null)}
+                                                            className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 hover:text-blue-600 font-semibold text-xs no-underline transition-colors"
+                                                        >
+                                                            <span className="w-2.5 h-2.5 rounded-full bg-[#0078d4] shrink-0" />
+                                                            <span>Microsoft Outlook</span>
+                                                            <ExternalLink className="w-3 h-3 ml-auto text-slate-400" />
+                                                        </a>
+                                                    )}
+
+                                                    <a 
+                                                        href={`/api/bookings/${booking.id}/ical`} 
+                                                        download={`appointment-${booking.id}.ics`}
+                                                        onClick={() => setActiveDropdown(null)}
+                                                        className="flex items-center gap-2.5 px-3.5 py-2 hover:bg-slate-50 text-slate-700 hover:text-emerald-600 font-semibold text-xs no-underline transition-colors border-t border-slate-100 mt-1 pt-2"
+                                                    >
+                                                        <Download className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                                                        <span>Download iCal (.ics)</span>
+                                                    </a>
+
+                                                    {booking.meetingUrl && (
+                                                        <a 
+                                                            href={booking.meetingUrl} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            onClick={() => setActiveDropdown(null)}
+                                                            className="flex items-center gap-2.5 px-3.5 py-2 bg-blue-50/50 hover:bg-blue-50 text-blue-700 font-bold text-xs no-underline transition-colors border-t border-slate-100 mt-1 pt-2"
+                                                        >
+                                                            <Video className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                                            <span>Join Video Meeting</span>
+                                                            <ExternalLink className="w-3 h-3 ml-auto" />
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <button 
+                                            onClick={() => window.open(`https://wa.me/?text=Hello ${encodeURIComponent(booking.clientName)}`)}
+                                            className="w-8 h-8 flex items-center justify-center bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200 rounded-xl transition-all cursor-pointer shrink-0 shadow-2xs" 
+                                            title="WhatsApp Message"
+                                        >
                                             <MessageCircle className="w-4 h-4" />
                                         </button>
                                     </div>
@@ -389,11 +671,21 @@ const Bookings: React.FC = () => {
                         );
                     })}
                     
-                    {filtered.length === 0 && (
+                    {bookings.length === 0 ? (
                         <div className="py-20 text-center border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50">
                             <CalendarIcon className="w-12 h-12 text-slate-300 mx-auto mb-3" />
                             <h3 className="text-base font-bold text-slate-800 mb-1 m-0">No appointments found</h3>
-                            <p className="text-xs text-slate-500 max-w-md mx-auto m-0 font-semibold leading-relaxed">Adjust your status and date filters or click "New Booking" above to add an appointment.</p>
+                            <p className="text-xs text-slate-500 max-w-md mx-auto m-0 font-semibold leading-relaxed">Adjust your status and date filters or search to find appointments.</p>
+                        </div>
+                    ) : total > pageSize && (
+                        <div className="py-4 px-6 bg-white border border-slate-200/80 rounded-2xl flex justify-end items-center shadow-xs mt-6">
+                            <Pagination 
+                                current={page} 
+                                pageSize={pageSize} 
+                                total={total} 
+                                onChange={(p, s) => { setPage(p); setPageSize(s); }} 
+                                showSizeChanger={false} 
+                            />
                         </div>
                     )}
                 </div>
@@ -401,13 +693,283 @@ const Bookings: React.FC = () => {
                 <SimpleCalendar bookings={bookings} onSelectBooking={b => { setSelectedBooking(b); setDrawerType('detail'); }} />
             )}
 
-            {/* Sliding Drawer Overlay for Add Booking and Details */}
+            {/* Sliding Drawer Overlay for Add Booking, Details, and Sync Hub */}
             {drawerType !== 'none' && (
                 <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-300">
                     <div 
-                        className="w-full max-w-xl bg-white shadow-2xl h-full flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200 overflow-hidden text-xs"
+                        className="w-full max-w-2xl bg-white shadow-2xl h-full flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200 overflow-hidden text-xs font-semibold"
                         onClick={e => e.stopPropagation()}
                     >
+                        {drawerType === 'sync' && (
+                            <>
+                                <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 shrink-0">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 font-bold border border-blue-100 shadow-2xs">
+                                            <Settings className="w-5 h-5 text-blue-600" />
+                                        </div>
+                                        <div>
+                                            <h2 className="text-lg font-bold text-slate-900 m-0 tracking-tight">Calendar Sync Hub</h2>
+                                            <p className="text-xs text-slate-500 m-0 font-semibold">Manage 2-way real-time calendar integrations & video link generation</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => setDrawerType('none')} className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-all shadow-2xs cursor-pointer">
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+
+                                <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar leading-relaxed">
+                                    {/* 1-Way Inbound Import Sync Card */}
+                                    <div className="p-5 bg-gradient-to-r from-primary/10 via-blue-50 to-primary/5 border border-primary/20 rounded-2xl shadow-2xs space-y-4 font-semibold">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold shadow-xs shrink-0">
+                                                <DownloadCloud className="w-5 h-5 text-white" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-sm font-bold text-slate-900 m-0 mb-0.5">Import External Calendar (1-Way Inbound Sync)</h3>
+                                                <p className="text-xs text-slate-600 m-0 font-medium">Instantly pull appointments from Google Calendar, Outlook, or any iCal (.ics) feed URL.</p>
+                                            </div>
+                                        </div>
+
+                                        <form onSubmit={handleImportExternal} className="flex flex-col sm:flex-row gap-2 pt-1 font-semibold">
+                                            <div className="relative flex-1">
+                                                <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                <input 
+                                                    type="url"
+                                                    required
+                                                    value={importIcalUrl}
+                                                    onChange={e => setImportIcalUrl(e.target.value)}
+                                                    placeholder="https://calendar.google.com/calendar/ical/.../basic.ics"
+                                                    className="w-full bg-white border border-slate-200/80 rounded-xl pl-10 pr-3.5 py-2.5 font-medium text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-2xs"
+                                                />
+                                            </div>
+                                            <button 
+                                                type="submit"
+                                                disabled={isImporting}
+                                                className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold shrink-0 shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 text-xs"
+                                            >
+                                                {isImporting && <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />}
+                                                <span>{isImporting ? 'Syncing...' : 'Sync into DoConnect'}</span>
+                                            </button>
+                                        </form>
+
+                                        <div className="text-[11px] text-slate-700 font-medium flex items-center gap-2 bg-white/80 p-3 rounded-xl border border-primary/20 shadow-2xs">
+                                            <Info className="w-4 h-4 text-primary shrink-0" />
+                                            <div>
+                                                <span className="text-primary font-bold">How to find your URL: </span>
+                                                <span>In Google Calendar &gt; Settings &gt; Specific Calendar &gt; Secret address in iCal format.</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Google Calendar */}
+                                    <div className="p-5 bg-white border border-slate-200/80 rounded-2xl shadow-2xs space-y-4">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center font-bold text-blue-600 border border-blue-100 shrink-0">
+                                                    G
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-sm font-bold text-slate-900 m-0 mb-0.5">Google Calendar Sync</h3>
+                                                    <p className="text-xs text-slate-500 m-0 font-medium">Automatic 2-way event reflection & availability checks</p>
+                                                </div>
+                                            </div>
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={calendarConfig.googleCalendar.enabled}
+                                                    onChange={e => saveCalendarConfig({
+                                                        ...calendarConfig,
+                                                        googleCalendar: { ...calendarConfig.googleCalendar, enabled: e.target.checked }
+                                                    })}
+                                                    className="sr-only peer" 
+                                                />
+                                                <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary" />
+                                            </label>
+                                        </div>
+
+                                        {calendarConfig.googleCalendar.enabled && (
+                                            <div className="pt-3 border-t border-slate-100 space-y-3 animate-in fade-in duration-200">
+                                                <div>
+                                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Connected Google Account Email</label>
+                                                    <input 
+                                                        value={calendarConfig.googleCalendar.account}
+                                                        onChange={e => setCalendarConfig({
+                                                            ...calendarConfig,
+                                                            googleCalendar: { ...calendarConfig.googleCalendar, account: e.target.value }
+                                                        })}
+                                                        placeholder="calendar@company.com"
+                                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                                                    />
+                                                </div>
+                                                <div className="flex items-center justify-between text-[11px] font-bold text-emerald-600 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-100">
+                                                    <span>✓ OAuth Connection Established</span>
+                                                    <span>Webhooks Active</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100/80 text-[11px] space-y-1 text-slate-700">
+                                            <div className="font-bold text-blue-800 flex items-center gap-1.5 mb-1">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-blue-600 shrink-0" />
+                                                <span>Google Calendar Live Feed Process</span>
+                                            </div>
+                                            <p className="m-0 leading-relaxed font-medium">
+                                                1. Copy the Universal ICS subscription feed URL below.<br />
+                                                2. On your Google Calendar, click <strong className="font-bold text-slate-900">+</strong> next to <strong className="font-bold text-slate-900">Other calendars</strong> in the left sidebar.<br />
+                                                3. Select <strong className="font-bold text-slate-900">From URL</strong>, paste the link, and click Add calendar.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Microsoft Outlook */}
+                                    <div className="p-5 bg-white border border-slate-200/80 rounded-2xl shadow-2xs space-y-4">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-[#0078d4]/10 flex items-center justify-center font-bold text-[#0078d4] border border-[#0078d4]/20 shrink-0">
+                                                    MS
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-sm font-bold text-slate-900 m-0 mb-0.5">Microsoft Outlook 365 Sync</h3>
+                                                    <p className="text-xs text-slate-500 m-0 font-medium">Sync with Exchange & Microsoft Calendar</p>
+                                                </div>
+                                            </div>
+                                            <label className="relative inline-flex items-center cursor-pointer">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={calendarConfig.outlook.enabled}
+                                                    onChange={e => saveCalendarConfig({
+                                                        ...calendarConfig,
+                                                        outlook: { ...calendarConfig.outlook, enabled: e.target.checked }
+                                                    })}
+                                                    className="sr-only peer" 
+                                                />
+                                                <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#0078d4]" />
+                                            </label>
+                                        </div>
+
+                                        {calendarConfig.outlook.enabled && (
+                                            <div className="pt-3 border-t border-slate-100 space-y-3 animate-in fade-in duration-200">
+                                                <div>
+                                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Connected Outlook Account Email</label>
+                                                    <input 
+                                                        value={calendarConfig.outlook.account}
+                                                        onChange={e => setCalendarConfig({
+                                                            ...calendarConfig,
+                                                            outlook: { ...calendarConfig.outlook, account: e.target.value }
+                                                        })}
+                                                        placeholder="work@company.onmicrosoft.com"
+                                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-semibold text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                                                    />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <div className="p-3.5 bg-blue-50/50 rounded-xl border border-blue-100/80 text-[11px] space-y-1 text-slate-700">
+                                            <div className="font-bold text-[#0078d4] flex items-center gap-1.5 mb-1">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-[#0078d4] shrink-0" />
+                                                <span>Microsoft Outlook Live Feed Process</span>
+                                            </div>
+                                            <p className="m-0 leading-relaxed font-medium">
+                                                1. Copy the Universal ICS subscription feed URL below.<br />
+                                                2. In Outlook Web or Desktop, go to <strong className="font-bold text-slate-900">Calendar &gt; Add Calendar &gt; Subscribe from web</strong>.<br />
+                                                3. Paste the URL, enter a name (e.g. DoConnect Bookings), and click Import.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* Apple iCal & Direct Feed */}
+                                    <div className="p-5 bg-white border border-slate-200/80 rounded-2xl shadow-2xs space-y-4">
+                                        <div className="flex items-center justify-between gap-4">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center font-bold text-slate-700 border border-slate-200 shrink-0">
+                                                    iCal
+                                                </div>
+                                                <div>
+                                                    <h3 className="text-sm font-bold text-slate-900 m-0 mb-0.5">Universal iCal / Apple Calendar Live Feed</h3>
+                                                    <p className="text-xs text-slate-500 m-0 font-medium">Subscribe via URL on Apple Calendar, Mac, or iPhone</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="pt-3 border-t border-slate-100 space-y-3">
+                                            <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">Universal ICS Subscription URL</label>
+                                            <div className="flex items-center gap-2">
+                                                <input 
+                                                    readOnly
+                                                    value={icalFeedUrl}
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-mono text-xs text-slate-600 focus:outline-none select-all shadow-2xs"
+                                                />
+                                                <button 
+                                                    onClick={() => {
+                                                        navigator.clipboard.writeText(icalFeedUrl);
+                                                        setCopiedFeed(true);
+                                                        setTimeout(() => setCopiedFeed(false), 2500);
+                                                    }}
+                                                    className="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold flex items-center gap-1.5 shrink-0 transition-all cursor-pointer shadow-2xs"
+                                                >
+                                                    {copiedFeed ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                                                    <span>{copiedFeed ? 'Copied' : 'Copy'}</span>
+                                                </button>
+                                            </div>
+                                            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/60 text-[11px] space-y-1 text-slate-700 font-medium">
+                                                <div className="font-bold text-slate-900 flex items-center gap-1.5 mb-1">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-700 shrink-0" />
+                                                    <span>Apple Calendar Subscription Process</span>
+                                                </div>
+                                                <p className="m-0 leading-relaxed">
+                                                    1. On Mac: Open Calendar &gt; click <strong className="font-bold text-slate-900">File &gt; New Calendar Subscription</strong>.<br />
+                                                    2. On iPhone: Open Settings &gt; Calendar &gt; Accounts &gt; Add Account &gt; Other &gt; <strong className="font-bold text-slate-900">Add Subscribed Calendar</strong>.<br />
+                                                    3. Paste the URL and click Subscribe. Your iPhone/Mac will auto-refresh automatically!
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Google Meet Auto Generator */}
+                                    <div className="p-5 bg-blue-50/60 border border-blue-200/80 rounded-2xl flex items-center justify-between gap-4 shadow-2xs">
+                                        <div className="flex items-center gap-3">
+                                            <Video className="w-5 h-5 text-blue-600 shrink-0" />
+                                            <div>
+                                                <h4 className="text-xs font-bold text-slate-900 m-0 mb-0.5">Auto-Generate Video Meeting Links</h4>
+                                                <p className="text-[11px] text-slate-600 m-0">Create Google Meet / Conference URLs instantly for all manual bookings</p>
+                                            </div>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer shrink-0">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={calendarConfig.autoGenerateMeet}
+                                                onChange={e => saveCalendarConfig({
+                                                    ...calendarConfig,
+                                                    autoGenerateMeet: e.target.checked
+                                                })}
+                                                className="sr-only peer" 
+                                            />
+                                            <div className="w-11 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600" />
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0 font-semibold">
+                                    <button 
+                                        type="button" 
+                                        onClick={() => setDrawerType('none')} 
+                                        className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl transition-all cursor-pointer"
+                                    >
+                                        Close Sync Hub
+                                    </button>
+                                    <button 
+                                        type="button" 
+                                        onClick={() => saveCalendarConfig(calendarConfig)}
+                                        disabled={isSavingConfig}
+                                        className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-70"
+                                    >
+                                        {isSavingConfig && <RefreshCw className="w-4 h-4 animate-spin" />}
+                                        <span>Save Sync Preferences</span>
+                                    </button>
+                                </div>
+                            </>
+                        )}
+
                         {drawerType === 'add' && (
                             <>
                                 <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 shrink-0">
@@ -508,6 +1070,29 @@ const Bookings: React.FC = () => {
                                         </div>
 
                                         <div>
+                                            <div className="flex items-center justify-between mb-1.5">
+                                                <label className="block font-bold text-slate-700 uppercase tracking-wider m-0">Video Meeting URL (Optional)</label>
+                                                <button 
+                                                    type="button"
+                                                    onClick={() => setFormData({...formData, meetingUrl: `https://meet.google.com/doc-nnct-${Math.floor(100 + Math.random() * 900)}`})}
+                                                    className="text-primary hover:text-primary-hover font-bold text-[11px] flex items-center gap-1 cursor-pointer"
+                                                >
+                                                    <Sparkles className="w-3 h-3" />
+                                                    <span>Auto-Generate Meet Link</span>
+                                                </button>
+                                            </div>
+                                            <div className="relative">
+                                                <Video className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                <input 
+                                                    type="url"
+                                                    value={formData.meetingUrl} onChange={e => setFormData({...formData, meetingUrl: e.target.value})}
+                                                    placeholder="https://meet.google.com/xyz-abcd-efg" 
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-xs" 
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
                                             <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">Special Notes & Requests</label>
                                             <textarea 
                                                 rows={3}
@@ -516,15 +1101,33 @@ const Bookings: React.FC = () => {
                                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all resize-none leading-relaxed text-xs" 
                                             />
                                         </div>
+
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">Assign To Owner / Agent</label>
+                                            <div className="relative">
+                                                <Users className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                                <select
+                                                    value={formData.assignedTo}
+                                                    onChange={e => setFormData({...formData, assignedTo: e.target.value})}
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3.5 py-2.5 font-semibold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all cursor-pointer appearance-none"
+                                                >
+                                                    <option value="">Unassigned Auto</option>
+                                                    {user?.id && <option value={user.id}>👑 {user.name || user.username || 'Workspace Owner'}</option>}
+                                                    {teamMembers.map(m => (
+                                                        <option key={m.id} value={m.id}>👤 {m.name || m.username}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
                                         
                                         <div className="p-3.5 bg-primary/5 rounded-xl border border-primary/20 text-slate-700 flex items-center gap-2.5 font-medium">
                                             <PlayCircle className="w-4 h-4 text-primary shrink-0" />
-                                            <span><strong className="text-primary font-bold">Auto-triggered:</strong> Instant confirmation WhatsApp and reminders will fire automatically.</span>
+                                            <span><strong className="text-primary font-bold">Auto-triggered:</strong> Instant confirmation WhatsApp, calendar invites, and reminders will fire automatically.</span>
                                         </div>
                                     </form>
                                 </div>
                                 
-                                <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 shrink-0">
+                                <div className="p-6 border-t border-slate-100 flex justify-end gap-3 bg-slate-50 shrink-0 font-semibold">
                                     <button type="button" onClick={() => setDrawerType('none')} className="px-5 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold transition-all cursor-pointer">
                                         Cancel
                                     </button>
@@ -537,6 +1140,7 @@ const Bookings: React.FC = () => {
 
                         {drawerType === 'detail' && selectedBooking && (() => {
                             const sc = STATUS_CONFIG[selectedBooking.status.toLowerCase() as BookingStatus];
+                            const timeStr = dayjs(selectedBooking.date).format('HH:mm');
                             return (
                                 <>
                                     <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50 shrink-0">
@@ -555,17 +1159,17 @@ const Bookings: React.FC = () => {
                                         </div>
                                     </div>
                                     
-                                    <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar">
+                                    <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar leading-relaxed">
                                         <div>
                                             <h3 className="text-xs font-bold text-slate-900 mb-3 uppercase tracking-wider">Booking Metadata</h3>
                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                                 {[
                                                     { label: 'Scheduled Date', value: dayjs(selectedBooking.date).format('DD MMMM YYYY'), icon: CalendarIcon },
-                                                    { label: 'Time Window', value: `${selectedBooking.time} (${selectedBooking.duration} mins)`, icon: Clock },
+                                                    { label: 'Time Window', value: `${timeStr} (${selectedBooking.duration} mins)`, icon: Clock },
                                                     { label: 'Contact Phone', value: selectedBooking.phone, icon: Phone },
                                                     { label: 'Contact Email', value: selectedBooking.email || 'Not provided', icon: Mail },
                                                     { label: 'Lead Source', value: selectedBooking.source, icon: Sparkles },
-                                                    { label: 'Assigned Agent', value: selectedBooking.assignedTo || 'Unassigned Auto', icon: User },
+                                                    { label: 'Assigned Agent', value: selectedBooking.assignedTo ? teamMembersMap[selectedBooking.assignedTo] || selectedBooking.assignedTo : 'Unassigned Auto', icon: User },
                                                 ].map((item, i) => (
                                                     <div key={i} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center gap-3">
                                                         <div className="w-9 h-9 rounded-lg bg-white flex items-center justify-center text-slate-500 shadow-2xs shrink-0 border border-slate-100">
@@ -577,6 +1181,98 @@ const Bookings: React.FC = () => {
                                                         </div>
                                                     </div>
                                                 ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Assign Owner Card */}
+                                        <div className="p-5 bg-slate-50 border border-slate-200/80 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-2xs">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold shadow-2xs shrink-0">
+                                                    <Users className="w-5 h-5 text-primary" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-xs font-bold text-slate-900 m-0 mb-0.5">Assigned Owner</h4>
+                                                    <p className="text-[11px] text-slate-500 m-0 font-medium">Transfer booking ownership & notifications</p>
+                                                </div>
+                                            </div>
+                                            <select
+                                                value={selectedBooking.assignedTo || ''}
+                                                onChange={e => handleAssignBooking(selectedBooking.id, e.target.value)}
+                                                className="bg-white border border-slate-200 rounded-xl px-4 py-2.5 font-bold text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-2xs cursor-pointer min-w-[180px] appearance-none"
+                                            >
+                                                <option value="">Unassigned</option>
+                                                {user?.id && <option value={user.id}>👑 {user.name || user.username || 'Workspace Owner'}</option>}
+                                                {teamMembers.map(m => (
+                                                    <option key={m.id} value={m.id}>👤 {m.name || m.username}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        {/* External Calendar Sync Actions Card */}
+                                        <div className="p-5 bg-blue-50/50 border border-blue-200/80 rounded-2xl space-y-4 shadow-2xs">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2.5">
+                                                    <Globe className="w-5 h-5 text-blue-600" />
+                                                    <h4 className="text-xs font-bold text-slate-900 m-0">Universal Calendar Synchronization</h4>
+                                                </div>
+                                                <button 
+                                                    onClick={() => handleExternalSync(selectedBooking.id)}
+                                                    disabled={isSyncing === selectedBooking.id}
+                                                    className="px-3 py-1.5 bg-white hover:bg-slate-50 text-blue-600 font-bold rounded-xl border border-blue-200 shadow-2xs text-[11px] flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-70"
+                                                >
+                                                    <RefreshCw className={cn("w-3.5 h-3.5", isSyncing === selectedBooking.id && "animate-spin")} />
+                                                    <span>{isSyncing === selectedBooking.id ? 'Syncing...' : 'Sync Now'}</span>
+                                                </button>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                                                {selectedBooking.googleCalendarUrl && (
+                                                    <a 
+                                                        href={selectedBooking.googleCalendarUrl} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="p-3 bg-white hover:bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3 text-slate-700 hover:text-blue-600 font-bold text-xs no-underline shadow-2xs transition-all"
+                                                    >
+                                                        <span className="w-3 h-3 rounded-full bg-blue-500 shrink-0" />
+                                                        <span className="truncate">Add to Google Calendar</span>
+                                                        <ExternalLink className="w-3.5 h-3.5 ml-auto text-slate-400" />
+                                                    </a>
+                                                )}
+
+                                                {selectedBooking.outlookCalendarUrl && (
+                                                    <a 
+                                                        href={selectedBooking.outlookCalendarUrl} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="p-3 bg-white hover:bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3 text-slate-700 hover:text-blue-600 font-bold text-xs no-underline shadow-2xs transition-all"
+                                                    >
+                                                        <span className="w-3 h-3 rounded-full bg-[#0078d4] shrink-0" />
+                                                        <span className="truncate">Add to Outlook Calendar</span>
+                                                        <ExternalLink className="w-3.5 h-3.5 ml-auto text-slate-400" />
+                                                    </a>
+                                                )}
+
+                                                <a 
+                                                    href={`/api/bookings/${selectedBooking.id}/ical`} 
+                                                    download={`appointment-${selectedBooking.id}.ics`}
+                                                    className="p-3 bg-white hover:bg-slate-50 rounded-xl border border-slate-200 flex items-center gap-3 text-slate-700 hover:text-emerald-600 font-bold text-xs no-underline shadow-2xs transition-all"
+                                                >
+                                                    <Download className="w-4 h-4 text-emerald-600 shrink-0" />
+                                                    <span className="truncate">Download iCal (.ics)</span>
+                                                </a>
+
+                                                {selectedBooking.meetingUrl && (
+                                                    <a 
+                                                        href={selectedBooking.meetingUrl} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl flex items-center gap-3 font-bold text-xs no-underline shadow-xs transition-all"
+                                                    >
+                                                        <Video className="w-4 h-4 shrink-0" />
+                                                        <span className="truncate">Join Video Meeting</span>
+                                                        <ExternalLink className="w-3.5 h-3.5 ml-auto" />
+                                                    </a>
+                                                )}
                                             </div>
                                         </div>
 

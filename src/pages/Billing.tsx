@@ -204,7 +204,7 @@ const Billing: React.FC = () => {
                             {sub?.status || 'Inactive'}
                         </span>
                     </div>
-                    <div className="text-2xl font-bold text-slate-900">
+                    <div className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono">
                         ₹{(sub?.amount || status?.defaultAmount || 0).toLocaleString()}
                     </div>
                 </div>
@@ -217,7 +217,7 @@ const Billing: React.FC = () => {
                         </div>
                     </div>
                     <div className="flex items-baseline gap-1.5">
-                        <span className={cn("text-2xl font-bold", isOverdue ? "text-red-600" : "text-slate-900")}>
+                        <span className={cn("text-3xl font-extrabold tracking-tight font-mono", isOverdue ? "text-red-600" : "text-slate-900")}>
                             {sub?.daysRemaining ?? 0}
                         </span>
                         <span className="text-xs font-semibold text-slate-400">days</span>

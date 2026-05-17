@@ -280,7 +280,7 @@ const Overview: React.FC = () => {
                                 </span>
                             </div>
                             <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{stat.title}</span>
-                            <div className="text-2xl font-bold text-slate-900 tracking-tight mt-1 mb-1">{stat.value}</div>
+                            <div className="text-3xl font-extrabold text-slate-900 tracking-tight mt-1 mb-1">{stat.value}</div>
                         </div>
                         <span className="text-[11px] font-medium text-slate-400">{stat.desc}</span>
                     </div>
@@ -329,7 +329,7 @@ const Overview: React.FC = () => {
                     <div className="flex justify-between items-start mb-6 z-10 relative">
                         <div>
                             <h3 className="text-base font-bold text-slate-900 m-0 mb-1 tracking-tight">Total Customer Inquiries</h3>
-                            <div className="text-3xl font-bold text-slate-900 mb-2">{totalChats.toLocaleString()}</div>
+                            <div className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">{totalChats.toLocaleString()}</div>
                             <span className="flex items-center gap-2 text-xs text-slate-500">
                                 <span className="flex items-center text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md font-semibold shadow-2xs">
                                     <TrendingUp className="w-3.5 h-3.5 mr-1" /> 24.4%

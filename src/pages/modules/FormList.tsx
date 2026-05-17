@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Pagination } from 'antd';
 import { formsApi } from '../../api/forms';
 import { FORM_TEMPLATES } from '../../constants/formTemplates';
 import { 
@@ -21,6 +22,9 @@ const FormList: React.FC<FormListProps> = ({ predefined }) => {
     const [forms, setForms] = useState<any[]>([]);
     const [loading, setLoading] = useState(false);
     const [view, setView] = useState<'my-forms' | 'templates'>(predefined ? 'templates' : 'my-forms');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [page, setPage] = useState(1);
+    const pageSize = 10;
     const navigate = useNavigate();
 
     // Custom Toast State
@@ -75,6 +79,14 @@ const FormList: React.FC<FormListProps> = ({ predefined }) => {
         showToast('Public link copied to clipboard!', 'success');
     };
 
+    const filteredForms = forms.filter(f => 
+        (f.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (f.description || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    const totalPages = Math.ceil(filteredForms.length / pageSize);
+    const paginatedForms = filteredForms.slice((page - 1) * pageSize, page * pageSize);
+
     return (
         <div className="animate-in fade-in duration-500 pb-20 font-sans text-slate-800">
             {/* Custom Toast Notification */}
@@ -103,7 +115,7 @@ const FormList: React.FC<FormListProps> = ({ predefined }) => {
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
                     <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200/60 w-full sm:w-auto">
                         <button 
-                            onClick={() => setView('my-forms')}
+                            onClick={() => { setView('my-forms'); setPage(1); }}
                             className={cn(
                                 "flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
                                 view === 'my-forms' ? "bg-white text-slate-900 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
@@ -112,7 +124,7 @@ const FormList: React.FC<FormListProps> = ({ predefined }) => {
                             My Forms
                         </button>
                         <button 
-                            onClick={() => setView('templates')}
+                            onClick={() => { setView('templates'); setPage(1); }}
                             className={cn(
                                 "flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
                                 view === 'templates' ? "bg-white text-slate-900 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
@@ -138,8 +150,10 @@ const FormList: React.FC<FormListProps> = ({ predefined }) => {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                             <input
                                 type="text"
+                                value={searchTerm}
+                                onChange={e => { setSearchTerm(e.target.value); setPage(1); }}
                                 placeholder="Search forms..."
-                                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
+                                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm"
                             />
                         </div>
                     </div>
@@ -160,27 +174,27 @@ const FormList: React.FC<FormListProps> = ({ predefined }) => {
                                     <tr>
                                         <td colSpan={5} className="py-20 text-center">
                                             <div className="inline-block w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
-                                            <p className="text-sm text-slate-400 mt-4">Loading forms...</p>
+                                            <p className="text-xs font-semibold text-slate-400 mt-4">Loading forms...</p>
                                         </td>
                                     </tr>
-                                ) : forms.length === 0 ? (
+                                ) : filteredForms.length === 0 ? (
                                     <tr>
                                         <td colSpan={5} className="py-20 text-center">
                                             <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-4">
                                                 <FileText className="w-8 h-8 text-slate-300" />
                                             </div>
-                                            <h3 className="text-sm font-bold text-slate-700 mb-1">No forms yet</h3>
-                                            <p className="text-sm text-slate-500 mb-4">You haven't created any custom forms.</p>
+                                            <h3 className="text-sm font-bold text-slate-700 mb-1">No forms found</h3>
+                                            <p className="text-xs text-slate-500 mb-4">No custom forms match your criteria.</p>
                                             <button 
                                                 onClick={() => navigate('/dashboard/forms/new')}
-                                                className="text-primary text-sm font-bold hover:underline"
+                                                className="text-primary text-xs font-bold hover:underline cursor-pointer"
                                             >
                                                 Create your first form &rarr;
                                             </button>
                                         </td>
                                     </tr>
                                 ) : (
-                                    forms.map(form => (
+                                    paginatedForms.map(form => (
                                         <tr key={form.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors group">
                                             <td className="py-4 px-6">
                                                 <div className="text-xs font-bold text-slate-900">{form.title}</div>
@@ -248,7 +262,21 @@ const FormList: React.FC<FormListProps> = ({ predefined }) => {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Pagination Bar */}
+                    {filteredForms.length > pageSize && (
+                        <div className="py-4 px-6 bg-white border-t border-slate-200 flex justify-end items-center shadow-xs">
+                            <Pagination 
+                                current={page} 
+                                pageSize={pageSize} 
+                                total={filteredForms.length} 
+                                onChange={(p) => setPage(p)} 
+                                showSizeChanger={false} 
+                            />
+                        </div>
+                    )}
                 </div>
+
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                     {FORM_TEMPLATES.map(template => (

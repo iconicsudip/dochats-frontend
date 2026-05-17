@@ -395,13 +395,14 @@ const PublicChat: React.FC = () => {
 
                         {/* Iframe Lead Capture Bubble */}
                         {showLeadCaptureForm && (
-                            <div className="bg-[#202c33] text-[#e9edef] rounded-2xl shadow-lg max-w-md w-full self-start border border-[#2a3942] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
-                                <div className="p-3 bg-[#2a3942]/60 border-b border-[#111b21] font-bold text-xs text-white">
+                            <div className="bg-[#202c33] text-[#e9edef] rounded-2xl shadow-xl max-w-md w-full self-start border border-[#2a3942] overflow-clip animate-in fade-in slide-in-from-bottom-2 duration-300 my-2">
+                                <div className="p-3 bg-[#2a3942]/80 border-b border-[#111b21] font-bold text-xs text-[#00a884] flex items-center gap-2">
+                                    <span className="w-2 h-2 rounded-full bg-[#00a884] animate-pulse inline-block shrink-0" />
                                     Please complete this form to continue:
                                 </div>
                                 <iframe 
                                     src={`/f/${chatInfo?.leadCaptureFormId}?embed=true`} 
-                                    className="w-full h-[500px] border-none bg-transparent"
+                                    className="w-full h-[550px] min-h-[550px] border-none bg-transparent block"
                                     title="Lead Capture"
                                 />
                             </div>

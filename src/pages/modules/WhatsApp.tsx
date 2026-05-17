@@ -409,7 +409,7 @@ const WhatsApp: React.FC = () => {
                                             <FileText className="w-4 h-4" />
                                         </div>
                                     </div>
-                                    <div className="text-2xl font-bold text-slate-900 tracking-tight">{templates.length}</div>
+                                    <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{templates.length}</div>
                                 </div>
                                 <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:border-slate-300 transition-all min-w-0">
                                     <div className="flex justify-between items-start mb-4">
@@ -418,7 +418,7 @@ const WhatsApp: React.FC = () => {
                                             <Phone className="w-4 h-4" />
                                         </div>
                                     </div>
-                                    <div className="text-2xl font-bold text-slate-900 tracking-tight">{phones.length}</div>
+                                    <div className="text-3xl font-extrabold text-slate-900 tracking-tight">{phones.length}</div>
                                 </div>
                                 <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs hover:border-slate-300 transition-all min-w-0">
                                     <div className="flex justify-between items-start mb-4">

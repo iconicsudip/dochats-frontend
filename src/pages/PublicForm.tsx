@@ -173,10 +173,13 @@ const PublicForm: React.FC = () => {
         const hasError = !!error;
 
         const baseInputClasses = cn(
-            "w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all",
+            "w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all font-medium",
             hasError 
-                ? "bg-red-50 border border-red-200 text-red-900 focus:ring-red-500/20" 
-                : "bg-white border border-slate-200 focus:ring-primary/20"
+                ? "bg-red-500/10 border border-red-500/50 text-red-400 focus:ring-red-500/20" 
+                : (isEmbed 
+                    ? "bg-[#2a3942] border border-[#3b4a54] text-white placeholder-[#8696a0] focus:ring-[#00a884]/40" 
+                    : "bg-white border border-slate-200 text-slate-800 placeholder-slate-400 focus:ring-primary/20"
+                  )
         );
 
         switch (field.type) {
@@ -212,7 +215,10 @@ const PublicForm: React.FC = () => {
             case 'tel':
                 return (
                     <div className="flex">
-                        <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 text-slate-500 text-sm font-medium">
+                        <span className={cn(
+                            "inline-flex items-center px-4 rounded-l-xl border border-r-0 text-sm font-medium shrink-0",
+                            isEmbed ? "bg-[#182229] border-[#3b4a54] text-[#8696a0]" : "border-slate-200 bg-slate-50 text-slate-500"
+                        )}>
                             +91
                         </span>
                         <input 
@@ -261,7 +267,7 @@ const PublicForm: React.FC = () => {
             className="min-h-screen" 
             style={{ 
                 backgroundColor: bgColor,
-                padding: isEmbed ? '1rem' : '3rem 1rem'
+                padding: isEmbed ? '1rem 1rem 3rem 1rem' : '3rem 1rem'
             }}
         >
             <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans">
@@ -276,15 +282,15 @@ const PublicForm: React.FC = () => {
                     </div>
                 )}
 
-                <div className={cn("text-center mb-8", isEmbed ? "mb-6" : "mb-10")}>
+                <div className={cn("text-center mb-8", isEmbed ? "mb-4" : "mb-10")}>
                     {form.owner?.logoUrl && (
                         <img src={form.owner.logoUrl} alt={form.owner.name} className="h-16 mx-auto mb-5 rounded-lg shadow-sm" />
                     )}
-                    <h1 className="text-2xl font-bold tracking-tight mb-3" style={{ color: textColor }}>
+                    <h1 className="text-2xl font-bold tracking-tight mb-2 font-sans" style={{ color: textColor }}>
                         {form.title}
                     </h1>
                     {form.description && (
-                        <p className="text-sm opacity-80" style={{ color: textColor }}>
+                        <p className="text-sm opacity-80 font-sans" style={{ color: textColor }}>
                             {form.description}
                         </p>
                     )}
@@ -292,14 +298,14 @@ const PublicForm: React.FC = () => {
 
                 <div 
                     className={cn(
-                        "bg-white rounded-3xl", 
-                        isEmbed ? "shadow-none border-none bg-transparent" : "shadow-xl border border-slate-100 p-8 md:p-10"
+                        "rounded-3xl font-sans", 
+                        isEmbed ? "p-2 bg-transparent shadow-none border-none" : "bg-white shadow-xl border border-slate-100 p-8 md:p-10"
                     )}
                 >
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {form.fields.map((field: any) => (
                             <div key={field.id} className="space-y-2">
-                                <label className="flex items-center text-xs font-semibold" style={{ color: textColor }}>
+                                <label className="flex items-center text-xs font-semibold uppercase tracking-wider font-sans mb-1" style={{ color: isEmbed ? '#8696a0' : textColor }}>
                                     {field.label}
                                     {field.required && <span className="text-red-500 ml-1">*</span>}
                                 </label>
@@ -307,21 +313,24 @@ const PublicForm: React.FC = () => {
                                 {renderInput(field)}
                                 
                                 {errors[field.label] && (
-                                    <p className="text-xs font-bold text-red-500 mt-1.5 animate-in slide-in-from-top-1">
+                                    <p className="text-xs font-bold text-red-400 mt-1.5 animate-in slide-in-from-top-1 font-sans">
                                         {errors[field.label]}
                                     </p>
                                 )}
                             </div>
                         ))}
 
-                        <div className="pt-6 mt-8 border-t border-slate-100">
+                        <div className={cn("pt-6 mt-8", isEmbed ? "border-t border-[#2a3942] pb-6" : "border-t border-slate-100")}>
                             <button
                                 type="submit"
                                 disabled={submitting}
-                                className="w-full flex items-center justify-center py-3.5 rounded-xl text-white font-semibold text-sm shadow-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 cursor-pointer"
-                                style={{ backgroundColor: primaryColor, boxShadow: `0 10px 25px -5px ${primaryColor}40` }}
+                                className={cn(
+                                    "w-full flex items-center justify-center py-3.5 rounded-xl font-bold text-sm shadow-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer font-sans",
+                                    isEmbed ? "bg-[#00a884] text-black font-extrabold shadow-md" : "text-white font-semibold"
+                                )}
+                                style={!isEmbed ? { backgroundColor: primaryColor, boxShadow: `0 10px 25px -5px ${primaryColor}40` } : undefined}
                             >
-                                {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit Response'}
+                                {submitting ? <Loader2 className="w-5 h-5 animate-spin text-current" /> : 'Submit Response'}
                             </button>
                         </div>
                     </form>
