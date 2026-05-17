@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { message } from 'antd';
 import apiClient from '../../api/apiClient';
 import { moduleConfigApi } from '../../api/moduleConfig';
 import {
@@ -35,6 +34,13 @@ const ModuleManager: React.FC = () => {
     const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null);
     const [configOpen, setConfigOpen] = useState(false);
     const [editModules, setEditModules] = useState<Module[]>([]);
+
+    // Toast Notification State
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
+    const showToast = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+        setToast({ message: msg, type });
+        setTimeout(() => setToast(null), 3000);
+    };
 
     useEffect(() => {
         fetchAdmins();
@@ -85,10 +91,10 @@ const ModuleManager: React.FC = () => {
                 a.id === selectedAdmin.id ? { ...a, enabledModules: editModules } : a
             ));
             setConfigOpen(false);
-            message.success(`Modules updated for ${selectedAdmin.name}`);
+            showToast(`Modules updated for ${selectedAdmin.name}`, 'success');
         } catch (error) {
             console.error(error);
-            message.error('Failed to update modules');
+            showToast('Failed to update modules', 'error');
         }
     };
 
@@ -108,25 +114,25 @@ const ModuleManager: React.FC = () => {
             {/* Header */}
             <div className="mb-8">
                 <div className="flex items-center gap-2 mb-1">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
                         <Layout className="w-6 h-6 text-primary" />
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-900 m-0">Module Manager</h1>
+                    <h1 className="text-xl font-bold tracking-tight text-slate-900 m-0">Module Manager</h1>
                 </div>
-                <p className="text-sm text-slate-500 mt-2">Control which Business OS modules each admin account can access.</p>
+                <p className="text-xs font-semibold text-slate-500 mt-2 m-0">Control which Business OS modules each admin account can access.</p>
             </div>
 
             {/* Summary Row */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs text-center">
                     <div className="text-3xl font-extrabold text-blue-600 mb-1">{totalAdmins}</div>
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Admins</div>
                 </div>
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs text-center">
                     <div className="text-3xl font-extrabold text-emerald-600 mb-1">{avgModules}</div>
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Avg Modules / Admin</div>
                 </div>
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs text-center">
                     <div className="text-3xl font-extrabold text-purple-600 mb-1">{fullAccessCount}</div>
                     <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Access Admins</div>
                 </div>
@@ -137,7 +143,7 @@ const ModuleManager: React.FC = () => {
                 {admins.map(admin => {
                     const planBadgeClass = PLAN_COLOR[admin.plan?.name] || 'bg-slate-50 text-slate-700 border-slate-200';
                     return (
-                        <div key={admin.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                        <div key={admin.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs hover:shadow-md transition-shadow">
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-5 border-b border-slate-100">
                                 <div className="flex items-center gap-3">
                                     <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg border border-primary/20 shrink-0">
@@ -145,12 +151,12 @@ const ModuleManager: React.FC = () => {
                                     </div>
                                     <div>
                                         <h3 className="text-base font-bold text-slate-900 m-0">{admin.name || admin.username}</h3>
-                                        <p className="text-xs text-slate-500 m-0 mt-0.5">@{admin.username} {admin.industry ? `· ${admin.industry}` : ''}</p>
+                                        <p className="text-xs font-semibold text-slate-500 m-0 mt-0.5">@{admin.username} {admin.industry ? `· ${admin.industry}` : ''}</p>
                                     </div>
                                 </div>
 
                                 <div className="flex items-center gap-3 flex-wrap">
-                                    <span className={cn("px-3 py-1 rounded-lg text-xs font-bold border shadow-xs", planBadgeClass)}>
+                                    <span className={cn("px-3 py-1 rounded-lg text-xs font-bold border shadow-2xs", planBadgeClass)}>
                                         {admin.plan?.name || 'No Plan'}
                                     </span>
                                     <span className="px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
@@ -158,9 +164,9 @@ const ModuleManager: React.FC = () => {
                                     </span>
                                     <button
                                         onClick={() => openConfig(admin)}
-                                        className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-colors border border-primary/20"
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-semibold transition-colors border border-primary/20 cursor-pointer"
                                     >
-                                        <Settings className="w-4 h-4" /> Configure
+                                        <Settings className="w-4 h-4" /> <span>Configure</span>
                                     </button>
                                 </div>
                             </div>
@@ -174,7 +180,7 @@ const ModuleManager: React.FC = () => {
                                             key={m.key} 
                                             className={cn(
                                                 "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-all select-none",
-                                                active ? "bg-primary/5 border-primary/30 text-primary font-bold shadow-xs" : "bg-slate-50 text-slate-400 border-slate-200"
+                                                active ? "bg-primary/5 border-primary/30 text-primary font-bold shadow-2xs" : "bg-slate-50 text-slate-400 border-slate-200 font-medium"
                                             )}
                                         >
                                             {active && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
@@ -193,16 +199,16 @@ const ModuleManager: React.FC = () => {
                 <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                         <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
-                            <h2 className="text-lg font-bold text-slate-900">
+                            <h2 className="text-lg font-bold tracking-tight text-slate-900 m-0">
                                 Configure Modules — {selectedAdmin.name || selectedAdmin.username}
                             </h2>
-                            <button onClick={() => setConfigOpen(false)} className="text-slate-400 hover:text-slate-600">
+                            <button onClick={() => setConfigOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
                         
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-3">
-                            <p className="text-xs font-medium text-slate-500 mb-4">
+                            <p className="text-xs font-semibold text-slate-500 mb-4 m-0">
                                 Toggle modules on/off for this admin. Changes apply immediately on next login.
                             </p>
 
@@ -214,21 +220,21 @@ const ModuleManager: React.FC = () => {
                                         onClick={() => toggleModule(m.key)}
                                         className={cn(
                                             "flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all bg-white",
-                                            active ? "border-primary bg-primary/5 shadow-xs" : "border-slate-200 hover:border-slate-300"
+                                            active ? "border-primary bg-primary/5 shadow-2xs" : "border-slate-200 hover:border-slate-300"
                                         )}
                                     >
                                         <div className="flex items-center gap-3.5">
-                                            <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center shrink-0">
+                                            <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-2xs flex items-center justify-center shrink-0">
                                                 {m.icon}
                                             </div>
                                             <div>
-                                                <div className="text-sm font-bold text-slate-900">{ModuleLabel[m.key]}</div>
-                                                <div className="text-xs text-slate-500 mt-0.5">{m.desc}</div>
+                                                <div className="text-xs font-semibold text-slate-900">{ModuleLabel[m.key]}</div>
+                                                <div className="text-xs text-slate-500 mt-0.5 font-medium">{m.desc}</div>
                                             </div>
                                         </div>
 
                                         <div className={cn(
-                                            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
+                                            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors shrink-0",
                                             active ? "border-primary bg-primary text-white" : "border-slate-300 bg-white"
                                         )}>
                                             {active && <CheckCircle2 className="w-4 h-4 text-white" />}
@@ -242,19 +248,30 @@ const ModuleManager: React.FC = () => {
                             <button 
                                 type="button" 
                                 onClick={() => setConfigOpen(false)} 
-                                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors"
+                                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                             >
                                 Cancel
                             </button>
                             <button 
                                 type="button" 
                                 onClick={saveModules}
-                                className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 transition-all flex items-center gap-2"
+                                className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center gap-2 cursor-pointer"
                             >
                                 Save Configuration
                             </button>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {toast && (
+                <div className="fixed bottom-5 right-5 z-[300] flex items-center gap-3 px-4 py-3 bg-slate-900 text-white text-xs font-semibold rounded-2xl shadow-xl animate-in slide-in-from-bottom-4 duration-300">
+                    <div className={cn(
+                        "w-2 h-2 rounded-full shrink-0",
+                        toast.type === 'success' ? "bg-emerald-400" :
+                        toast.type === 'error' ? "bg-red-400" : "bg-amber-400"
+                    )} />
+                    <span>{toast.message}</span>
                 </div>
             )}
         </div>

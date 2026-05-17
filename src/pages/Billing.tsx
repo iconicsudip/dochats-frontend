@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { message } from 'antd';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../api/apiClient';
 import { 
@@ -23,6 +22,13 @@ const Billing: React.FC = () => {
     const [paymentLoading, setPaymentLoading] = useState(false);
     const [page, setPage] = useState(1);
     const pageSize = 10;
+
+    // Toast Notification State
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
+    const showToast = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+        setToast({ message: msg, type });
+        setTimeout(() => setToast(null), 3000);
+    };
 
     const { data: status, isLoading: statusLoading } = useQuery({
         queryKey: ['billing-status'],
@@ -65,11 +71,11 @@ const Billing: React.FC = () => {
                             razorpay_payment_id: response.razorpay_payment_id,
                             razorpay_signature: response.razorpay_signature,
                         });
-                        message.success('Payment successful! Your subscription is now active.');
+                        showToast('Payment successful! Your subscription is now active.', 'success');
                         queryClient.invalidateQueries({ queryKey: ['billing-status'] });
                         queryClient.invalidateQueries({ queryKey: ['billing-history'] });
                     } catch {
-                        message.error('Payment verification failed. Please contact support.');
+                        showToast('Payment verification failed. Please contact support.', 'error');
                     }
                 },
                 prefill: {},
@@ -85,14 +91,14 @@ const Billing: React.FC = () => {
 
             const rzp = new window.Razorpay(options);
             rzp.on('payment.failed', () => {
-                message.error('Payment failed. Please try again.');
+                showToast('Payment failed. Please try again.', 'error');
                 setPaymentLoading(false);
             });
             rzp.open();
             setPaymentLoading(false);
         } catch (e) {
             console.error(e);
-            message.error('Failed to initiate payment');
+            showToast('Failed to initiate payment', 'error');
             setPaymentLoading(false);
         }
     };
@@ -131,13 +137,15 @@ const Billing: React.FC = () => {
         <div className="pb-20 font-sans text-slate-800 animate-in fade-in duration-500">
             {/* Header */}
             <div className="mb-8">
-                <div className="flex items-center gap-2 mb-1">
-                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-xs">
-                        <CreditCard className="w-6 h-6 text-primary" />
+                <div className="flex items-center gap-3 mb-1">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-xs shrink-0">
+                        <CreditCard className="w-5 h-5 text-primary" />
                     </div>
-                    <h1 className="text-2xl font-bold text-slate-900 m-0">Billing & Subscription</h1>
+                    <div>
+                        <h1 className="text-xl font-bold text-slate-900 m-0 tracking-tight">Billing & Subscription</h1>
+                        <p className="text-xs font-semibold text-slate-500 m-0 mt-0.5">Manage your subscription and view payment history.</p>
+                    </div>
                 </div>
-                <p className="text-sm text-slate-500 mt-2">Manage your subscription and view payment history.</p>
             </div>
 
             {/* Alerts */}
@@ -148,14 +156,14 @@ const Billing: React.FC = () => {
                             <AlertTriangle className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="text-base font-bold text-red-900 m-0">Subscription Expired</h3>
-                            <p className="text-xs sm:text-sm text-red-700 m-0 mt-0.5">Your subscription has expired. Please make the payment to continue using all features.</p>
+                            <h3 className="text-sm font-bold text-red-900 m-0">Subscription Expired</h3>
+                            <p className="text-xs font-semibold text-red-700 m-0 mt-0.5">Your subscription has expired. Please make the payment to continue using all features.</p>
                         </div>
                     </div>
                     <button
                         onClick={handlePayNow}
                         disabled={paymentLoading}
-                        className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-bold shadow-md shadow-red-600/20 transition-all shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/20 transition-all shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                         {paymentLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                         Pay Now
@@ -170,14 +178,14 @@ const Billing: React.FC = () => {
                             <Clock className="w-5 h-5" />
                         </div>
                         <div>
-                            <h3 className="text-base font-bold text-amber-900 m-0">Expires in {sub.daysRemaining} day{sub.daysRemaining > 1 ? 's' : ''}</h3>
-                            <p className="text-xs sm:text-sm text-amber-700 m-0 mt-0.5">Your subscription is about to expire. Renew early to maintain uninterrupted access.</p>
+                            <h3 className="text-sm font-bold text-amber-900 m-0">Expires in {sub.daysRemaining} day{sub.daysRemaining > 1 ? 's' : ''}</h3>
+                            <p className="text-xs font-semibold text-amber-700 m-0 mt-0.5">Your subscription is about to expire. Renew early to maintain uninterrupted access.</p>
                         </div>
                     </div>
                     <button
                         onClick={handlePayNow}
                         disabled={paymentLoading}
-                        className="px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-sm font-bold shadow-md shadow-amber-500/20 transition-all shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
                         {paymentLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                         Renew Now
@@ -187,43 +195,43 @@ const Billing: React.FC = () => {
 
             {/* Plan Info Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-4">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
                             {status?.billingCycle === 'YEARLY' ? 'Yearly' : 'Monthly'} Plan
                         </span>
-                        <span className={cn("px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wide", getStatusBadge(sub?.status || 'EXPIRED'))}>
+                        <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wide", getStatusBadge(sub?.status || 'EXPIRED'))}>
                             {sub?.status || 'Inactive'}
                         </span>
                     </div>
-                    <div className="text-3xl font-extrabold text-slate-900">
+                    <div className="text-2xl font-bold text-slate-900">
                         ₹{(sub?.amount || status?.defaultAmount || 0).toLocaleString()}
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-4">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Days Remaining</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Days Remaining</span>
                         <div className="p-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
-                            <Clock className="w-5 h-5" />
+                            <Clock className="w-4 h-4" />
                         </div>
                     </div>
-                    <div className="flex items-baseline gap-1">
-                        <span className={cn("text-3xl font-extrabold", isOverdue ? "text-red-600" : "text-slate-900")}>
+                    <div className="flex items-baseline gap-1.5">
+                        <span className={cn("text-2xl font-bold", isOverdue ? "text-red-600" : "text-slate-900")}>
                             {sub?.daysRemaining ?? 0}
                         </span>
-                        <span className="text-sm font-medium text-slate-400">days</span>
+                        <span className="text-xs font-semibold text-slate-400">days</span>
                     </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-4">
-                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Billing Period</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Billing Period</span>
                         <div className="p-2 bg-purple-50 text-purple-600 rounded-xl border border-purple-100">
-                            <Calendar className="w-5 h-5" />
+                            <Calendar className="w-4 h-4" />
                         </div>
                     </div>
-                    <div className="text-sm sm:text-base font-bold text-slate-900 truncate">
+                    <div className="text-xs font-bold text-slate-900 truncate">
                         {sub ? `${new Date(sub.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} — ${new Date(sub.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}` : 'N/A'}
                     </div>
                 </div>
@@ -231,19 +239,19 @@ const Billing: React.FC = () => {
 
             {/* Pay Early Action */}
             {!isOverdue && !showWarning && sub && (
-                <div className="mb-8 p-6 bg-white border border-slate-200 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div className="mb-8 p-6 bg-white border border-slate-200/80 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                     <div>
-                        <h3 className="text-base font-bold text-slate-900 m-0 flex items-center gap-2">
+                        <h3 className="text-sm font-bold text-slate-900 m-0 flex items-center gap-2">
                             <Zap className="w-4 h-4 text-primary" /> Pay Early & Extend
                         </h3>
-                        <p className="text-xs sm:text-sm text-slate-500 m-0 mt-1 max-w-xl leading-relaxed">
+                        <p className="text-xs font-semibold text-slate-500 m-0 mt-1 max-w-xl leading-relaxed">
                             Pay before your period ends. Your new {status?.billingCycle === 'YEARLY' ? '365' : '30'}-day period will start from today without losing active service.
                         </p>
                     </div>
                     <button
                         onClick={handlePayNow}
                         disabled={paymentLoading}
-                        className="px-6 py-3 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 transition-all shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50"
+                        className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer font-bold"
                     >
                         {paymentLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                         Extend Subscription
@@ -253,18 +261,18 @@ const Billing: React.FC = () => {
 
             {/* No Active Subscription Case */}
             {!status?.hasSubscription && !sub && (
-                <div className="mb-8 p-8 bg-gradient-to-r from-primary/10 via-indigo-500/10 to-blue-500/10 border border-primary/20 rounded-3xl text-center shadow-md">
-                    <div className="w-14 h-14 bg-primary text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-primary/30">
-                        <CreditCard className="w-7 h-7" />
+                <div className="mb-8 p-8 bg-gradient-to-r from-primary/10 via-indigo-500/10 to-blue-500/10 border border-primary/20 rounded-3xl text-center shadow-xs">
+                    <div className="w-12 h-12 bg-primary text-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-md shadow-primary/30">
+                        <CreditCard className="w-6 h-6" />
                     </div>
-                    <h2 className="text-xl font-extrabold text-slate-900 mb-2">No Active Subscription</h2>
-                    <p className="text-sm text-slate-600 mb-6 max-w-md mx-auto">
+                    <h2 className="text-xl font-bold text-slate-900 mb-2">No Active Subscription</h2>
+                    <p className="text-xs font-semibold text-slate-600 mb-6 max-w-md mx-auto">
                         Start your subscription for ₹{(status?.defaultAmount || 999).toLocaleString()}/month to unlock full customer engagement capabilities.
                     </p>
                     <button
                         onClick={handlePayNow}
                         disabled={paymentLoading}
-                        className="px-8 py-3.5 bg-primary hover:bg-primary/90 text-white rounded-2xl text-sm font-extrabold shadow-lg shadow-primary/25 transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
+                        className="px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50 cursor-pointer"
                     >
                         {paymentLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                         Subscribe Now
@@ -273,33 +281,33 @@ const Billing: React.FC = () => {
             )}
 
             {/* History Table */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
                 <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex items-center gap-2">
                     <History className="w-4 h-4 text-primary" />
-                    <h2 className="text-base font-bold text-slate-900 m-0">Payment History</h2>
+                    <h2 className="text-sm font-bold text-slate-900 m-0">Payment History</h2>
                 </div>
 
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse min-w-[700px]">
                         <thead>
-                            <tr className="bg-slate-50/50 border-b border-slate-200">
-                                <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Billing Period</th>
-                                <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Amount</th>
-                                <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subscription Status</th>
-                                <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Payment Status</th>
+                            <tr className="bg-slate-50/50 border-b border-slate-200 text-xs">
+                                <th className="py-3.5 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Billing Period</th>
+                                <th className="py-3.5 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Amount</th>
+                                <th className="py-3.5 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Subscription Status</th>
+                                <th className="py-3.5 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Payment Status</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody className="text-xs font-medium text-slate-700 divide-y divide-slate-100">
                             {historyLoading ? (
                                 <tr>
-                                    <td colSpan={4} className="py-12 text-center text-slate-400 text-sm">
-                                        <div className="inline-block w-6 h-6 border-2 border-slate-200 border-t-primary rounded-full animate-spin mb-2" />
+                                    <td colSpan={4} className="py-12 text-center text-slate-400 font-semibold">
+                                        <div className="inline-block w-5 h-5 border-2 border-slate-200 border-t-primary rounded-full animate-spin mb-2" />
                                         <div>Loading payment history...</div>
                                     </td>
                                 </tr>
                             ) : history.length === 0 ? (
                                 <tr>
-                                    <td colSpan={4} className="py-16 text-center text-slate-400 text-sm font-medium">
+                                    <td colSpan={4} className="py-16 text-center text-slate-400 font-semibold">
                                         No payment history available
                                     </td>
                                 </tr>
@@ -307,23 +315,23 @@ const Billing: React.FC = () => {
                                 history.map((record: any) => {
                                     const payStatus = record.payment?.status || 'PENDING';
                                     return (
-                                        <tr key={record.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                                            <td className="py-4 px-6 font-bold text-sm text-slate-900">
+                                        <tr key={record.id} className="hover:bg-slate-50 transition-colors">
+                                            <td className="py-4 px-6 font-bold text-slate-900">
                                                 {new Date(record.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                                 {' → '}
                                                 {new Date(record.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
                                             </td>
-                                            <td className="py-4 px-6 font-extrabold text-sm text-primary">
+                                            <td className="py-4 px-6 font-bold text-primary">
                                                 ₹{record.amount}
                                             </td>
                                             <td className="py-4 px-6">
-                                                <span className={cn("inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wide", getStatusBadge(record.status))}>
+                                                <span className={cn("inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wide", getStatusBadge(record.status))}>
                                                     {record.status}
                                                 </span>
                                             </td>
                                             <td className="py-4 px-6">
                                                 <div className="flex flex-col gap-1">
-                                                    <span className={cn("inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wide max-w-max", getStatusBadge(payStatus))}>
+                                                    <span className={cn("inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wide max-w-max", getStatusBadge(payStatus))}>
                                                         {payStatus}
                                                     </span>
                                                     {record.payment?.paidAt && (
@@ -347,18 +355,18 @@ const Billing: React.FC = () => {
                         <span className="text-xs font-medium text-slate-500">
                             Showing {((page - 1) * pageSize) + 1} to {Math.min(page * pageSize, total)} of {total} entries
                         </span>
-                        <div className="flex gap-1">
+                        <div className="flex gap-1.5">
                             <button 
                                 onClick={() => setPage(p => Math.max(1, p - 1))}
                                 disabled={page === 1}
-                                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors flex items-center gap-1"
+                                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors flex items-center gap-1 cursor-pointer"
                             >
                                 <ChevronLeft className="w-3.5 h-3.5" /> Prev
                             </button>
                             <button 
                                 onClick={() => setPage(p => p + 1)}
                                 disabled={page >= totalPages}
-                                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors flex items-center gap-1"
+                                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors flex items-center gap-1 cursor-pointer"
                             >
                                 Next <ChevronRight className="w-3.5 h-3.5" />
                             </button>
@@ -366,6 +374,17 @@ const Billing: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {toast && (
+                <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-3 bg-slate-900 text-white text-xs font-semibold rounded-2xl shadow-xl animate-in slide-in-from-bottom-4 duration-300">
+                    <div className={cn(
+                        "w-2 h-2 rounded-full shrink-0",
+                        toast.type === 'success' ? "bg-emerald-400" :
+                        toast.type === 'error' ? "bg-red-400" : "bg-amber-400"
+                    )} />
+                    <span>{toast.message}</span>
+                </div>
+            )}
         </div>
     );
 };

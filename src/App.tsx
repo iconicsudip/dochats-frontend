@@ -12,7 +12,6 @@ import Plans from './pages/Plans';
 import Settings from './pages/Settings';
 import Auth from './pages/Auth';
 import { useAuth } from './contexts/AuthContext';
-import { Spin } from 'antd';
 import { Role } from './enums';
 import SuperAdminOverview from './pages/SuperAdmin/Overview';
 import ManageAdmins from './pages/SuperAdmin/ManageAdmins';
@@ -36,8 +35,9 @@ function App() {
     const { token, loading, user } = useAuth();
 
     if (loading) return (
-        <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#09090b' }}>
-            <Spin size="large" />
+        <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-900 font-sans">
+            <div className="w-12 h-12 border-4 border-slate-700 border-t-primary rounded-full animate-spin mb-4" />
+            <div className="text-xs font-semibold text-slate-400 tracking-wide uppercase">Initializing DoConnect...</div>
         </div>
     );
 

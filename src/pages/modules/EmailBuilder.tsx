@@ -4,7 +4,6 @@ import { emailApi, EmailTemplate } from '../../api/email';
 import { useAuth } from '../../contexts/AuthContext';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
-import { message } from 'antd'; // Keep for toasts
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import {
@@ -64,6 +63,13 @@ const EmailBuilder: React.FC = () => {
     const [contentBg, setContentBg] = useState('#ffffff');
     const [fontFamily, setFontFamily] = useState('Inter, system-ui, sans-serif');
 
+    // Toast Notification State
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
+    const showToast = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+        setToast({ message: msg, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
     useEffect(() => {
         if (id) {
             fetchTemplate(id);
@@ -89,7 +95,7 @@ const EmailBuilder: React.FC = () => {
                 setTemplateSubject(template.subject || '');
             }
         } catch (error) {
-            message.error('Failed to load template');
+            showToast('Failed to load template', 'error');
         } finally {
             setFetching(false);
         }
@@ -179,7 +185,7 @@ const EmailBuilder: React.FC = () => {
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!templateName || !templateSubject) {
-            return message.error('Template name and subject are required');
+            return showToast('Template name and subject are required', 'error');
         }
 
         setLoading(true);
@@ -198,14 +204,14 @@ const EmailBuilder: React.FC = () => {
 
             if (id) {
                 await emailApi.updateTemplate(id, payload);
-                message.success('Template updated successfully');
+                showToast('Template updated successfully', 'success');
             } else {
                 await emailApi.createTemplate(payload);
-                message.success('Template created successfully');
+                showToast('Template created successfully', 'success');
             }
-            navigate('/dashboard/email');
+            setTimeout(() => navigate('/dashboard/email'), 1000);
         } catch (error) {
-            message.error('Failed to save template');
+            showToast('Failed to save template', 'error');
         } finally {
             setLoading(false);
         }
@@ -213,10 +219,10 @@ const EmailBuilder: React.FC = () => {
 
     if (fetching) {
         return (
-            <div className="flex items-center justify-center h-[80vh]">
+            <div className="flex items-center justify-center h-[80vh] font-sans">
                 <div className="flex flex-col items-center gap-4">
                     <Loader2 className="w-10 h-10 text-primary animate-spin" />
-                    <span className="text-slate-500 font-medium">Loading designer...</span>
+                    <span className="text-xs font-semibold text-slate-500">Loading designer...</span>
                 </div>
             </div>
         );
@@ -225,20 +231,20 @@ const EmailBuilder: React.FC = () => {
     const selectedBlock = blocks.find(b => b.id === selectedBlockId);
 
     return (
-        <div className="flex flex-col h-[calc(100vh-80px)] -m-6 animate-in fade-in duration-500">
+        <div className="flex flex-col h-[calc(100vh-80px)] -m-6 animate-in fade-in duration-500 font-sans text-slate-800">
             {/* Top Navigation */}
-            <div className="flex justify-between items-center h-[72px] px-6 border-b border-slate-200 bg-white shrink-0 shadow-sm z-10">
+            <div className="flex justify-between items-center h-[72px] px-6 border-b border-slate-200 bg-white shrink-0 shadow-2xs z-10">
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => navigate('/dashboard/email')}
-                        className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-slate-700 transition-colors"
+                        className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors cursor-pointer"
                     >
-                        <ArrowLeft className="w-4 h-4" /> Back to Hub
+                        <ArrowLeft className="w-4 h-4" /> <span>Back to Hub</span>
                     </button>
                     <div className="w-px h-6 bg-slate-200"></div>
                     <div className="flex items-center gap-3">
                         <Mail className="w-5 h-5 text-primary" />
-                        <h1 className="text-lg font-extrabold text-slate-900 m-0">{id ? 'Edit Template' : 'New Email Template'}</h1>
+                        <h1 className="text-xl font-bold text-slate-900 tracking-tight m-0">{id ? 'Edit Template' : 'New Email Template'}</h1>
                     </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -248,18 +254,18 @@ const EmailBuilder: React.FC = () => {
                             const win = window.open('', '_blank');
                             win?.document.write(generateHTML());
                         }}
-                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer"
                     >
-                        <Eye className="w-4 h-4" /> Preview
+                        <Eye className="w-4 h-4" /> <span>Preview</span>
                     </button>
                     <button 
                         type="button"
                         onClick={handleSave as any}
                         disabled={loading}
-                        className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 transition-all disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 cursor-pointer"
                     >
                         {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        {id ? 'Update Template' : 'Save Template'}
+                        <span>{id ? 'Update Template' : 'Save Template'}</span>
                     </button>
                 </div>
             </div>
@@ -269,26 +275,26 @@ const EmailBuilder: React.FC = () => {
                 <div className="w-[300px] bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-y-auto">
                     <div className="p-5">
                         <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                            <LayoutGrid className="w-4 h-4" /> Blocks
+                            <LayoutGrid className="w-4 h-4" /> <span>Blocks</span>
                         </h3>
                         <div className="grid grid-cols-2 gap-3 mb-6">
-                            <button type="button" onClick={() => addBlock('HEADING')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
-                                <Heading1 className="w-5 h-5 text-slate-400" /> Heading
+                            <button type="button" onClick={() => addBlock('HEADING')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors cursor-pointer">
+                                <Heading1 className="w-5 h-5 text-slate-400" /> <span>Heading</span>
                             </button>
-                            <button type="button" onClick={() => addBlock('TEXT')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
-                                <Type className="w-5 h-5 text-slate-400" /> Text
+                            <button type="button" onClick={() => addBlock('TEXT')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors cursor-pointer">
+                                <Type className="w-5 h-5 text-slate-400" /> <span>Text</span>
                             </button>
-                            <button type="button" onClick={() => addBlock('BUTTON')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
-                                <Link className="w-5 h-5 text-slate-400" /> Button
+                            <button type="button" onClick={() => addBlock('BUTTON')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors cursor-pointer">
+                                <Link className="w-5 h-5 text-slate-400" /> <span>Button</span>
                             </button>
-                            <button type="button" onClick={() => addBlock('IMAGE')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
-                                <ImageIcon className="w-5 h-5 text-slate-400" /> Image
+                            <button type="button" onClick={() => addBlock('IMAGE')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors cursor-pointer">
+                                <ImageIcon className="w-5 h-5 text-slate-400" /> <span>Image</span>
                             </button>
-                            <button type="button" onClick={() => addBlock('DIVIDER')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
-                                <Minus className="w-5 h-5 text-slate-400" /> Divider
+                            <button type="button" onClick={() => addBlock('DIVIDER')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors cursor-pointer">
+                                <Minus className="w-5 h-5 text-slate-400" /> <span>Divider</span>
                             </button>
-                            <button type="button" onClick={() => addBlock('SPACER')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
-                                <Maximize2 className="w-5 h-5 text-slate-400" /> Spacer
+                            <button type="button" onClick={() => addBlock('SPACER')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors cursor-pointer">
+                                <Maximize2 className="w-5 h-5 text-slate-400" /> <span>Spacer</span>
                             </button>
                         </div>
 
@@ -296,10 +302,10 @@ const EmailBuilder: React.FC = () => {
                             <div className="animate-in fade-in slide-in-from-bottom-2">
                                 <hr className="border-slate-200 my-6" />
                                 <div className="flex justify-between items-center mb-4">
-                                    <h3 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
-                                        <Settings className="w-4 h-4" /> Block Settings
+                                    <h3 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2 m-0">
+                                        <Settings className="w-4 h-4" /> <span>Block Settings</span>
                                     </h3>
-                                    <button type="button" onClick={() => deleteBlock(selectedBlockId!)} className="text-red-400 hover:text-red-600 p-1 bg-red-50 hover:bg-red-100 rounded-md transition-colors">
+                                    <button type="button" onClick={() => deleteBlock(selectedBlockId!)} className="text-red-400 hover:text-red-600 p-1 bg-red-50 hover:bg-red-100 rounded-md transition-colors cursor-pointer">
                                         <Trash2 className="w-4 h-4" />
                                     </button>
                                 </div>
@@ -309,7 +315,7 @@ const EmailBuilder: React.FC = () => {
                                         <div>
                                             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Content</label>
                                             {selectedBlock.type === 'TEXT' ? (
-                                                <div className="border border-slate-200 rounded-lg overflow-hidden bg-white [&_.ql-toolbar]:border-none [&_.ql-toolbar]:border-b [&_.ql-toolbar]:border-slate-200 [&_.ql-container]:border-none [&_.ql-editor]:min-h-[150px]">
+                                                <div className="border border-slate-200 rounded-lg overflow-hidden bg-white [&_.ql-toolbar]:border-none [&_.ql-toolbar]:border-b [&_.ql-toolbar]:border-slate-200 [&_.ql-container]:border-none [&_.ql-editor]:min-h-[150px] text-xs font-medium">
                                                     <ReactQuill
                                                         theme="snow"
                                                         value={selectedBlock.content}
@@ -325,7 +331,7 @@ const EmailBuilder: React.FC = () => {
                                                 </div>
                                             ) : (
                                                 <textarea
-                                                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y min-h-[100px]"
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y min-h-[100px]"
                                                     value={selectedBlock.content}
                                                     onChange={(e) => updateBlock(selectedBlockId!, { content: e.target.value })}
                                                 />
@@ -341,7 +347,7 @@ const EmailBuilder: React.FC = () => {
                                                 min={8} max={100} 
                                                 value={selectedBlock.style?.fontSize || 16}
                                                 onChange={e => updateBlock(selectedBlockId!, { style: { fontSize: parseInt(e.target.value) || 16 } })}
-                                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
                                             />
                                         </div>
                                         <div>
@@ -351,7 +357,7 @@ const EmailBuilder: React.FC = () => {
                                                     type="color" 
                                                     value={selectedBlock.style?.color || '#000000'}
                                                     onChange={e => updateBlock(selectedBlockId!, { style: { color: e.target.value } })}
-                                                    className="w-7 h-7 rounded border border-slate-200 cursor-pointer"
+                                                    className="w-7 h-7 rounded border border-slate-200 cursor-pointer shrink-0"
                                                 />
                                                 <input 
                                                     type="text" 
@@ -371,19 +377,19 @@ const EmailBuilder: React.FC = () => {
                                                 min={0} max={100} 
                                                 value={selectedBlock.style?.padding || 0}
                                                 onChange={e => updateBlock(selectedBlockId!, { style: { padding: parseInt(e.target.value) || 0 } })}
-                                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
                                             />
                                         </div>
                                         <div>
                                             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Align</label>
                                             <div className="flex bg-slate-100 p-1 rounded-lg">
-                                                <button type="button" onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'left' } })} className={cn("p-1.5 rounded flex-1 flex justify-center", selectedBlock.style?.textAlign === 'left' ? "bg-white shadow-sm text-primary" : "text-slate-500")}>
+                                                <button type="button" onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'left' } })} className={cn("p-1.5 rounded flex-1 flex justify-center cursor-pointer", selectedBlock.style?.textAlign === 'left' ? "bg-white shadow-2xs text-primary font-bold" : "text-slate-500")}>
                                                     <AlignLeft className="w-4 h-4" />
                                                 </button>
-                                                <button type="button" onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'center' } })} className={cn("p-1.5 rounded flex-1 flex justify-center", selectedBlock.style?.textAlign === 'center' ? "bg-white shadow-sm text-primary" : "text-slate-500")}>
+                                                <button type="button" onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'center' } })} className={cn("p-1.5 rounded flex-1 flex justify-center cursor-pointer", selectedBlock.style?.textAlign === 'center' ? "bg-white shadow-2xs text-primary font-bold" : "text-slate-500")}>
                                                     <AlignCenter className="w-4 h-4" />
                                                 </button>
-                                                <button type="button" onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'right' } })} className={cn("p-1.5 rounded flex-1 flex justify-center", selectedBlock.style?.textAlign === 'right' ? "bg-white shadow-sm text-primary" : "text-slate-500")}>
+                                                <button type="button" onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'right' } })} className={cn("p-1.5 rounded flex-1 flex justify-center cursor-pointer", selectedBlock.style?.textAlign === 'right' ? "bg-white shadow-2xs text-primary font-bold" : "text-slate-500")}>
                                                     <AlignRight className="w-4 h-4" />
                                                 </button>
                                             </div>
@@ -400,7 +406,7 @@ const EmailBuilder: React.FC = () => {
                                                         type="text" 
                                                         value={selectedBlock.style?.link || ''}
                                                         onChange={e => updateBlock(selectedBlockId!, { style: { link: e.target.value } })}
-                                                        className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                        className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
                                                     />
                                                 </div>
                                             </div>
@@ -411,7 +417,7 @@ const EmailBuilder: React.FC = () => {
                                                         type="color" 
                                                         value={selectedBlock.style?.backgroundColor || '#2563eb'}
                                                         onChange={e => updateBlock(selectedBlockId!, { style: { backgroundColor: e.target.value } })}
-                                                        className="w-7 h-7 rounded border border-slate-200 cursor-pointer"
+                                                        className="w-7 h-7 rounded border border-slate-200 cursor-pointer shrink-0"
                                                     />
                                                     <input 
                                                         type="text" 
@@ -433,7 +439,7 @@ const EmailBuilder: React.FC = () => {
                                                     type="text" 
                                                     value={selectedBlock.style?.imageUrl || ''}
                                                     onChange={e => updateBlock(selectedBlockId!, { style: { imageUrl: e.target.value } })}
-                                                    className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                    className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20"
                                                 />
                                             </div>
                                         </div>
@@ -443,17 +449,17 @@ const EmailBuilder: React.FC = () => {
                         ) : (
                             <div className="py-12 px-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 mt-6">
                                 <MousePointer2 className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-                                <p className="text-xs font-medium text-slate-500">Select a block in the preview to adjust its properties.</p>
+                                <p className="text-xs font-medium text-slate-500 m-0">Select a block in the preview to adjust its properties.</p>
                             </div>
                         )}
 
                         <hr className="border-slate-200 my-6" />
                         
                         <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
-                            <h3 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                <Zap className="w-4 h-4" /> Variables
+                            <h3 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2 m-0">
+                                <Zap className="w-4 h-4 text-blue-500" /> <span>Variables</span>
                             </h3>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-2 mt-3">
                                 {['name', 'email', 'phone', 'booking_date', 'booking_time', 'lead_source'].map(v => (
                                     <button
                                         key={v}
@@ -461,9 +467,9 @@ const EmailBuilder: React.FC = () => {
                                         onClick={() => {
                                             const tag = `{{${v}}}`;
                                             navigator.clipboard.writeText(tag);
-                                            message.success(`Copied ${tag}`);
+                                            showToast(`Copied ${tag}`, 'success');
                                         }}
-                                        className="px-2 py-1 bg-white border border-blue-200 text-blue-600 rounded text-[10px] font-mono hover:bg-blue-100 transition-colors"
+                                        className="px-2.5 py-1 bg-white border border-blue-200 text-blue-600 rounded-md text-[10px] font-mono hover:bg-blue-100 transition-colors cursor-pointer"
                                     >
                                         {`{{${v}}}`}
                                     </button>
@@ -476,13 +482,13 @@ const EmailBuilder: React.FC = () => {
                 {/* Middle: Live Canvas */}
                 <div className="flex-1 overflow-y-auto p-6 lg:p-10" style={{ backgroundColor: globalBg, transition: 'background-color 0.3s' }}>
                     <div 
-                        className="max-w-[600px] mx-auto rounded-xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-colors duration-300" 
+                        className="max-w-[600px] mx-auto rounded-xl overflow-hidden shadow-lg transition-colors duration-300 border border-slate-200/50" 
                         style={{ backgroundColor: contentBg, fontFamily }}
                     >
                         {blocks.length === 0 ? (
                             <div className="p-24 text-center">
                                 <FileText className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                                <p className="text-slate-400 font-medium">Your canvas is empty. Add blocks from the sidebar to begin.</p>
+                                <p className="text-xs font-medium text-slate-400 m-0">Your canvas is empty. Add blocks from the sidebar to begin.</p>
                             </div>
                         ) : (
                             <div className="p-8 pb-32">
@@ -524,10 +530,10 @@ const EmailBuilder: React.FC = () => {
 
                                         {selectedBlockId === block.id && (
                                             <div className="absolute right-0 -top-10 flex gap-1 z-20 bg-slate-900 p-1 rounded-t-lg shadow-lg">
-                                                <button type="button" onClick={(e) => { e.stopPropagation(); moveBlock(index, 'up'); }} className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors" title="Move Up"><ArrowUp className="w-4 h-4" /></button>
-                                                <button type="button" onClick={(e) => { e.stopPropagation(); moveBlock(index, 'down'); }} className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors" title="Move Down"><ArrowDown className="w-4 h-4" /></button>
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); moveBlock(index, 'up'); }} className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors cursor-pointer" title="Move Up"><ArrowUp className="w-4 h-4" /></button>
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); moveBlock(index, 'down'); }} className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors cursor-pointer" title="Move Down"><ArrowDown className="w-4 h-4" /></button>
                                                 <div className="w-px h-4 bg-slate-700 mx-1 my-auto"></div>
-                                                <button type="button" onClick={(e) => { e.stopPropagation(); deleteBlock(block.id); }} className="p-1 text-red-400 hover:text-red-300 hover:bg-slate-700 rounded transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); deleteBlock(block.id); }} className="p-1 text-red-400 hover:text-red-300 hover:bg-slate-700 rounded transition-colors cursor-pointer" title="Delete"><Trash2 className="w-4 h-4" /></button>
                                             </div>
                                         )}
                                     </div>
@@ -540,39 +546,39 @@ const EmailBuilder: React.FC = () => {
                 {/* Right: Global & Config */}
                 <div className="w-[300px] bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-y-auto">
                     <div className="p-5">
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                            <FileText className="w-4 h-4" /> Template Details
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2 m-0">
+                            <FileText className="w-4 h-4" /> <span>Template Details</span>
                         </h3>
-                        <div className="space-y-4 mb-8">
+                        <div className="space-y-4 mb-8 mt-3">
                             <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Template Name *</label>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Template Name *</label>
                                 <input 
                                     required 
                                     value={templateName} onChange={e => setTemplateName(e.target.value)}
                                     placeholder="e.g. Summer Promotion" 
-                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" 
+                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20" 
                                 />
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Email Subject *</label>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Email Subject *</label>
                                 <input 
                                     required 
                                     value={templateSubject} onChange={e => setTemplateSubject(e.target.value)}
                                     placeholder="Don't miss out on our sale!" 
-                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" 
+                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20" 
                                 />
                             </div>
                         </div>
 
                         <hr className="border-slate-200 my-6" />
 
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                            <Palette className="w-4 h-4" /> Global Design
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2 m-0">
+                            <Palette className="w-4 h-4" /> <span>Global Design</span>
                         </h3>
                         
-                        <div className="space-y-5">
+                        <div className="space-y-5 mt-3">
                             <div className="flex justify-between items-center">
-                                <span className="text-sm font-bold text-slate-600">Canvas BG</span>
+                                <span className="text-xs font-bold text-slate-600">Canvas BG</span>
                                 <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-white focus-within:ring-2 focus-within:ring-primary/20">
                                     <input 
                                         type="color" 
@@ -582,7 +588,7 @@ const EmailBuilder: React.FC = () => {
                                 </div>
                             </div>
                             <div className="flex justify-between items-center">
-                                <span className="text-sm font-bold text-slate-600">Content BG</span>
+                                <span className="text-xs font-bold text-slate-600">Content BG</span>
                                 <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-white focus-within:ring-2 focus-within:ring-primary/20">
                                     <input 
                                         type="color" 
@@ -592,10 +598,10 @@ const EmailBuilder: React.FC = () => {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Typography</label>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Typography</label>
                                 <select 
                                     value={fontFamily} onChange={e => setFontFamily(e.target.value)}
-                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
+                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none cursor-pointer"
                                 >
                                     <option value="Inter, system-ui, sans-serif">Inter (Modern)</option>
                                     <option value="'Outfit', sans-serif">Outfit (Premium)</option>
@@ -613,13 +619,24 @@ const EmailBuilder: React.FC = () => {
                                 </span>
                                 <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Live Sync Enabled</span>
                             </div>
-                            <p className="text-xs text-slate-600">
+                            <p className="text-xs font-medium text-slate-600 m-0">
                                 All changes are tracked in real-time. Hit save to push updates to your automation engine.
                             </p>
                         </div>
                     </div>
                 </div>
             </form>
+
+            {toast && (
+                <div className="fixed bottom-5 right-5 z-[300] flex items-center gap-3 px-4 py-3 bg-slate-900 text-white text-xs font-semibold rounded-2xl shadow-xl animate-in slide-in-from-bottom-4 duration-300">
+                    <div className={cn(
+                        "w-2 h-2 rounded-full shrink-0",
+                        toast.type === 'success' ? "bg-emerald-400" :
+                        toast.type === 'error' ? "bg-red-400" : "bg-amber-400"
+                    )} />
+                    <span>{toast.message}</span>
+                </div>
+            )}
         </div>
     );
 };

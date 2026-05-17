@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Slider } from 'antd';
-import { CaretRightOutlined, PauseOutlined, AudioOutlined } from '@ant-design/icons';
+import { Play, Pause, Mic } from 'lucide-react';
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface AudioPlayerProps {
     src: string;
@@ -57,7 +62,8 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isFromAdmin }) =>
         setIsPlaying(!isPlaying);
     };
 
-    const handleSeek = (value: number) => {
+    const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const value = parseFloat(e.target.value);
         if (!audioRef.current) return;
         audioRef.current.currentTime = value;
         setCurrentTime(value);
@@ -70,53 +76,49 @@ export const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, isFromAdmin }) =>
             onTouchEnd={e => e.stopPropagation()}
             onMouseDown={e => e.stopPropagation()}
             onMouseMove={e => e.stopPropagation()}
-            style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 280 }}
+            className={cn(
+                "flex items-center gap-3 px-3.5 py-2.5 rounded-2xl min-w-[280px] max-w-[340px] shadow-xs font-sans text-xs",
+                !isFromAdmin ? "bg-slate-800 text-white" : "bg-slate-100 text-slate-800 border border-slate-200/80"
+            )}
         >
-            <div
+            <button
+                type="button"
                 onClick={togglePlay}
-                style={{
-                    cursor: 'pointer',
-                    fontSize: 26,
-                    color: !isFromAdmin ? '#d1d7db' : '#54656f',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 30
-                }}
+                className={cn(
+                    "w-9 h-9 rounded-xl flex items-center justify-center transition-transform hover:scale-105 shrink-0 cursor-pointer border shadow-2xs",
+                    !isFromAdmin ? "bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-400/30" : "bg-white hover:bg-slate-50 text-slate-900 border-slate-200"
+                )}
             >
-                {isPlaying ? <PauseOutlined /> : <CaretRightOutlined style={{ marginLeft: 4 }} />}
-            </div>
+                {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current ml-0.5" />}
+            </button>
 
-            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-                <Slider
+            <div className="flex-1 flex flex-col gap-1">
+                <input
+                    type="range"
                     min={0}
                     max={duration || 100}
+                    step={0.1}
                     value={currentTime}
                     onChange={handleSeek}
-                    tooltip={{ formatter: null }}
-                    style={{ margin: 0, padding: '10px 0' }}
-                    trackStyle={{ backgroundColor: !isFromAdmin ? '#00a884' : '#53bdeb', height: 4 }}
-                    handleStyle={{
-                        border: 'none',
-                        backgroundColor: !isFromAdmin ? '#00a884' : '#53bdeb',
-                        marginTop: -4,
-                        boxShadow: 'none',
-                        width: 12,
-                        height: 12,
-                        opacity: 1,
-                        borderRadius: '50%'
-                    }}
-                    railStyle={{ backgroundColor: !isFromAdmin ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.15)', height: 4 }}
+                    className="w-full h-1.5 bg-slate-300 rounded-lg appearance-none cursor-pointer accent-primary"
                 />
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: !isFromAdmin ? 'rgba(255,255,255,0.6)' : 'rgba(255,255,255,0.7)', marginTop: 2 }}>
+                <div className="flex justify-between items-center text-[10px] font-semibold opacity-70 px-0.5">
                     <span>{formatTime(currentTime)}</span>
+                    <span>{formatTime(duration)}</span>
                 </div>
             </div>
 
-            <div style={{ position: 'relative', width: 40, height: 40, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${isFromAdmin ? 'Admin' : 'Visitor'}`} style={{ width: 40, height: 40, borderRadius: '50%', background: '#6a7175', opacity: 0.8 }} alt="" />
-                <div style={{ position: 'absolute', bottom: -4, right: -4 }}>
-                    <AudioOutlined style={{ fontSize: 14, color: !isFromAdmin ? '#53bdeb' : '#00a884' }} />
+            <div className="relative w-9 h-9 shrink-0 flex items-center justify-center">
+                <img 
+                    src={`https://api.dicebear.com/7.x/bottts/svg?seed=${isFromAdmin ? 'Admin' : 'Visitor'}`} 
+                    className="w-9 h-9 rounded-full object-cover bg-slate-400 opacity-90 border border-white/20" 
+                    alt="avatar" 
+                />
+                <div className={cn(
+                    "absolute -bottom-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center shadow-xs border border-white",
+                    !isFromAdmin ? "bg-emerald-500 text-white" : "bg-primary text-white"
+                )}>
+                    <Mic className="w-2.5 h-2.5" />
                 </div>
             </div>
         </div>

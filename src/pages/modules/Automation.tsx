@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
-import { message } from 'antd';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { automationApi, AutomationRule } from '../../api/automation';
 import { emailApi, EmailTemplate } from '../../api/email';
 import { formsApi } from '../../api/forms';
@@ -13,8 +12,12 @@ import { Module } from '../../enums';
 import AutomationList from '../../components/Automation/AutomationList';
 import AutomationBuilder from '../../components/Automation/AutomationBuilder';
 import WhatsAppSettingsModal from '../../components/Automation/WhatsAppSettingsModal';
+import { twMerge } from 'tailwind-merge';
+import clsx from 'clsx';
 
-import { useNavigate } from 'react-router-dom';
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 const Automation: React.FC = () => {
     const { user, updateMe } = useAuth();
@@ -36,6 +39,13 @@ const Automation: React.FC = () => {
     const [loadingWa, setLoadingWa] = useState(false);
     const [loadingEmail, setLoadingEmail] = useState(false);
     
+    // Toast Notification State
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
+    const showToast = (msg: string, type: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+        setToast({ message: msg, type });
+        setTimeout(() => setToast(null), 3000);
+    };
+
     // Form State (Replacing Antd Form)
     const [ruleForm, setRuleForm] = useState<{name: string; trigger: string; delay: number; config: any}>({
         name: '',
@@ -101,9 +111,9 @@ const Automation: React.FC = () => {
                         const { phone_number_id, waba_id, business_id } = data.data;
                         sessionInfoRef.current = { waba_id, phone_number_id, business_id };
                     } else if (data.event === 'CANCEL') {
-                        message.warning(`Signup abandoned`);
+                        showToast(`Signup abandoned`, 'warning');
                     } else if (data.event === 'ERROR') {
-                        message.error(`Signup error: ${data.data?.error_message || 'Unknown error'}`);
+                        showToast(`Signup error: ${data.data?.error_message || 'Unknown error'}`, 'error');
                     }
                 }
             } catch (e) { }
@@ -127,16 +137,16 @@ const Automation: React.FC = () => {
                 const { waba_id, phone_number_id, business_id } = sessionInfoRef.current;
                 
                 whatsappApi.handleCallback(code, waba_id, phone_number_id, business_id).then((res) => {
-                    message.success('Account linked successfully!');
+                    showToast('Account linked successfully!', 'success');
                     updateMe({ whatsappConfig: res.data });
                     if (view === 'BUILDER' && hasModule(Module.WHATSAPP)) {
                         fetchWaTemplates();
                     }
                 }).catch(() => {
-                    message.error('Failed to link account');
+                    showToast('Failed to link account', 'error');
                 });
             } else {
-                message.error('Signup cancelled or failed');
+                showToast('Signup cancelled or failed', 'error');
             }
         }, {
             config_id: configId,
@@ -284,14 +294,14 @@ const Automation: React.FC = () => {
     const applyTemplate = (template: any) => {
         setRuleForm(prev => ({ ...prev, name: template.name, trigger: template.trigger }));
         setNodes(template.nodes.map((n: any) => ({ ...n, id: `${n.id}_${Date.now()}` })));
-        message.success(`${template.industry} template applied!`);
+        showToast(`${template.industry} template applied!`, 'success');
     };
 
     const handleAdd = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         
         if (!ruleForm.name || !ruleForm.trigger) {
-            message.error("Rule Name and Trigger are required");
+            showToast("Rule Name and Trigger are required", 'error');
             return;
         }
 
@@ -318,16 +328,16 @@ const Automation: React.FC = () => {
 
             if (editingRuleId) {
                 await automationApi.updateRule(editingRuleId, payload);
-                message.success('Neural Flow updated successfully!');
+                showToast('Neural Flow updated successfully!', 'success');
             } else {
                 await automationApi.createRule(payload);
-                message.success('Neural Flow automation created!');
+                showToast('Neural Flow automation created!', 'success');
             }
             
             exitBuilder();
             fetchRules();
         } catch (error: any) {
-            message.error(`Failed to save rule: ${error.response?.data?.error || error.message}`);
+            showToast(`Failed to save rule: ${error.response?.data?.error || error.message}`, 'error');
         }
     };
 
@@ -335,10 +345,10 @@ const Automation: React.FC = () => {
         setSavingSettings(true);
         try {
             await updateMe({ whatsappConfig: vals });
-            message.success('WhatsApp configuration saved!');
+            showToast('WhatsApp configuration saved!', 'success');
             setWaSettingsOpen(false);
         } catch (e) {
-            message.error('Failed to save configuration');
+            showToast('Failed to save configuration', 'error');
         } finally {
             setSavingSettings(false);
         }
@@ -359,48 +369,48 @@ const Automation: React.FC = () => {
         if (!window.confirm("Are you sure you want to delete this rule?")) return;
         try {
             await automationApi.deleteRule(id);
-            message.success('Rule deleted');
+            showToast('Rule deleted', 'success');
             fetchRules();
         } catch (error) {
-            message.error('Failed to delete rule');
+            showToast('Failed to delete rule', 'error');
         }
     };
 
-    if (view === 'BUILDER') {
-        return (
-            <AutomationBuilder
-                editingRuleId={editingRuleId}
-                ruleForm={ruleForm}
-                setRuleForm={setRuleForm}
-                nodes={nodes}
-                forms={forms}
-                waTemplates={waTemplates}
-                emailTemplates={emailTemplates}
-                loadingWa={loadingWa}
-                loadingEmail={loadingEmail}
-                hasWaConfig={hasWaConfig}
-                exitBuilder={exitBuilder}
-                handleAdd={handleAdd}
-                setNodes={setNodes}
-                addNode={addNode}
-                removeNode={removeNode}
-                updateNode={updateNode}
-                applyTemplate={applyTemplate}
-            />
-        );
-    }
-
     return (
-        <>
-            <AutomationList
-                rules={rules}
-                hasModule={hasModule}
-                setWaSettingsOpen={setWaSettingsOpen}
-                enterBuilder={enterBuilder}
-                toggleRule={toggleRule}
-                handleDeleteRule={handleDeleteRule}
-                onRefresh={fetchRules}
-            />
+        <div className="min-h-full font-sans text-slate-800">
+            {view === 'BUILDER' ? (
+                <AutomationBuilder
+                    editingRuleId={editingRuleId}
+                    ruleForm={ruleForm}
+                    setRuleForm={setRuleForm}
+                    nodes={nodes}
+                    forms={forms}
+                    waTemplates={waTemplates}
+                    emailTemplates={emailTemplates}
+                    loadingWa={loadingWa}
+                    loadingEmail={loadingEmail}
+                    hasWaConfig={hasWaConfig}
+                    exitBuilder={exitBuilder}
+                    handleAdd={handleAdd}
+                    setNodes={setNodes}
+                    addNode={addNode}
+                    removeNode={removeNode}
+                    updateNode={updateNode}
+                    applyTemplate={applyTemplate}
+                    showToast={showToast}
+                />
+            ) : (
+                <AutomationList
+                    rules={rules}
+                    hasModule={hasModule}
+                    setWaSettingsOpen={setWaSettingsOpen}
+                    enterBuilder={enterBuilder}
+                    toggleRule={toggleRule}
+                    handleDeleteRule={handleDeleteRule}
+                    onRefresh={fetchRules}
+                    showToast={showToast}
+                />
+            )}
 
             <WhatsAppSettingsModal
                 open={waSettingsOpen}
@@ -409,7 +419,18 @@ const Automation: React.FC = () => {
                 onCancel={() => setWaSettingsOpen(false)}
                 onFinish={handleSaveWaSettings}
             />
-        </>
+
+            {toast && (
+                <div className="fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-3 bg-slate-900 text-white text-xs font-semibold rounded-2xl shadow-xl animate-in slide-in-from-bottom-4 duration-300">
+                    <div className={cn(
+                        "w-2 h-2 rounded-full shrink-0",
+                        toast.type === 'success' ? "bg-emerald-400" :
+                        toast.type === 'error' ? "bg-red-400" : "bg-amber-400"
+                    )} />
+                    <span>{toast.message}</span>
+                </div>
+            )}
+        </div>
     );
 };
 
