@@ -9,6 +9,7 @@ import SubUsers from './pages/SubUsers';
 import Reports from './pages/Reports';
 import Billing from './pages/Billing';
 import Plans from './pages/Plans';
+import Settings from './pages/Settings';
 import Auth from './pages/Auth';
 import { useAuth } from './contexts/AuthContext';
 import { Spin } from 'antd';
@@ -21,7 +22,6 @@ import UpgradeRequests from './pages/SuperAdmin/UpgradeRequests';
 import CRM from './pages/modules/CRM';
 import Bookings from './pages/modules/Bookings';
 import Automation from './pages/modules/Automation';
-import Analytics from './pages/modules/Analytics';
 import WhatsApp from './pages/modules/WhatsApp';
 import ModuleManager from './pages/SuperAdmin/ModuleManager';
 import FormList from './pages/modules/FormList';
@@ -66,15 +66,15 @@ function App() {
                         <Route index element={<Overview />} />
                         <Route path="billing" element={<Billing />} />
                         <Route path="plans" element={<Plans />} />
+                        <Route path="settings" element={<Settings />} />
                         {/* Gated routes */}
                         <Route path="links" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Links />} />
                         <Route path="sub-users" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <SubUsers />} />
                         <Route path="reports" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Reports />} />
-                        {/* AI BOS Modules */}
+                        {/* Business OS Modules */}
                         <Route path="crm" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <CRM />} />
                         <Route path="bookings" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Bookings />} />
                         <Route path="automation" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Automation />} />
-                        <Route path="analytics" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Analytics />} />
                         <Route path="whatsapp" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <WhatsApp />} />
                         <Route path="forms" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <FormList />} />
                         <Route path="forms/new" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <FormBuilder />} />
@@ -95,6 +95,7 @@ function App() {
                             <>
                                 <Route path="crm" element={<CRM />} />
                                 <Route path="bookings" element={<Bookings />} />
+                                <Route path="settings" element={<Settings />} />
                             </>
                         )}
                     </>

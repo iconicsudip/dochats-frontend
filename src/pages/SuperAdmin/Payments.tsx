@@ -1,43 +1,22 @@
 import React, { useState } from 'react';
-import {
-    Row,
-    Col,
-    Card,
-    Typography,
-    Table,
-    Statistic,
-    Avatar,
-    Space,
-    Skeleton,
-    Input,
-    Select,
-    Tooltip,
-    Empty,
-    Pagination,
-    Grid
-} from 'antd';
-import {
-    DollarOutlined,
-    CheckCircleOutlined,
-    UserOutlined,
-    SearchOutlined,
-    ExclamationCircleOutlined,
-    CalendarOutlined,
-    WalletOutlined
-} from '@ant-design/icons';
 import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
 import apiClient from '../../api/apiClient';
+import { 
+    CreditCard, DollarSign, CheckCircle2, AlertCircle, Wallet, Search, Calendar, User, Copy, Check, Filter
+} from 'lucide-react';
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-const { Title, Text } = Typography;
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 const Payments: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<string>('ALL');
     const [currentPage, setCurrentPage] = useState(1);
+    const [copiedId, setCopiedId] = useState<string | null>(null);
     const pageSize = 15;
-    const screens = Grid.useBreakpoint();
-    const isMobile = !screens.sm;
 
     const { data: response, isLoading } = useQuery({
         queryKey: ['all-payments', currentPage, searchTerm, statusFilter],
@@ -48,340 +27,266 @@ const Payments: React.FC = () => {
     const paginatedPayments = response?.data || [];
     const totalPayments = response?.total || 0;
 
-    const statCards = [
-        {
-            title: 'Total Revenue',
-            value: stats.totalRevenue || 0,
-            prefix: '₹',
-            icon: <DollarOutlined />,
-            color: '#00df9a',
-            gradient: 'linear-gradient(135deg, rgba(0, 223, 154, 0.12), rgba(0, 223, 154, 0.02))',
-        },
-        {
-            title: 'Active Plans',
-            value: stats.activeSubscriptions || 0,
-            icon: <CheckCircleOutlined />,
-            color: '#22c55e',
-            gradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.12), rgba(34, 197, 94, 0.02))',
-        },
-        {
-            title: 'Pending / Overdue',
-            value: stats.pendingPayments || 0,
-            icon: <ExclamationCircleOutlined />,
-            color: '#f59e0b',
-            gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.02))',
-        },
-        {
-            title: 'Total Bills',
-            value: stats.totalBills || 0,
-            icon: <WalletOutlined />,
-            color: '#6366f1',
-            gradient: 'linear-gradient(135deg, rgba(99, 102, 241, 0.12), rgba(99, 102, 241, 0.02))',
-        },
-    ];
-
-    const getSubscriptionColor = (status: string) => {
-        const map: any = {
-            ACTIVE: { bg: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: 'rgba(34, 197, 94, 0.3)' },
-            OVERDUE: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
-            EXPIRED: { bg: 'rgba(113, 113, 122, 0.1)', color: '#71717a', border: 'rgba(113, 113, 122, 0.3)' },
-        };
-        return map[status] || { bg: 'rgba(113, 113, 122, 0.1)', color: '#71717a', border: 'rgba(113, 113, 122, 0.3)' };
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedId(text);
+        setTimeout(() => setCopiedId(null), 2000);
     };
 
-    const getPaymentColor = (status: string) => {
-        const map: any = {
-            PAID: { bg: 'rgba(34, 197, 94, 0.1)', color: '#22c55e', border: 'rgba(34, 197, 94, 0.3)' },
-            PENDING: { bg: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' },
-            FAILED: { bg: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', border: 'rgba(239, 68, 68, 0.3)' },
+    const getSubscriptionStyle = (status: string) => {
+        const map: Record<string, string> = {
+            ACTIVE: "bg-emerald-50 text-emerald-600 border-emerald-200",
+            OVERDUE: "bg-red-50 text-red-600 border-red-200",
+            EXPIRED: "bg-slate-100 text-slate-500 border-slate-200",
         };
-        return map[status] || { bg: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b', border: 'rgba(245, 158, 11, 0.3)' };
+        return map[status] || "bg-slate-100 text-slate-500 border-slate-200";
     };
 
-    const columns = [
-        {
-            title: 'ADMIN',
-            key: 'admin',
-            width: 220,
-            render: (_: any, record: any) => (
-                <Space>
-                    <Avatar
-                        src={record.admin?.logoUrl}
-                        icon={<UserOutlined />}
-                        size={40}
-                        style={{
-                            background: 'rgba(0, 223, 154, 0.1)',
-                            color: '#00df9a',
-                            border: '1px solid rgba(0, 223, 154, 0.2)'
-                        }}
-                    />
-                    <div>
-                        <Text strong style={{ fontSize: 13, display: 'block', color: '#fff' }}>
-                            {record.admin?.name || record.admin?.username}
-                        </Text>
-                        <Text type="secondary" style={{ fontSize: 11 }}>@{record.admin?.username}</Text>
-                    </div>
-                </Space>
-            ),
-        },
-        {
-            title: 'BILLING PERIOD',
-            key: 'period',
-            width: 200,
-            responsive: ['md' as const],
-            render: (_: any, record: any) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <CalendarOutlined style={{ color: '#8696a0', fontSize: 14 }} />
-                    <div>
-                        <Text style={{ fontSize: 13, display: 'block' }}>
-                            {new Date(record.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </Text>
-                        <Text type="secondary" style={{ fontSize: 11 }}>
-                            to {new Date(record.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                        </Text>
-                    </div>
+    const getPaymentStyle = (status: string) => {
+        const map: Record<string, string> = {
+            PAID: "bg-emerald-50 text-emerald-600 border-emerald-200",
+            PENDING: "bg-amber-50 text-amber-600 border-amber-200",
+            FAILED: "bg-red-50 text-red-600 border-red-200",
+        };
+        return map[status] || "bg-amber-50 text-amber-600 border-amber-200";
+    };
+
+    const totalPages = Math.ceil(totalPayments / pageSize);
+
+    if (isLoading) {
+        return (
+            <div className="space-y-6 animate-pulse">
+                <div className="h-8 bg-slate-100 rounded-lg w-48 mb-6" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                    {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="h-32 bg-slate-100 rounded-2xl" />
+                    ))}
                 </div>
-            ),
-        },
-        {
-            title: 'AMOUNT',
-            key: 'amount',
-            width: 120,
-            align: 'right' as const,
-            render: (_: any, record: any) => (
-                <Text strong style={{ fontSize: 15, color: '#fff' }}>₹{record.amount}</Text>
-            ),
-        },
-        {
-            title: 'SUBSCRIPTION',
-            key: 'subscriptionStatus',
-            width: 140,
-            align: 'center' as const,
-            render: (_: any, record: any) => {
-                const style = getSubscriptionColor(record.subscriptionStatus);
-                return (
-                    <span style={{
-                        padding: '4px 12px',
-                        borderRadius: 20,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        letterSpacing: 0.5,
-                        textTransform: 'uppercase' as const,
-                        background: style.bg,
-                        color: style.color,
-                        border: `1px solid ${style.border}`
-                    }}>
-                        {record.subscriptionStatus}
-                    </span>
-                );
-            },
-        },
-        {
-            title: 'PAYMENT STATUS',
-            key: 'paymentStatus',
-            width: 160,
-            align: 'center' as const,
-            render: (_: any, record: any) => {
-                const payStatus = record.payment?.status || 'UNPAID';
-                const style = getPaymentColor(payStatus);
-                return (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                        <span style={{
-                            padding: '4px 12px',
-                            borderRadius: 20,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            letterSpacing: 0.5,
-                            textTransform: 'uppercase' as const,
-                            background: style.bg,
-                            color: style.color,
-                            border: `1px solid ${style.border}`
-                        }}>
-                            {payStatus}
-                        </span>
-                        {record.payment?.paidAt && (
-                            <Tooltip title={new Date(record.payment.paidAt).toLocaleString('en-IN')}>
-                                <Text type="secondary" style={{ fontSize: 10 }}>
-                                    {new Date(record.payment.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                </Text>
-                            </Tooltip>
-                        )}
-                    </div>
-                );
-            },
-        },
-        {
-            title: 'RAZORPAY ID',
-            key: 'razorpayId',
-            width: 180,
-            responsive: ['lg' as const],
-            render: (_: any, record: any) => {
-                const rpId = record.payment?.razorpayPaymentId;
-                if (!rpId) return <Text type="secondary" style={{ fontSize: 11 }}>—</Text>;
-                return (
-                    <Tooltip title={rpId}>
-                        <Text copyable={{ text: rpId }} style={{ fontSize: 11, color: '#8696a0' }}>
-                            {rpId.length > 18 ? `${rpId.substring(0, 18)}...` : rpId}
-                        </Text>
-                    </Tooltip>
-                );
-            },
-        },
-    ];
-
-    const statusFilterOptions = [
-        { value: 'ALL', label: 'All Statuses' },
-        { value: 'PAID', label: '✅ Paid' },
-        { value: 'PENDING', label: '⏳ Pending' },
-        { value: 'ACTIVE', label: '🟢 Active' },
-        { value: 'OVERDUE', label: '🔴 Overdue' },
-        { value: 'EXPIRED', label: '⚪ Expired' },
-    ];
-
-    if (isLoading) return <Skeleton active paragraph={{ rows: 12 }} />;
+                <div className="h-96 bg-slate-100 rounded-2xl" />
+            </div>
+        );
+    }
 
     return (
-        <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-        >
-            <div style={{ marginBottom: isMobile ? 32 : 40 }}>
-                <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 22 : 24 }}>Payment Management</Title>
-                <Text type="secondary" style={{ fontSize: 13 }}>Track all admin payments, subscription statuses, and revenue analytics.</Text>
+        <div className="pb-20 font-sans text-slate-800 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="mb-8">
+                <div className="flex items-center gap-2 mb-1">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-xs">
+                        <CreditCard className="w-6 h-6 text-primary" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 m-0">Payment Management</h1>
+                </div>
+                <p className="text-sm text-slate-500 mt-2">Track all admin payments, subscription statuses, and revenue analytics.</p>
             </div>
 
             {/* Stats Cards */}
-            <Row gutter={[20, 20]} style={{ marginBottom: 32 }}>
-                {statCards.map((stat, idx) => (
-                    <Col xs={24} sm={12} lg={6} key={idx}>
-                        <motion.div
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: idx * 0.1 }}
-                        >
-                            <Card
-                                style={{
-                                    background: stat.gradient,
-                                    border: `1px solid ${stat.color}15`,
-                                    borderRadius: 16,
-                                }}
-                                styles={{ body: { padding: 24 } }}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                    <div style={{
-                                        width: 48,
-                                        height: 48,
-                                        background: `${stat.color}18`,
-                                        borderRadius: 14,
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        border: `1px solid ${stat.color}25`
-                                    }}>
-                                        {React.cloneElement(stat.icon as any, { style: { fontSize: 22, color: stat.color } })}
-                                    </div>
-                                </div>
-                                <Statistic
-                                    title={<Text type="secondary" style={{ fontSize: 11, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 600 }}>{stat.title}</Text>}
-                                    value={stat.value}
-                                    prefix={stat.prefix}
-                                    valueStyle={{ fontSize: 28, fontWeight: 800, color: '#fff', marginTop: 4 }}
-                                />
-                            </Card>
-                        </motion.div>
-                    </Col>
-                ))}
-            </Row>
-
-            {/* Payments Table */}
-            <Card
-                style={{
-                    background: '#121316',
-                    border: '1px solid #2d2e33',
-                    borderRadius: 16,
-                    overflow: 'hidden'
-                }}
-                styles={{ body: { padding: 0 } }}
-            >
-                {/* Table Header with Search & Filter */}
-                <div style={{
-                    padding: '20px 24px',
-                    borderBottom: '1px solid #2d2e33',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                    gap: 16
-                }}>
-                    <div>
-                        <Title level={5} style={{ margin: 0, fontWeight: 700 }}>All Admin Payments</Title>
-                        <Text type="secondary" style={{ fontSize: 12 }}>
-                            {totalPayments} record{totalPayments !== 1 ? 's' : ''} found
-                        </Text>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-4">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Revenue</span>
+                        <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
+                            <DollarSign className="w-5 h-5" />
+                        </div>
                     </div>
-                    <Space size={12} wrap>
-                        <Input
-                            prefix={<SearchOutlined style={{ color: '#8696a0' }} />}
-                            placeholder="Search admin..."
-                            value={searchTerm}
-                            onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-                            style={{
-                                width: 220,
-                                background: '#0b0c0e',
-                                border: '1px solid #2d2e33',
-                                borderRadius: 10,
-                                color: '#fff'
-                            }}
-                            allowClear
-                        />
-                        <Select
-                            value={statusFilter}
-                            onChange={v => { setStatusFilter(v); setCurrentPage(1); }}
-                            options={statusFilterOptions}
-                            style={{ width: 160 }}
-                            popupMatchSelectWidth={false}
-                            dropdownStyle={{ background: '#1a1b1e', border: '1px solid #2d2e33', borderRadius: 10 }}
-                        />
-                    </Space>
+                    <div className="text-3xl font-extrabold text-slate-900">₹{(stats.totalRevenue || 0).toLocaleString()}</div>
                 </div>
 
-                {totalPayments === 0 ? (
-                    <div style={{ padding: 60 }}>
-                        <Empty description="No payments match your filters" />
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-4">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Plans</span>
+                        <div className="p-2 bg-blue-50 text-blue-600 rounded-xl border border-blue-100">
+                            <CheckCircle2 className="w-5 h-5" />
+                        </div>
                     </div>
-                ) : (
-                    <>
-                        <Table
-                            dataSource={paginatedPayments}
-                            columns={columns}
-                            rowKey="id"
-                            pagination={false}
-                            style={{ background: 'transparent' }}
-                            className="premium-table"
-                            size="middle"
-                            scroll={{ x: 'max-content' }}
-                        />
-                        {totalPayments > pageSize && (
-                            <div style={{ padding: '16px 24px', borderTop: '1px solid #2d2e33', display: 'flex', justifyContent: 'flex-end' }}>
-                                <Pagination
-                                    current={currentPage}
-                                    pageSize={pageSize}
-                                    total={totalPayments}
-                                    onChange={setCurrentPage}
-                                    showSizeChanger={false}
-                                    showTotal={(total, range) => (
-                                        <Text type="secondary" style={{ fontSize: 12 }}>
-                                            {range[0]}–{range[1]} of {total} records
-                                        </Text>
-                                    )}
-                                />
-                            </div>
-                        )}
-                    </>
+                    <div className="text-3xl font-extrabold text-slate-900">{stats.activeSubscriptions || 0}</div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-4">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending / Overdue</span>
+                        <div className="p-2 bg-amber-50 text-amber-600 rounded-xl border border-amber-100">
+                            <AlertCircle className="w-5 h-5" />
+                        </div>
+                    </div>
+                    <div className="text-3xl font-extrabold text-slate-900">{stats.pendingPayments || 0}</div>
+                </div>
+
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-4">
+                        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Bills Generated</span>
+                        <div className="p-2 bg-purple-50 text-purple-600 rounded-xl border border-purple-100">
+                            <Wallet className="w-5 h-5" />
+                        </div>
+                    </div>
+                    <div className="text-3xl font-extrabold text-slate-900">{stats.totalBills || 0}</div>
+                </div>
+            </div>
+
+            {/* Payments Table Container */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mb-8">
+                {/* Search & Filter Bar */}
+                <div className="p-6 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 className="text-base font-bold text-slate-900 m-0">All Admin Payments</h2>
+                        <p className="text-xs text-slate-500 m-0 mt-0.5">{totalPayments} record{totalPayments !== 1 ? 's' : ''} found</p>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                        <div className="relative w-full sm:w-60">
+                            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                            <input
+                                type="text"
+                                placeholder="Search admin..."
+                                value={searchTerm}
+                                onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-2xs"
+                            />
+                        </div>
+
+                        <div className="relative w-full sm:w-44">
+                            <select
+                                value={statusFilter}
+                                onChange={e => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+                                className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all appearance-none cursor-pointer shadow-2xs"
+                            >
+                                <option value="ALL">All Statuses</option>
+                                <option value="PAID">Paid</option>
+                                <option value="PENDING">Pending</option>
+                                <option value="ACTIVE">Active Plan</option>
+                                <option value="OVERDUE">Overdue</option>
+                                <option value="EXPIRED">Expired</option>
+                            </select>
+                            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Table */}
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[950px]">
+                        <thead>
+                            <tr className="bg-slate-50/50 border-b border-slate-200">
+                                <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Admin</th>
+                                <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Billing Period</th>
+                                <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Amount</th>
+                                <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Subscription</th>
+                                <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Payment Status</th>
+                                <th className="py-4 px-6 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Razorpay ID</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {totalPayments === 0 ? (
+                                <tr>
+                                    <td colSpan={6} className="py-20 text-center text-slate-400 text-sm font-medium">
+                                        No payments match your filters
+                                    </td>
+                                </tr>
+                            ) : (
+                                paginatedPayments.map((record: any) => {
+                                    const payStatus = record.payment?.status || 'UNPAID';
+                                    const rpId = record.payment?.razorpayPaymentId;
+
+                                    return (
+                                        <tr key={record.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center gap-3">
+                                                    {record.admin?.logoUrl ? (
+                                                        <img src={record.admin.logoUrl} alt="logo" className="w-10 h-10 rounded-lg object-cover border border-slate-200 shadow-sm" />
+                                                    ) : (
+                                                        <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 shadow-sm shrink-0">
+                                                            {(record.admin?.name || record.admin?.username || '?').charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    <div>
+                                                        <div className="text-sm font-bold text-slate-900">{record.admin?.name || record.admin?.username}</div>
+                                                        <div className="text-[11px] font-medium text-slate-500">@{record.admin?.username}</div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center gap-2">
+                                                    <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                                                    <div>
+                                                        <div className="text-xs font-bold text-slate-800">
+                                                            {new Date(record.startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        </div>
+                                                        <div className="text-[11px] text-slate-400 font-medium">
+                                                            to {new Date(record.endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6 text-right">
+                                                <div className="text-sm font-extrabold text-slate-900">₹{record.amount}</div>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                <span className={cn("inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wide", getSubscriptionStyle(record.subscriptionStatus))}>
+                                                    {record.subscriptionStatus}
+                                                </span>
+                                            </td>
+                                            <td className="py-4 px-6 text-center">
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <span className={cn("inline-flex px-2.5 py-1 rounded-md text-[10px] font-bold border uppercase tracking-wide", getPaymentStyle(payStatus))}>
+                                                        {payStatus}
+                                                    </span>
+                                                    {record.payment?.paidAt && (
+                                                        <span className="text-[10px] text-slate-400 font-medium" title={new Date(record.payment.paidAt).toLocaleString('en-IN')}>
+                                                            {new Date(record.payment.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                {rpId ? (
+                                                    <div className="flex items-center gap-1.5 text-xs font-mono text-slate-600 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200/60 max-w-max">
+                                                        <span className="truncate max-w-[150px]" title={rpId}>{rpId}</span>
+                                                        <button 
+                                                            onClick={() => copyToClipboard(rpId)}
+                                                            className="text-slate-400 hover:text-primary transition-colors p-0.5"
+                                                            title="Copy ID"
+                                                        >
+                                                            {copiedId === rpId ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-xs text-slate-400 font-medium">—</span>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    );
+                                })
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="p-4 border-t border-slate-200 flex justify-between items-center bg-slate-50/50">
+                        <span className="text-xs font-medium text-slate-500">
+                            Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalPayments)} of {totalPayments} entries
+                        </span>
+                        <div className="flex gap-1">
+                            <button 
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                            >
+                                Prev
+                            </button>
+                            <button 
+                                onClick={() => setCurrentPage(p => p + 1)}
+                                disabled={currentPage >= totalPages}
+                                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
                 )}
-            </Card>
-        </motion.div>
+            </div>
+        </div>
     );
 };
 

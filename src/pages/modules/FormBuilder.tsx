@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, Typography, Space, Select, Switch, Row, Col, Divider, message, Modal, Tooltip } from 'antd';
-import { PlusOutlined, DeleteOutlined, SaveOutlined, ArrowLeftOutlined, DragOutlined, SettingOutlined } from '@ant-design/icons';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { formsApi } from '../../api/forms';
+import { message } from 'antd'; // Keeping only message for toast
 
 // Dnd Kit Imports
 import {
@@ -23,8 +22,14 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-const { Title, Text } = Typography;
-const { Option } = Select;
+// Icons
+import { Plus, Trash2, Save, ArrowLeft, GripVertical, Settings, Copy, Globe, Check, X } from 'lucide-react';
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface FormField {
     id: string;
@@ -62,137 +67,144 @@ const SortableField: React.FC<SortableItemProps> = ({ field, index, removeField,
         transform: CSS.Transform.toString(transform),
         transition,
         zIndex: isDragging ? 100 : 1,
-        opacity: isDragging ? 0.5 : 1,
-        background: isDragging ? 'rgba(0, 223, 154, 0.05)' : 'rgba(255,255,255,0.02)',
-        border: isDragging ? '1px solid #00df9a' : '1px solid rgba(255,255,255,0.05)',
-        borderRadius: 12,
-        padding: 16,
-        marginBottom: 16,
-        position: 'relative' as const,
     };
 
     return (
-        <div ref={setNodeRef} style={style}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-                <Space>
-                    <div {...attributes} {...listeners} style={{ cursor: 'grab', padding: '4px 8px', marginLeft: -8 }}>
-                        <DragOutlined style={{ color: '#00df9a' }} />
+        <div ref={setNodeRef} style={style} className={cn(
+            "bg-white border rounded-3xl p-6 mb-5 relative transition-all shadow-sm",
+            isDragging ? "border-primary shadow-2xl scale-[1.02] opacity-95 ring-2 ring-primary/20" : "border-slate-200/80 hover:border-slate-300 hover:shadow-md"
+        )}>
+            <div className="flex justify-between items-center mb-6">
+                <div className="flex items-center gap-3">
+                    <div {...attributes} {...listeners} className="cursor-grab hover:bg-slate-100 p-2 rounded-xl -ml-2 text-slate-400 hover:text-slate-700 transition-colors">
+                        <GripVertical className="w-5 h-5" />
                     </div>
-                    <Text strong style={{ color: '#fff' }}>Field #{index + 1}</Text>
-                </Space>
-                <Space>
-                    <Tooltip title="Custom Validation">
-                        <Button 
-                            type="text" 
-                            icon={<SettingOutlined style={{ color: showValidation ? '#00df9a' : '#94a3b8' }} />} 
-                            onClick={() => setShowValidation(!showValidation)}
-                        />
-                    </Tooltip>
-                    <Button 
-                        type="text" 
-                        danger 
-                        icon={<DeleteOutlined />} 
+                    <span className="font-extrabold text-slate-800 text-sm">Field #{index + 1}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <button 
+                        type="button"
+                        title="Custom Validation Rules"
+                        onClick={() => setShowValidation(!showValidation)}
+                        className={cn(
+                            "p-2.5 rounded-xl transition-all cursor-pointer shadow-2xs",
+                            showValidation ? "bg-primary/10 text-primary font-black border border-primary/20" : "text-slate-400 hover:bg-slate-100 hover:text-slate-700 border border-slate-200/60 bg-slate-50"
+                        )}
+                    >
+                        <Settings className="w-4 h-4" />
+                    </button>
+                    <button 
+                        type="button"
                         onClick={() => removeField(field.id)}
-                    />
-                </Space>
+                        className="p-2.5 text-rose-500 bg-rose-50 border border-rose-200 hover:bg-rose-100 hover:text-rose-700 rounded-xl transition-colors cursor-pointer shadow-2xs"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
+                </div>
             </div>
 
-            <Row gutter={12}>
-                <Col span={12}>
-                    <Form.Item label="Field Label" style={{ marginBottom: 0 }}>
-                        <Input 
-                            value={field.label} 
-                            onChange={e => updateField(field.id, { label: e.target.value })}
-                            className="premium-input"
-                        />
-                    </Form.Item>
-                </Col>
-                <Col span={6}>
-                    <Form.Item label="Input Type" style={{ marginBottom: 0 }}>
-                        <Select 
-                            value={field.type} 
-                            onChange={val => updateField(field.id, { type: val as any })}
-                            style={{ width: '100%' }}
-                        >
-                            <Option value="text">Short Text</Option>
-                            <Option value="textarea">Long Text</Option>
-                            <Option value="email">Email</Option>
-                            <Option value="tel">Phone</Option>
-                            <Option value="number">Number</Option>
-                            <Option value="date">Date</Option>
-                            <Option value="select">Dropdown</Option>
-                        </Select>
-                    </Form.Item>
-                </Col>
-                <Col span={6} style={{ display: 'flex', alignItems: 'center', paddingTop: 24 }}>
-                    <Space>
-                        <Switch 
-                            size="small" 
-                            checked={field.required} 
-                            onChange={val => updateField(field.id, { required: val })}
-                        />
-                        <Text style={{ fontSize: 12, color: '#94a3b8' }}>Required</Text>
-                    </Space>
-                </Col>
-            </Row>
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+                <div className="md:col-span-5">
+                    <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2">Field Label</label>
+                    <input 
+                        type="text"
+                        value={field.label} 
+                        onChange={e => updateField(field.id, { label: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all focus:bg-white"
+                    />
+                </div>
+                <div className="md:col-span-4">
+                    <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2">Input Type</label>
+                    <select 
+                        value={field.type} 
+                        onChange={e => updateField(field.id, { type: e.target.value as any })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all focus:bg-white appearance-none cursor-pointer"
+                    >
+                        <option value="text">Short Text</option>
+                        <option value="textarea">Long Text</option>
+                        <option value="email">Email</option>
+                        <option value="tel">Phone</option>
+                        <option value="number">Number</option>
+                        <option value="date">Date</option>
+                        <option value="select">Dropdown</option>
+                    </select>
+                </div>
+                <div className="md:col-span-3 flex items-center md:pt-7">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                        <div className="relative">
+                            <input 
+                                type="checkbox" 
+                                className="sr-only peer"
+                                checked={field.required}
+                                onChange={e => updateField(field.id, { required: e.target.checked })}
+                            />
+                            <div className={cn(
+                                "w-12 h-7 rounded-full transition-colors relative border shadow-inner",
+                                field.required ? "bg-primary border-primary" : "bg-slate-200 border-slate-300 group-hover:bg-slate-300"
+                            )}>
+                                <div className={cn(
+                                    "absolute top-1 w-5 h-5 bg-white rounded-full transition-transform shadow-md",
+                                    field.required ? "translate-x-6" : "translate-x-1"
+                                )} />
+                            </div>
+                        </div>
+                        <span className="text-sm font-extrabold text-slate-700">Required</span>
+                    </label>
+                </div>
+            </div>
 
             {showValidation && (
-                <div style={{ marginTop: 20, padding: 16, background: 'rgba(0,0,0,0.2)', borderRadius: 8 }}>
-                    <Text strong style={{ fontSize: 12, color: '#00df9a', display: 'block', marginBottom: 12 }}>Custom Validation Rules</Text>
-                    <Row gutter={12}>
-                        <Col span={12}>
-                            <Form.Item label="Min Length/Value" style={{ marginBottom: 12 }}>
-                                <Input 
-                                    type="number" 
-                                    value={field.validation?.min} 
-                                    onChange={e => updateField(field.id, { validation: { ...field.validation, min: parseInt(e.target.value) || undefined } })}
-                                    className="premium-input"
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item label="Max Length/Value" style={{ marginBottom: 12 }}>
-                                <Input 
-                                    type="number" 
-                                    value={field.validation?.max} 
-                                    onChange={e => updateField(field.id, { validation: { ...field.validation, max: parseInt(e.target.value) || undefined } })}
-                                    className="premium-input"
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={24}>
-                            <Form.Item label="Regex Pattern" style={{ marginBottom: 12 }}>
-                                <Input 
-                                    placeholder="e.g. ^[A-Z]+$" 
-                                    value={field.validation?.pattern} 
-                                    onChange={e => updateField(field.id, { validation: { ...field.validation, pattern: e.target.value } })}
-                                    className="premium-input"
-                                />
-                            </Form.Item>
-                        </Col>
-                        <Col span={24}>
-                            <Form.Item label="Error Message" style={{ marginBottom: 0 }}>
-                                <Input 
-                                    placeholder="Message to show if pattern fails" 
-                                    value={field.validation?.patternMessage} 
-                                    onChange={e => updateField(field.id, { validation: { ...field.validation, patternMessage: e.target.value } })}
-                                    className="premium-input"
-                                />
-                            </Form.Item>
-                        </Col>
-                    </Row>
+                <div className="mt-6 p-6 bg-slate-50 border border-slate-200 rounded-2xl animate-in fade-in slide-in-from-top-2 shadow-2xs">
+                    <span className="text-xs font-black text-primary uppercase tracking-wider block mb-4">Custom Validation Rules</span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label className="block text-xs font-extrabold text-slate-700 mb-2 uppercase tracking-wider">Min Length/Value</label>
+                            <input 
+                                type="number" 
+                                value={field.validation?.min || ''} 
+                                onChange={e => updateField(field.id, { validation: { ...field.validation, min: parseInt(e.target.value) || undefined } })}
+                                className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-xs font-extrabold text-slate-700 mb-2 uppercase tracking-wider">Max Length/Value</label>
+                            <input 
+                                type="number" 
+                                value={field.validation?.max || ''} 
+                                onChange={e => updateField(field.id, { validation: { ...field.validation, max: parseInt(e.target.value) || undefined } })}
+                                className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-extrabold text-slate-700 mb-2 uppercase tracking-wider">Regex Pattern</label>
+                            <input 
+                                placeholder="e.g. ^[A-Z]+$" 
+                                value={field.validation?.pattern || ''} 
+                                onChange={e => updateField(field.id, { validation: { ...field.validation, pattern: e.target.value } })}
+                                className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-xs font-extrabold text-slate-700 mb-2 uppercase tracking-wider">Error Message</label>
+                            <input 
+                                placeholder="Message to show if pattern fails" 
+                                value={field.validation?.patternMessage || ''} 
+                                onChange={e => updateField(field.id, { validation: { ...field.validation, patternMessage: e.target.value } })}
+                                className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                            />
+                        </div>
+                    </div>
                 </div>
             )}
 
             {field.type === 'select' && (
-                <div style={{ marginTop: 16 }}>
-                    <Text style={{ fontSize: 12, color: '#94a3b8', display: 'block', marginBottom: 8 }}>Dropdown Options (one per line)</Text>
-                    <Input.TextArea 
+                <div className="mt-6 pt-6 border-t border-slate-100">
+                    <label className="block text-xs font-extrabold text-slate-700 mb-2 uppercase tracking-wider">Dropdown Options (one per line)</label>
+                    <textarea 
                         placeholder="Option 1&#10;Option 2" 
-                        value={field.options?.join('\n')}
+                        value={field.options?.join('\n') || ''}
                         onChange={e => updateField(field.id, { options: e.target.value.split('\n').filter(o => o.trim()) })}
-                        className="premium-input"
-                        autoSize={{ minRows: 2 }}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[120px] resize-y transition-all focus:bg-white"
                     />
                 </div>
             )}
@@ -204,10 +216,20 @@ const FormBuilder: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const location = useLocation();
-    const [form] = Form.useForm();
+    
+    // Form States
+    const [title, setTitle] = useState('');
+    const [description, setDescription] = useState('');
+    const [isActive, setIsActive] = useState(true);
+    const [addToCrm, setAddToCrm] = useState(false);
+    const [primaryColor, setPrimaryColor] = useState('#2563eb');
+    const [backgroundColor, setBackgroundColor] = useState('#f8fafc');
+    const [textColor, setTextColor] = useState('#0f172a');
+    
     const [fields, setFields] = useState<FormField[]>([]);
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [embedDrawerVisible, setEmbedDrawerVisible] = useState(false);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -225,10 +247,8 @@ const FormBuilder: React.FC = () => {
             fetchForm();
         } else if (location.state?.template) {
             const template = location.state.template;
-            form.setFieldsValue({
-                title: template.title,
-                description: template.description
-            });
+            setTitle(template.title || '');
+            setDescription(template.description || '');
             setFields(template.fields.map((f: any) => ({ 
                 ...f, 
                 id: f.id || Date.now().toString() + Math.random(),
@@ -247,11 +267,14 @@ const FormBuilder: React.FC = () => {
         try {
             const res = await formsApi.getForm(id!);
             const data = res.data;
-            form.setFieldsValue({
-                title: data.title,
-                description: data.description,
-                isActive: data.isActive
-            });
+            setTitle(data.title || '');
+            setDescription(data.description || '');
+            setIsActive(data.isActive !== false);
+            setAddToCrm(data.addToCrm || false);
+            setPrimaryColor(data.design?.primaryColor || '#2563eb');
+            setBackgroundColor(data.design?.backgroundColor || '#f8fafc');
+            setTextColor(data.design?.textColor || '#0f172a');
+            
             setFields(data.fields.map((f: any) => ({ ...f, validation: f.validation || {} })));
         } catch (e) {
             message.error('Failed to fetch form details');
@@ -292,7 +315,13 @@ const FormBuilder: React.FC = () => {
         }
     };
 
-    const handleSave = async (values: any) => {
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        if (!title.trim()) {
+            return message.error('Form title is required');
+        }
+
         if (fields.length === 0) {
             return message.warning('Please add at least one field to the form');
         }
@@ -300,7 +329,15 @@ const FormBuilder: React.FC = () => {
         setSaving(true);
         try {
             const payload = {
-                ...values,
+                title,
+                description,
+                isActive,
+                addToCrm,
+                design: {
+                    primaryColor,
+                    backgroundColor,
+                    textColor,
+                },
                 fields
             };
 
@@ -320,70 +357,164 @@ const FormBuilder: React.FC = () => {
     };
 
     return (
-        <div>
-            <Button 
-                type="text" 
-                icon={<ArrowLeftOutlined />} 
-                onClick={() => navigate('/dashboard/forms')}
-                style={{ marginBottom: 16, color: '#94a3b8' }}
-            >
-                Back to Forms
-            </Button>
+        <div className="pb-20 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-8">
+                <button 
+                    onClick={() => navigate('/dashboard/forms')}
+                    className="w-11 h-11 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-50 transition-all shadow-2xs cursor-pointer"
+                >
+                    <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                    <h1 className="text-2xl font-extrabold text-slate-900 m-0 tracking-tight">{id ? 'Edit Custom Form' : 'Create Custom Form Builder'}</h1>
+                    <p className="text-sm text-slate-500 mt-1 m-0">Design and configure interactive multi-field forms for visitor lead capture.</p>
+                </div>
+            </div>
 
-            <Form 
-                form={form} 
-                layout="vertical" 
-                onFinish={handleSave} 
-                initialValues={{ 
-                    isActive: true
-                }}
-            >
-                <Row gutter={24} align="top">
-                    <Col xs={24} lg={8} style={{ position: 'sticky', top: 96, zIndex: 5 }}>
-                        <Card title="Form Settings" className="premium-card">
-                            <Form.Item 
-                                name="title" 
-                                label="Form Title" 
-                                rules={[{ required: true, message: 'Enter form title' }]}
-                            >
-                                <Input placeholder="e.g. Lead Qualification Form" className="premium-input" />
-                            </Form.Item>
+            {loading ? (
+                <div className="flex justify-center py-20">
+                    <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                </div>
+            ) : (
+                <form id="form-builder-main" onSubmit={handleSave} className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    
+                    {/* Settings Sidebar */}
+                    <div className="lg:col-span-4 space-y-6 sticky top-24">
+                        <div className="bg-white border border-slate-200/80 rounded-3xl shadow-sm overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 bg-slate-50/80">
+                                <h2 className="font-extrabold text-slate-900 m-0 text-base">Form Settings</h2>
+                            </div>
                             
-                            <Form.Item name="description" label="Description">
-                                <Input.TextArea placeholder="Shown below the title" className="premium-input" autoSize={{ minRows: 3 }} />
-                            </Form.Item>
+                            <div className="p-6 space-y-6">
+                                <div>
+                                    <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2">Form Title *</label>
+                                    <input 
+                                        required
+                                        value={title} 
+                                        onChange={e => setTitle(e.target.value)}
+                                        placeholder="e.g. Lead Qualification Form" 
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all"
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-2">Description</label>
+                                    <textarea 
+                                        value={description} 
+                                        onChange={e => setDescription(e.target.value)}
+                                        placeholder="Shown below the title" 
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3.5 text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white min-h-[100px] transition-all resize-none"
+                                    />
+                                </div>
 
-                            <Form.Item name="isActive" label="Form Status" valuePropName="checked">
-                                <Switch checkedChildren="Active" unCheckedChildren="Inactive" />
-                            </Form.Item>
+                                <div className="pt-6 border-t border-slate-100 flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-extrabold text-slate-900 block">Form Access Status</label>
+                                        <p className="text-xs font-medium text-slate-500 m-0">Enable or disable form submission</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={isActive} onChange={e => setIsActive(e.target.checked)} />
+                                        <div className="w-12 h-7 bg-slate-200 rounded-full peer peer-checked:bg-primary transition-all border border-slate-300 shadow-inner">
+                                            <div className={cn(
+                                                "absolute top-1 w-5 h-5 bg-white rounded-full transition-transform shadow-md",
+                                                isActive ? "translate-x-6" : "translate-x-1"
+                                            )} />
+                                        </div>
+                                    </label>
+                                </div>
 
-                            <Divider style={{ borderColor: 'rgba(255,255,255,0.05)' }} />
+                                <div className="flex items-center justify-between">
+                                    <div className="space-y-1">
+                                        <label className="text-sm font-extrabold text-slate-900 block">Auto-Sync to CRM</label>
+                                        <p className="text-xs font-medium text-slate-500 m-0">Forward captured leads to Sales Pipeline</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input type="checkbox" className="sr-only peer" checked={addToCrm} onChange={e => setAddToCrm(e.target.checked)} />
+                                        <div className="w-12 h-7 bg-slate-200 rounded-full peer peer-checked:bg-primary transition-all border border-slate-300 shadow-inner">
+                                            <div className={cn(
+                                                "absolute top-1 w-5 h-5 bg-white rounded-full transition-transform shadow-md",
+                                                addToCrm ? "translate-x-6" : "translate-x-1"
+                                            )} />
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
 
+                        <div className="bg-white border border-slate-200/80 rounded-3xl shadow-sm overflow-hidden">
+                            <div className="p-6 border-b border-slate-100 bg-slate-50/80">
+                                <h2 className="font-extrabold text-slate-900 m-0 text-base">Brand Styling Tokens</h2>
+                            </div>
+                            <div className="p-6 grid grid-cols-3 gap-4">
+                                <div>
+                                    <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">Primary</label>
+                                    <div className="relative">
+                                        <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
+                                        <div className="w-full h-12 rounded-2xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
+                                            <div className="w-7 h-7 rounded-xl shadow-md border border-black/10" style={{ backgroundColor: primaryColor }} />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">Background</label>
+                                    <div className="relative">
+                                        <input type="color" value={backgroundColor} onChange={e => setBackgroundColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
+                                        <div className="w-full h-12 rounded-2xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
+                                            <div className="w-7 h-7 rounded-xl shadow-md border border-black/10" style={{ backgroundColor }} />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-extrabold text-slate-500 uppercase tracking-wider mb-2">Text Color</label>
+                                    <div className="relative">
+                                        <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
+                                        <div className="w-full h-12 rounded-2xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
+                                            <div className="w-7 h-7 rounded-xl shadow-md border border-black/10" style={{ backgroundColor: textColor }} />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                            
-                            <Button 
-                                type="primary" 
-                                htmlType="submit" 
-                                block 
-                                icon={<SaveOutlined />} 
-                                loading={saving}
-                                className="premium-button"
+                        {id && (
+                            <button 
+                                type="button"
+                                onClick={() => setEmbedDrawerVisible(true)}
+                                className="w-full flex items-center justify-center gap-2 px-6 py-3.5 bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-2xl font-extrabold transition-all shadow-2xs cursor-pointer"
                             >
-                                {id ? 'Update Form' : 'Create Form'}
-                            </Button>
-                        </Card>
-                    </Col>
+                                <Globe className="w-4 h-4" /> Share & Embed Form
+                            </button>
+                        )}
 
-                    <Col xs={24} lg={16}>
-                        <Card 
-                            title="Form Fields" 
-                            className="premium-card"
-                            extra={
-                                <Button type="dashed" icon={<PlusOutlined />} onClick={addField} style={{ color: '#00df9a', borderColor: 'rgba(0,223,154,0.3)' }}>
-                                    Add Field
-                                </Button>
-                            }
+                        <button 
+                            type="submit"
+                            disabled={saving}
+                            className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-primary hover:bg-primary/90 text-white rounded-2xl text-base font-extrabold shadow-lg shadow-primary/20 transition-all disabled:opacity-50 hover:-translate-y-0.5 cursor-pointer"
+                            style={{ color: '#ffffff' }}
                         >
+                            {saving ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <Save className="w-5 h-5" />}
+                            {id ? 'Update Custom Form' : 'Save Custom Form'}
+                        </button>
+                    </div>
+
+                    {/* Builder Canvas */}
+                    <div className="lg:col-span-8">
+                        <div className="bg-slate-50/80 border border-slate-200/80 rounded-3xl shadow-sm p-6 lg:p-8 min-h-[650px] flex flex-col">
+                            <div className="flex justify-between items-center mb-8 border-b border-slate-200/60 pb-6">
+                                <div>
+                                    <h2 className="text-xl font-extrabold text-slate-900 mb-1 m-0">Interactive Fields</h2>
+                                    <p className="text-sm text-slate-500 m-0">Drag and drop fields using the handle to rearrange sequence.</p>
+                                </div>
+                                <button 
+                                    type="button"
+                                    onClick={addField}
+                                    className="flex items-center gap-2 px-5 py-3 bg-white hover:bg-slate-50 text-primary border border-slate-200 rounded-2xl text-sm font-extrabold shadow-2xs transition-all hover:border-primary/30 hover:-translate-y-0.5 cursor-pointer"
+                                >
+                                    <Plus className="w-4 h-4" /> Add New Field
+                                </button>
+                            </div>
+
                             <DndContext 
                                 sensors={sensors}
                                 collisionDetection={closestCenter}
@@ -393,7 +524,7 @@ const FormBuilder: React.FC = () => {
                                     items={fields.map(f => f.id)}
                                     strategy={verticalListSortingStrategy}
                                 >
-                                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    <div className="flex flex-col gap-3 flex-1">
                                         {fields.map((field, index) => (
                                             <SortableField 
                                                 key={field.id} 
@@ -405,17 +536,99 @@ const FormBuilder: React.FC = () => {
                                         ))}
 
                                         {fields.length === 0 && (
-                                            <div style={{ padding: '40px 0', textAlign: 'center', background: 'rgba(255,255,255,0.01)', borderRadius: 12, border: '1px dashed rgba(255,255,255,0.05)' }}>
-                                                <Text type="secondary">No fields added yet. Click "Add Field" to start building your form.</Text>
+                                            <div className="py-24 text-center border-2 border-dashed border-slate-300 rounded-3xl bg-white/60 flex-1 flex flex-col items-center justify-center">
+                                                <div className="w-16 h-16 bg-slate-100 border border-slate-200 rounded-3xl flex items-center justify-center mx-auto mb-4 text-slate-400 shadow-2xs">
+                                                    <Plus className="w-8 h-8" />
+                                                </div>
+                                                <h3 className="text-lg font-extrabold text-slate-800 mb-1 m-0">No fields configured</h3>
+                                                <p className="text-slate-500 text-sm font-medium m-0">Click "Add New Field" above to start constructing your form.</p>
                                             </div>
                                         )}
                                     </div>
                                 </SortableContext>
                             </DndContext>
-                        </Card>
-                    </Col>
-                </Row>
-            </Form>
+                        </div>
+                    </div>
+                </form>
+            )}
+
+            {/* Sliding Drawer for Embed & Share (Replaced Modal) */}
+            {embedDrawerVisible && (
+                <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300">
+                    <div 
+                        className="w-full max-w-xl bg-white shadow-2xl h-full flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200 overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center p-8 border-b border-slate-100 bg-slate-50/80 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-600 font-bold border border-blue-500/20">
+                                    <Globe className="w-5 h-5" />
+                                </div>
+                                <h2 className="text-xl font-extrabold text-slate-900 m-0 tracking-tight">Share & Embed Form</h2>
+                            </div>
+                            <button onClick={() => setEmbedDrawerVisible(false)} className="w-10 h-10 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-all shadow-xs cursor-pointer">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto p-8 space-y-8 custom-scrollbar">
+                            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200/80 space-y-3">
+                                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">Direct Public Share Link</label>
+                                <p className="text-xs text-slate-500 m-0">Share this standalone URL anywhere to collect form submissions directly.</p>
+                                <div className="flex gap-2.5 pt-2">
+                                    <input 
+                                        type="text" 
+                                        readOnly 
+                                        value={`${window.location.origin}/f/${id}`} 
+                                        className="flex-1 bg-white border border-slate-200 rounded-2xl px-4 py-3.5 text-sm text-slate-700 font-bold focus:outline-none shadow-2xs"
+                                    />
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`${window.location.origin}/f/${id}`);
+                                            message.success('Public URL copied to clipboard!');
+                                        }}
+                                        className="px-5 py-3.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold rounded-2xl transition-all shadow-md shrink-0 flex items-center gap-2 cursor-pointer"
+                                        style={{ color: '#ffffff' }}
+                                    >
+                                        <Copy className="w-4 h-4" /> Copy URL
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200/80 space-y-3">
+                                <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider">Embed on your Website (Iframe)</label>
+                                <p className="text-xs text-slate-500 m-0">Paste this raw HTML snippet directly into your website's code or CMS.</p>
+                                <div className="flex flex-col gap-3 pt-2">
+                                    <textarea 
+                                        readOnly 
+                                        value={`<iframe src="${window.location.origin}/f/${id}?embed=true" width="100%" height="600px" style="border:none; border-radius:16px;" frameborder="0"></iframe>`}
+                                        className="w-full bg-white border border-slate-200 rounded-2xl p-4 text-xs text-slate-600 font-mono focus:outline-none resize-none min-h-[120px] shadow-2xs leading-relaxed"
+                                    />
+                                    <button 
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`<iframe src="${window.location.origin}/f/${id}?embed=true" width="100%" height="600px" style="border:none; border-radius:16px;" frameborder="0"></iframe>`);
+                                            message.success('Iframe embed code copied to clipboard!');
+                                        }}
+                                        className="w-full py-3.5 bg-primary hover:bg-primary/90 text-white font-extrabold rounded-2xl transition-all shadow-lg shadow-primary/20 flex items-center justify-center gap-2 cursor-pointer"
+                                        style={{ color: '#ffffff' }}
+                                    >
+                                        <Copy className="w-4 h-4" /> Copy Iframe Code
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-6 border-t border-slate-100 bg-slate-50/50 flex justify-end shrink-0">
+                            <button 
+                                onClick={() => setEmbedDrawerVisible(false)} 
+                                className="px-8 py-3.5 bg-slate-200 hover:bg-slate-300 text-slate-800 font-extrabold rounded-2xl text-sm transition-all cursor-pointer"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

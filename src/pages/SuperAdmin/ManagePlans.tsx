@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Form, Input, Typography, Space, Card, message, Row, Col, Switch, Tag, Grid, Checkbox } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, TeamOutlined, LinkOutlined, AppstoreOutlined } from '@ant-design/icons';
+import { Plus, Edit2, Trash2, Users, Link as LinkIcon, Check, X, Layers, Tag, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import apiClient from '../../api/apiClient';
 import { Module, ModuleLabel } from '../../enums';
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-const { Title, Text, Paragraph } = Typography;
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 const ManagePlans: React.FC = () => {
     const [plans, setPlans] = useState<any[]>([]);
@@ -12,9 +15,37 @@ const ManagePlans: React.FC = () => {
     const [submitting, setSubmitting] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState<any>(null);
-    const [form] = Form.useForm();
-    const screens = Grid.useBreakpoint();
-    const isMobile = !screens.sm;
+
+    const [formData, setFormData] = useState<{
+        name: string;
+        order: number;
+        monthlyPrice: number;
+        yearlyPrice: number;
+        subUsersLimit: number;
+        linksLimit: number;
+        isPublic: boolean;
+        leadCaptureEnabled: boolean;
+        description: string;
+        enabledModules: Module[];
+    }>({
+        name: '',
+        order: 0,
+        monthlyPrice: 0,
+        yearlyPrice: 0,
+        subUsersLimit: 3,
+        linksLimit: 5,
+        isPublic: true,
+        leadCaptureEnabled: false,
+        description: '',
+        enabledModules: Object.values(Module)
+    });
+
+    // Custom Toast State
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
+    };
 
     const fetchPlans = async () => {
         setLoading(true);
@@ -22,7 +53,7 @@ const ManagePlans: React.FC = () => {
             const res = await apiClient.get('/super-admin/plans');
             setPlans(res.data);
         } catch (e) {
-            message.error('Failed to fetch plans');
+            showToast('Failed to fetch plans', 'error');
         } finally {
             setLoading(false);
         }
@@ -32,347 +63,392 @@ const ManagePlans: React.FC = () => {
         fetchPlans();
     }, []);
 
-    const handleSavePlan = async (values: any) => {
+    const handleSavePlan = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (formData.enabledModules.length === 0) {
+            showToast('Please select at least one module', 'error');
+            return;
+        }
+
         setSubmitting(true);
         try {
             if (editingPlan) {
-                await apiClient.put(`/super-admin/plans/${editingPlan.id}`, values);
-                message.success('Plan updated successfully');
+                await apiClient.put(`/super-admin/plans/${editingPlan.id}`, formData);
+                showToast('Plan updated successfully', 'success');
             } else {
-                await apiClient.post('/super-admin/plans', values);
-                message.success('Plan created successfully');
+                await apiClient.post('/super-admin/plans', formData);
+                showToast('Plan created successfully', 'success');
             }
             setIsModalOpen(false);
             setEditingPlan(null);
-            form.resetFields();
             fetchPlans();
         } catch (e: any) {
-            message.error(e.response?.data?.error || 'Failed to save plan');
+            showToast(e.response?.data?.error || 'Failed to save plan', 'error');
         } finally {
             setSubmitting(false);
         }
     };
 
     const handleDeletePlan = async (id: string) => {
-        Modal.confirm({
-            title: <span style={{ color: '#fff' }}>Delete Subscription Plan</span>,
-            content: <span style={{ color: '#a1a1aa' }}>Are you sure? A plan cannot be deleted if it is currently assigned to users.</span>,
-            okText: 'Yes, Delete',
-            okType: 'danger',
-            okButtonProps: { style: { background: '#ef4444', borderColor: '#ef4444' } },
-            cancelButtonProps: { style: { borderColor: '#2d2e33', color: '#a1a1aa' } },
-            centered: true,
-            styles: { body: { background: '#121316' } },
-            onOk: async () => {
-                try {
-                    await apiClient.delete(`/super-admin/plans/${id}`);
-                    message.success('Plan deleted');
-                    fetchPlans();
-                } catch (e: any) {
-                    message.error(e.response?.data?.error || 'Failed to delete plan');
-                }
-            }
-        });
+        if (!window.confirm('Are you sure? A plan cannot be deleted if it is currently assigned to users.')) return;
+        try {
+            await apiClient.delete(`/super-admin/plans/${id}`);
+            showToast('Plan deleted', 'success');
+            fetchPlans();
+        } catch (e: any) {
+            showToast(e.response?.data?.error || 'Failed to delete plan', 'error');
+        }
     };
 
     const handleEditPlan = (plan: any) => {
         setEditingPlan(plan);
-        form.setFieldsValue(plan);
+        setFormData({
+            name: plan.name || '',
+            order: plan.order || 0,
+            monthlyPrice: plan.monthlyPrice || 0,
+            yearlyPrice: plan.yearlyPrice || 0,
+            subUsersLimit: plan.subUsersLimit || 0,
+            linksLimit: plan.linksLimit || 0,
+            isPublic: plan.isPublic ?? true,
+            leadCaptureEnabled: plan.leadCaptureEnabled ?? false,
+            description: plan.description || '',
+            enabledModules: plan.enabledModules || []
+        });
         setIsModalOpen(true);
     };
 
-    const columns = [
-        {
-            title: 'Order',
-            dataIndex: 'order',
-            key: 'order',
-            width: 80,
-            responsive: ['md' as const],
-            render: (order: number) => (
-                <Text style={{ color: '#8696a0' }}>#{order}</Text>
-            )
-        },
-        {
-            title: 'Plan Name',
-            dataIndex: 'name',
-            key: 'name',
-            render: (name: string) => (
-                <Text strong style={{ color: '#fff', fontSize: 14 }}>{name}</Text>
-            )
-        },
-        {
-            title: 'Prices',
-            key: 'prices',
-            render: (_: any, record: any) => (
-                <Space direction="vertical" size={0}>
-                    <Text style={{ color: '#00df9a', fontWeight: 600, fontSize: 13 }}>Monthly: ₹{record.monthlyPrice?.toLocaleString()}</Text>
-                    <Text style={{ color: '#00df9a', fontWeight: 600, fontSize: 13 }}>Yearly: ₹{record.yearlyPrice?.toLocaleString()}</Text>
-                </Space>
-            )
-        },
-        {
-            title: 'Limits',
-            key: 'limits',
-            render: (_: any, record: any) => (
-                <Space direction="vertical" size={0}>
-                    <Text style={{ fontSize: 12 }}><TeamOutlined style={{ marginRight: 8, color: '#3b82f6' }} />{record.subUsersLimit} Sub-Users</Text>
-                    <Text style={{ fontSize: 12 }}><LinkOutlined style={{ marginRight: 8, color: '#ffd279' }} />{record.linksLimit} Dynamic Links</Text>
-                </Space>
-            )
-        },
-        {
-            title: 'Visibility',
-            dataIndex: 'isPublic',
-            key: 'isPublic',
-            render: (isPublic: boolean) => (
-                <Tag color={isPublic ? 'blue' : 'warning'} style={{ borderRadius: 12, border: 'none', background: isPublic ? 'rgba(59, 130, 246, 0.1)' : 'rgba(251, 191, 36, 0.1)', color: isPublic ? '#3b82f6' : '#fbbf24' }}>
-                    {isPublic ? 'Public' : 'Private'}
-                </Tag>
-            )
-        },
-        {
-            title: 'Lead Capture',
-            dataIndex: 'leadCaptureEnabled',
-            key: 'leadCaptureEnabled',
-            render: (enabled: boolean) => (
-                <Tag color={enabled ? 'green' : 'default'} style={{ borderRadius: 12, border: 'none', background: enabled ? 'rgba(0, 223, 154, 0.1)' : 'rgba(161, 161, 170, 0.1)', color: enabled ? '#00df9a' : '#a1a1aa' }}>
-                    {enabled ? 'Enabled' : 'Disabled'}
-                </Tag>
-            )
-        },
-        {
-            title: 'Modules',
-            dataIndex: 'enabledModules',
-            key: 'enabledModules',
-            render: (modules: string[]) => (
-                <Tag color="purple" style={{ borderRadius: 12, border: 'none', background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
-                    {modules?.length || 0} Modules
-                </Tag>
-            )
-        },
-        {
-            title: 'Description',
-            dataIndex: 'description',
-            key: 'description',
-            responsive: ['lg' as const],
-            render: (desc: string) => (
-                <Paragraph ellipsis={{ rows: 2 }} style={{ color: '#8696a0', fontSize: 12, margin: 0, maxWidth: 200 }}>
-                    {desc || 'No description'}
-                </Paragraph>
-            )
-        },
-        {
-            title: 'Action',
-            key: 'action',
-            align: 'right' as 'right',
-            render: (_: any, record: any) => (
-                <Space>
-                    <Button
-                        type="text"
-                        icon={<EditOutlined style={{ color: '#00df9a' }} />}
-                        onClick={() => handleEditPlan(record)}
-                    />
-                    <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => handleDeletePlan(record.id)}
-                    />
-                </Space>
-            )
-        }
-    ];
+    const toggleModule = (mod: Module) => {
+        setFormData(prev => {
+            const exists = prev.enabledModules.includes(mod);
+            return {
+                ...prev,
+                enabledModules: exists 
+                    ? prev.enabledModules.filter(m => m !== mod) 
+                    : [...prev.enabledModules, mod]
+            };
+        });
+    };
 
     return (
-        <div>
-            <div style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                justifyContent: 'space-between',
-                alignItems: isMobile ? 'flex-start' : 'flex-end',
-                marginBottom: 32,
-                gap: isMobile ? 20 : 0
-            }}>
-                <div>
-                    <Title level={4} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 18 : 20 }}>Subscription Plans</Title>
-                    <Paragraph type="secondary" style={{ fontSize: 13, margin: 0 }}>
-                        Define and manage service tiers for your administrative users.
-                    </Paragraph>
+        <div className="pb-20 animate-in fade-in duration-500 font-sans text-slate-800">
+            {/* Custom Toast Notification */}
+            {toast && (
+                <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-slate-900 text-white shadow-xl text-sm font-medium animate-in slide-in-from-bottom-4 duration-200">
+                    <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-400' : toast.type === 'error' ? 'bg-red-400' : 'bg-blue-400'}`} />
+                    <span>{toast.message}</span>
+                    <button onClick={() => setToast(null)} className="ml-2 text-slate-400 hover:text-white">
+                        <X className="w-4 h-4" />
+                    </button>
                 </div>
-                <Button
-                    type="primary"
-                    icon={<PlusOutlined />}
+            )}
+
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 bg-white border border-slate-200/80 p-6 sm:p-8 rounded-2xl shadow-xs">
+                <div>
+                    <div className="flex items-center gap-2 mb-1">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-2xs">
+                            <Layers className="w-5 h-5 text-primary" />
+                        </div>
+                        <h1 className="text-xl font-bold text-slate-900 m-0">Subscription Plans</h1>
+                    </div>
+                    <p className="text-xs text-slate-500 m-0">Define and manage service tiers for your administrative users.</p>
+                </div>
+
+                <button
                     onClick={() => {
                         setEditingPlan(null);
-                        form.resetFields();
+                        setFormData({
+                            name: '', order: plans.length, monthlyPrice: 0, yearlyPrice: 0,
+                            subUsersLimit: 3, linksLimit: 5, isPublic: true, leadCaptureEnabled: false,
+                            description: '', enabledModules: Object.values(Module)
+                        });
                         setIsModalOpen(true);
                     }}
-                    className="premium-button"
-                    style={{ width: isMobile ? '100%' : 'auto' }}
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all w-full md:w-auto cursor-pointer"
                 >
-                    Create New Plan
-                </Button>
+                    <Plus className="w-3.5 h-3.5 shrink-0" />
+                    <span>Create New Plan</span>
+                </button>
             </div>
 
-            <Card styles={{ body: { padding: 0 } }} style={{ background: '#121316', border: '1px solid #2d2e33', borderRadius: 12, overflow: 'hidden' }}>
-                <Table
-                    className="premium-table"
-                    columns={columns}
-                    dataSource={plans}
-                    rowKey="id"
-                    loading={loading}
-                    pagination={false}
-                    style={{ background: 'transparent' }}
-                    scroll={{ x: 'max-content' }}
-                />
-            </Card>
+            {/* Table Container */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[950px]">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-100">
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-20">Order</th>
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Plan Name</th>
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Prices</th>
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Limits</th>
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Visibility</th>
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Lead Capture</th>
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Modules</th>
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Description</th>
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={9} className="py-20 text-center">
+                                        <div className="inline-block w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
+                                        <p className="text-xs text-slate-400 mt-4">Loading subscription plans...</p>
+                                    </td>
+                                </tr>
+                            ) : plans.length === 0 ? (
+                                <tr>
+                                    <td colSpan={9} className="py-20 text-center">
+                                        <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-4 border border-slate-200 shadow-2xs">
+                                            <Tag className="w-8 h-8 text-slate-300" />
+                                        </div>
+                                        <h3 className="text-base font-bold text-slate-700 mb-1">No subscription plans</h3>
+                                        <p className="text-xs text-slate-500">Create the first subscription plan tier to get started.</p>
+                                    </td>
+                                </tr>
+                            ) : (
+                                plans.map(plan => (
+                                    <tr key={plan.id} className="hover:bg-slate-50/80 transition-colors">
+                                        <td className="py-4 px-6 text-xs font-bold text-slate-400">
+                                            #{plan.order ?? 0}
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="text-xs font-semibold text-slate-900">{plan.name}</div>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="text-xs font-semibold text-primary">Monthly: ₹{plan.monthlyPrice?.toLocaleString()}</div>
+                                            <div className="text-xs font-semibold text-primary mt-0.5">Yearly: ₹{plan.yearlyPrice?.toLocaleString()}</div>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="space-y-1 text-xs text-slate-600">
+                                                <div className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5 text-blue-500 shrink-0" /> {plan.subUsersLimit} Sub-Users</div>
+                                                <div className="flex items-center gap-1.5"><LinkIcon className="w-3.5 h-3.5 text-amber-500 shrink-0" /> {plan.linksLimit} Dynamic Links</div>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <span className={cn(
+                                                "inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border",
+                                                plan.isPublic ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-amber-50 text-amber-600 border-amber-100"
+                                            )}>
+                                                {plan.isPublic ? <Eye className="w-3 h-3 shrink-0" /> : <EyeOff className="w-3 h-3 shrink-0" />}
+                                                {plan.isPublic ? 'Public' : 'Private'}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <span className={cn(
+                                                "inline-flex px-2.5 py-1 rounded-lg text-[11px] font-semibold border",
+                                                plan.leadCaptureEnabled ? "bg-green-50 text-green-600 border-green-100" : "bg-slate-100 text-slate-500 border-slate-200"
+                                            )}>
+                                                {plan.leadCaptureEnabled ? 'Enabled' : 'Disabled'}
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <span className="inline-flex px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-purple-50 text-purple-600 border border-purple-100">
+                                                {plan.enabledModules?.length || 0} Modules
+                                            </span>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <p className="text-xs text-slate-500 line-clamp-2 max-w-xs m-0 leading-relaxed">
+                                                {plan.description || 'No description'}
+                                            </p>
+                                        </td>
+                                        <td className="py-4 px-6 text-right">
+                                            <div className="flex justify-end gap-1.5">
+                                                <button 
+                                                    onClick={() => handleEditPlan(plan)}
+                                                    className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center hover:bg-blue-100 transition-colors shadow-2xs cursor-pointer"
+                                                >
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDeletePlan(plan.id)}
+                                                    className="w-8 h-8 rounded-xl bg-red-50 text-red-600 border border-red-100 flex items-center justify-center hover:bg-red-100 transition-colors shadow-2xs cursor-pointer"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-            <Modal
-                title={<span style={{ color: '#fff' }}>{editingPlan ? "Edit Plan Details" : "Create New Subscription Plan"}</span>}
-                open={isModalOpen}
-                onCancel={() => setIsModalOpen(false)}
-                footer={null}
-                centered
-                width={550}
-                styles={{
-                    header: { background: '#121316', borderBottom: '1px solid #2d2e33', padding: '16px 24px' },
-                    body: { background: '#121316', padding: '24px' },
-                }}
-            >
-                <Form form={form} layout="vertical" onFinish={handleSavePlan} initialValues={{ subUsersLimit: 3, linksLimit: 5, order: 0, leadCaptureEnabled: false, isPublic: true, enabledModules: Object.values(Module) }}>
-                    <Row gutter={16}>
-                        <Col span={16}>
-                            <Form.Item
-                                name="name"
-                                label={<span style={{ color: '#a1a1aa' }}>Plan Name</span>}
-                                rules={[{ required: true, message: 'Please enter plan name' }]}
-                            >
-                                <Input placeholder="e.g. Basic, Professional, Enterprise" className="premium-input" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={8}>
-                            <Form.Item
-                                name="order"
-                                label={<span style={{ color: '#a1a1aa' }}>Display Order</span>}
-                                rules={[{ required: true }]}
-                            >
-                                <Input type="number" className="premium-input" placeholder="0" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="monthlyPrice"
-                                label={<span style={{ color: '#a1a1aa' }}>Monthly Price (₹)</span>}
-                                rules={[{ required: true, message: 'Please enter monthly price' }]}
-                            >
-                                <Input type="number" placeholder="999" className="premium-input" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                name="yearlyPrice"
-                                label={<span style={{ color: '#a1a1aa' }}>Yearly Price (₹)</span>}
-                                rules={[{ required: true, message: 'Please enter yearly price' }]}
-                            >
-                                <Input type="number" placeholder="9999" className="premium-input" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                name="subUsersLimit"
-                                label={<span style={{ color: '#a1a1aa' }}>Sub-Users Limit</span>}
-                                rules={[{ required: true }]}
-                            >
-                                <Input type="number" className="premium-input" />
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                name="linksLimit"
-                                label={<span style={{ color: '#a1a1aa' }}>Links Limit</span>}
-                                rules={[{ required: true }]}
-                            >
-                                <Input type="number" className="premium-input" />
-                            </Form.Item>
-                        </Col>
-                    </Row>
-
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item
-                                label={<span style={{ color: '#a1a1aa' }}>Visibility Status</span>}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#0b0c0e', border: '1px solid #2d2e33', borderRadius: 8 }}>
-                                    <Text style={{ color: '#8696a0', fontSize: 13 }}>Public Plan?</Text>
-                                    <Form.Item name="isPublic" valuePropName="checked" noStyle>
-                                        <Switch size="small" />
-                                    </Form.Item>
+            {/* Modal */}
+            {isModalOpen && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50 shrink-0">
+                            <h2 className="text-lg font-bold text-slate-900 m-0 tracking-tight">
+                                {editingPlan ? "Edit Plan Details" : "Create New Subscription Plan"}
+                            </h2>
+                            <button onClick={() => setIsModalOpen(false)} className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-all shadow-2xs cursor-pointer">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        
+                        <form onSubmit={handleSavePlan} className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8 text-xs">
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                                    <div className="md:col-span-2 space-y-1.5">
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider">Plan Name *</label>
+                                        <input 
+                                            required
+                                            value={formData.name}
+                                            onChange={e => setFormData({...formData, name: e.target.value})}
+                                            type="text" 
+                                            placeholder="e.g. Basic, Professional, Enterprise" 
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all" 
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider">Display Order *</label>
+                                        <input 
+                                            required type="number" min="0"
+                                            value={formData.order}
+                                            onChange={e => setFormData({...formData, order: Number(e.target.value)})}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all" 
+                                        />
+                                    </div>
                                 </div>
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item
-                                label={<span style={{ color: '#a1a1aa' }}>Lead Capture</span>}
-                            >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px', background: '#0b0c0e', border: '1px solid #2d2e33', borderRadius: 8 }}>
-                                    <Text style={{ color: '#8696a0', fontSize: 13 }}>Capture Leads?</Text>
-                                    <Form.Item name="leadCaptureEnabled" valuePropName="checked" noStyle>
-                                        <Switch size="small" />
-                                    </Form.Item>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider">Monthly Price (₹) *</label>
+                                        <input 
+                                            required type="number" min="0"
+                                            value={formData.monthlyPrice}
+                                            onChange={e => setFormData({...formData, monthlyPrice: Number(e.target.value)})}
+                                            placeholder="999"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all" 
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider">Yearly Price (₹) *</label>
+                                        <input 
+                                            required type="number" min="0"
+                                            value={formData.yearlyPrice}
+                                            onChange={e => setFormData({...formData, yearlyPrice: Number(e.target.value)})}
+                                            placeholder="9999"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all" 
+                                        />
+                                    </div>
                                 </div>
-                            </Form.Item>
-                        </Col>
-                    </Row>
 
-                    <Form.Item
-                        name="description"
-                        label={<span style={{ color: '#a1a1aa' }}>Description</span>}
-                    >
-                        <Input.TextArea
-                            placeholder="What's included in this plan?"
-                            className="premium-input"
-                            autoSize={{ minRows: 2, maxRows: 4 }}
-                            style={{ background: '#0b0c0e', border: '1px solid #2d2e33', borderRadius: 8, padding: '12px' }}
-                        />
-                    </Form.Item>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider">Sub-Users Limit *</label>
+                                        <input 
+                                            required type="number" min="0"
+                                            value={formData.subUsersLimit}
+                                            onChange={e => setFormData({...formData, subUsersLimit: Number(e.target.value)})}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all" 
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider">Links Limit *</label>
+                                        <input 
+                                            required type="number" min="0"
+                                            value={formData.linksLimit}
+                                            onChange={e => setFormData({...formData, linksLimit: Number(e.target.value)})}
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all" 
+                                        />
+                                    </div>
+                                </div>
 
-                    <Form.Item
-                        name="enabledModules"
-                        label={<span style={{ color: '#a1a1aa' }}>Plan Modules</span>}
-                        rules={[{ required: true, message: 'Please select at least one module' }]}
-                    >
-                        <Checkbox.Group style={{ width: '100%' }}>
-                            <div style={{ background: '#0b0c0e', border: '1px solid #2d2e33', borderRadius: 8, padding: '16px' }}>
-                                <Row gutter={[12, 12]}>
-                                    {Object.values(Module).map(m => (
-                                        <Col span={12} key={m}>
-                                            <Checkbox value={m} style={{ color: '#8696a0' }}>
-                                                <span style={{ fontSize: 13 }}>{ModuleLabel[m]}</span>
-                                            </Checkbox>
-                                        </Col>
-                                    ))}
-                                </Row>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between">
+                                        <div>
+                                            <div className="font-semibold text-slate-900">Public Visibility</div>
+                                            <div className="text-[11px] text-slate-500">Show on public pricing page</div>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={formData.isPublic}
+                                                onChange={e => setFormData({...formData, isPublic: e.target.checked})}
+                                                className="sr-only peer" 
+                                            />
+                                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                        </label>
+                                    </div>
+
+                                    <div className="p-4 bg-slate-50 border border-slate-200/80 rounded-xl flex items-center justify-between">
+                                        <div>
+                                            <div className="font-semibold text-slate-900">Lead Capture</div>
+                                            <div className="text-[11px] text-slate-500">Enable lead collection forms</div>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                checked={formData.leadCaptureEnabled}
+                                                onChange={e => setFormData({...formData, leadCaptureEnabled: e.target.checked})}
+                                                className="sr-only peer" 
+                                            />
+                                            <div className="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <label className="block font-bold text-slate-700 uppercase tracking-wider">Description</label>
+                                    <textarea 
+                                        rows={3}
+                                        value={formData.description}
+                                        onChange={e => setFormData({...formData, description: e.target.value})}
+                                        placeholder="What's included in this plan?" 
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all" 
+                                    />
+                                </div>
+
+                                <div className="space-y-3">
+                                    <label className="block font-bold text-slate-700 uppercase tracking-wider">Plan Modules *</label>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
+                                        {Object.values(Module).map(m => {
+                                            const isSelected = formData.enabledModules.includes(m);
+                                            return (
+                                                <div 
+                                                    key={m}
+                                                    onClick={() => toggleModule(m)}
+                                                    className={cn(
+                                                        "flex items-center gap-3 p-3 rounded-xl border cursor-pointer transition-all bg-white shadow-2xs",
+                                                        isSelected ? "border-primary shadow-sm" : "border-slate-200 hover:border-slate-300 opacity-70"
+                                                    )}
+                                                >
+                                                    <div className={cn("w-5 h-5 rounded-lg flex items-center justify-center transition-colors shrink-0", isSelected ? "bg-primary text-white" : "border border-slate-300 bg-slate-50")}>
+                                                        {isSelected && <Check className="w-3.5 h-3.5" />}
+                                                    </div>
+                                                    <span className="font-semibold text-slate-800 select-none">{ModuleLabel[m]}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
                             </div>
-                        </Checkbox.Group>
-                    </Form.Item>
 
-                    <Space style={{ width: '100%', justifyContent: 'flex-end', marginTop: 24 }}>
-                        <Button
-                            onClick={() => setIsModalOpen(false)}
-                            style={{ borderColor: '#2d2e33', color: '#a1a1aa' }}
-                        >Cancel</Button>
-                        <Button type="primary" htmlType="submit" className="premium-button" loading={submitting}>
-                            {editingPlan ? "Update Plan" : "Create Plan"}
-                        </Button>
-                    </Space>
-                </Form>
-            </Modal>
+                            <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-slate-100 bg-slate-50 -mx-6 -mb-6 p-6 sm:-mx-8 sm:-mb-8 sm:p-6 shrink-0">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsModalOpen(false)} 
+                                    className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition-colors shadow-2xs cursor-pointer"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    disabled={submitting}
+                                    className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                                >
+                                    {submitting && <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />}
+                                    <span>{editingPlan ? "Update Plan" : "Create Plan"}</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

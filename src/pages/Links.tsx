@@ -1,51 +1,46 @@
 import React, { useState } from 'react';
-import {
-    Row,
-    Col,
-    Card,
-    Button,
-    Input,
-    Badge,
-    Tooltip,
-    Modal,
-    Form,
-    message,
-    Popconfirm,
-    Empty,
-    Typography,
-    Pagination,
-    Space,
-    Progress,
-    Grid,
-    Select,
-} from 'antd';
-import {
-    PlusOutlined,
-    CopyOutlined,
-    ExportOutlined,
-    DeleteOutlined,
-    SearchOutlined,
-    CheckCircleOutlined
-} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion, AnimatePresence } from 'framer-motion';
+import { 
+    Link as LinkIcon, Plus, Search, Copy, CheckCircle2, ExternalLink, Trash2, Edit2, 
+    MessageSquare, AlertCircle, Phone, FileText, X, Check, ChevronLeft, ChevronRight, Download
+} from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
 import { formsApi } from '../api/forms';
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-const { Title, Text } = Typography;
-const { TextArea } = Input;
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 const Links: React.FC = () => {
     const { user } = useAuth();
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
-    const [showModal, setShowModal] = useState(false);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
     const [editingLink, setEditingLink] = useState<any | null>(null);
     const [copiedId, setCopiedId] = useState('');
-    const [form] = Form.useForm();
+    const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+    // Custom Toast State
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
+    };
+
     const pageSize = 6;
     const queryClient = useQueryClient();
+
+    const [formData, setFormData] = useState({
+        title: '',
+        welcomeMessage: 'Hello! How can I help you today?',
+        whatsappLink: '',
+        whatsappThreshold: 5,
+        leadCaptureFormId: '',
+        leadCaptureDelay: 3
+    });
 
     const { data: linksResponse, isLoading } = useQuery({
         queryKey: ['links', currentPage],
@@ -53,6 +48,7 @@ const Links: React.FC = () => {
     });
     const links = linksResponse?.data || [];
     const totalLinks = linksResponse?.total || 0;
+    const totalPages = Math.ceil(totalLinks / pageSize);
 
     const { data: formsResponse } = useQuery({
         queryKey: ['forms_for_links'],
@@ -64,12 +60,12 @@ const Links: React.FC = () => {
         mutationFn: (values: any) => apiClient.post('/links', values),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['links'] });
-            message.success('Chat link created successfully!');
-            setShowModal(false);
-            form.resetFields();
+            showToast('Chat link created successfully!', 'success');
+            setIsDrawerOpen(false);
+            resetForm();
         },
         onError: (err: any) => {
-            message.error(err.response?.data?.error || 'Failed to create link');
+            showToast(err.response?.data?.error || 'Failed to create link', 'error');
         }
     });
 
@@ -77,13 +73,13 @@ const Links: React.FC = () => {
         mutationFn: ({ id, values }: { id: string, values: any }) => apiClient.put(`/links/${id}`, values),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['links'] });
-            message.success('Link updated successfully!');
-            setShowModal(false);
+            showToast('Link updated successfully!', 'success');
+            setIsDrawerOpen(false);
             setEditingLink(null);
-            form.resetFields();
+            resetForm();
         },
         onError: (err: any) => {
-            message.error(err.response?.data?.error || 'Failed to update link');
+            showToast(err.response?.data?.error || 'Failed to update link', 'error');
         }
     });
 
@@ -91,21 +87,102 @@ const Links: React.FC = () => {
         mutationFn: (id: string) => apiClient.delete(`/links/${id}`),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['links'] });
-            message.success('Link deleted');
+            showToast('Link deleted', 'success');
+            setDeleteConfirmId(null);
+        },
+        onError: () => {
+            showToast('Failed to delete link', 'error');
         }
     });
 
+    const resetForm = () => {
+        setFormData({
+            title: '',
+            welcomeMessage: 'Hello! How can I help you today?',
+            whatsappLink: '',
+            whatsappThreshold: 5,
+            leadCaptureFormId: '',
+            leadCaptureDelay: 3
+        });
+        setEditingLink(null);
+    };
+
+    const handleOpenCreate = () => {
+        resetForm();
+        setIsDrawerOpen(true);
+    };
+
     const handleEdit = (link: any) => {
         setEditingLink(link);
-        form.setFieldsValue(link);
-        setShowModal(true);
+        setFormData({
+            title: link.title || '',
+            welcomeMessage: link.welcomeMessage || '',
+            whatsappLink: link.whatsappLink || '',
+            whatsappThreshold: link.whatsappThreshold ?? 5,
+            leadCaptureFormId: link.leadCaptureFormId || '',
+            leadCaptureDelay: link.leadCaptureDelay ?? 3
+        });
+        setIsDrawerOpen(true);
+    };
+
+    const handleExportCSV = async () => {
+        try {
+            const res = await apiClient.get('/links?limit=500');
+            const allLinks = res.data?.data || res.data || [];
+            if (allLinks.length === 0) {
+                showToast('No links found to export.', 'info');
+                return;
+            }
+            const headers = ['Link Title', 'Slug', 'Welcome Message', 'Total Chats', 'WhatsApp Redirection'];
+            const csvRows = [
+                headers.join(','),
+                ...allLinks.map((l: any) => [
+                    `"${(l.title || '').replace(/"/g, '""')}"`,
+                    l.slug,
+                    `"${(l.welcomeMessage || '').replace(/"/g, '""')}"`,
+                    l._count?.conversations || 0,
+                    `"${(l.whatsappLink || 'Disabled').replace(/"/g, '""')}"`
+                ].join(','))
+            ];
+            const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `smart_links_export_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 100);
+        } catch (e) {
+            showToast('Failed to export links', 'error');
+        }
+    };
+
+    const handleFormSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!formData.title.trim()) {
+            showToast('Please enter an internal title', 'error');
+            return;
+        }
+
+        const payload = {
+            ...formData,
+            whatsappThreshold: Number(formData.whatsappThreshold),
+            leadCaptureDelay: Number(formData.leadCaptureDelay)
+        };
+
+        if (editingLink) {
+            updateMutation.mutate({ id: editingLink.id, values: payload });
+        } else {
+            createMutation.mutate(payload);
+        }
     };
 
     const copyToClipboard = (slug: string, id: string) => {
         const url = `${window.location.origin}/chat/${slug}`;
         navigator.clipboard.writeText(url);
         setCopiedId(id);
-        message.success('Link copied to clipboard');
+        showToast('Link copied to clipboard', 'success');
         setTimeout(() => setCopiedId(''), 2000);
     };
 
@@ -114,331 +191,379 @@ const Links: React.FC = () => {
         l.slug.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const screens = Grid.useBreakpoint();
-    const isMobile = !screens.sm;
+    const usagePercent = Math.min(100, Math.round((totalLinks / (user?.linksLimit || 1)) * 100));
+
+    if (isLoading) {
+        return (
+            <div className="space-y-6 animate-pulse">
+                <div className="flex justify-between items-center mb-8">
+                    <div className="h-8 bg-slate-100 rounded-lg w-48" />
+                    <div className="h-12 bg-slate-100 rounded-xl w-40" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} className="h-64 bg-slate-100 rounded-3xl" />
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div>
-            <div style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                justifyContent: 'space-between',
-                alignItems: isMobile ? 'stretch' : 'flex-end',
-                marginBottom: isMobile ? 32 : 48,
-                gap: isMobile ? 24 : 0
-            }}>
-                <div>
-                    <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 22 : 24 }}>My Chat Links</Title>
-                    <Text type="secondary" style={{ fontSize: 13, display: 'block', marginTop: 4 }}>Manage and share your custom chat URLs.</Text>
+        <div className="pb-20 font-sans text-slate-800 animate-in fade-in duration-500">
+            {/* Custom Toast Notification */}
+            {toast && (
+                <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-slate-900 text-white shadow-xl text-sm font-medium animate-in slide-in-from-bottom-4 duration-200">
+                    <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-400' : toast.type === 'error' ? 'bg-red-400' : 'bg-blue-400'}`} />
+                    <span>{toast.message}</span>
+                    <button onClick={() => setToast(null)} className="ml-2 text-slate-400 hover:text-white">
+                        <X className="w-4 h-4" />
+                    </button>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16, width: isMobile ? '100%' : 260, alignItems: isMobile ? 'stretch' : 'flex-end' }}>
-                    <div style={{ width: '100%' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>Usage: <Text strong style={{ color: '#fff' }}>{totalLinks}</Text> / {user?.linksLimit || 0}</Text>
+            )}
+
+            {/* Header Area */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8 bg-white border border-slate-200/80 p-6 sm:p-8 rounded-2xl shadow-xs">
+                <div>
+                    <div className="flex items-center gap-3 mb-1">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shadow-2xs">
+                            <LinkIcon className="w-5 h-5 text-primary" />
                         </div>
-                        <Progress
-                            percent={Math.min(100, (totalLinks / (user?.linksLimit || 1)) * 100)}
-                            showInfo={false}
-                            strokeColor="#00df9a"
-                            trailColor="rgba(255,255,255,0.05)"
-                            strokeWidth={6}
-                        />
+                        <h1 className="text-xl font-bold text-slate-900 m-0 tracking-tight">My Smart Chat Links</h1>
                     </div>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        size="large"
-                        className="premium-button"
-                        onClick={() => setShowModal(true)}
-                        disabled={totalLinks >= (user?.linksLimit || 0)}
-                        style={{ width: isMobile ? '100%' : 'auto', height: 48 }}
+                    <p className="text-xs text-slate-500 m-0">Manage and share custom chat URLs for visitor engagement and lead capture.</p>
+                </div>
+
+                {/* Usage & Buttons */}
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
+                    <div className="bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 shadow-2xs min-w-[180px]">
+                        <div className="flex justify-between items-center text-[11px] font-semibold mb-1.5">
+                            <span className="text-slate-500 uppercase tracking-wider">Usage Quota</span>
+                            <span className="text-slate-900 font-bold">{totalLinks} / {user?.linksLimit || 0}</span>
+                        </div>
+                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                            <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: `${usagePercent}%` }} />
+                        </div>
+                    </div>
+
+                    <button
+                        onClick={handleExportCSV}
+                        disabled={totalLinks === 0}
+                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl shadow-2xs transition-all text-xs shrink-0 cursor-pointer disabled:opacity-50"
                     >
-                        Create New Link
-                    </Button>
+                        <Download className="w-3.5 h-3.5" /> Export CSV
+                    </button>
+
+                    <button
+                        onClick={handleOpenCreate}
+                        disabled={totalLinks >= (user?.linksLimit || 0)}
+                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl shadow-xs transition-all text-xs shrink-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                        <Plus className="w-3.5 h-3.5" /> Create New Link
+                    </button>
                 </div>
             </div>
 
-            <div style={{ marginBottom: 32 }}>
-                <Input
-                    prefix={<SearchOutlined style={{ color: 'var(--text-secondary)', marginRight: 8 }} />}
+            {/* Search Filter */}
+            <div className="relative mb-8 max-w-md">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                    type="text"
                     placeholder="Search by title or slug..."
-                    size="large"
-                    variant="borderless"
                     value={searchTerm}
-                    onChange={e => {
-                        setSearchTerm(e.target.value);
-                        setCurrentPage(1);
-                    }}
-                    style={{
-                        maxWidth: isMobile ? '100%' : 400,
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid var(--divider)',
-                        borderRadius: 8,
-                        height: 48,
-                        color: '#fff'
-                    }}
+                    onChange={e => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+                    className="w-full pl-11 pr-4 py-3 bg-white border border-slate-200/80 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-2xs"
                 />
             </div>
 
-            <Row gutter={[24, 24]}>
-                <AnimatePresence>
-                    {filteredLinks.map((link: any) => (
-                        <Col xs={24} md={12} lg={8} key={link.id}>
-                            <motion.div
-                                layout
-                                initial={{ opacity: 0, scale: 0.95 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0.95 }}
-                            >
-                                <Card className="premium-card">
-                                    <>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 }}>
-                                            <div style={{ flex: 1 }}>
-                                                <Title level={5} style={{ margin: 0, fontSize: 16 }}>{link.title}</Title>
-                                                <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 2 }}>dochats.com/chat/{link.slug}</Text>
-                                            </div>
-                                            <Badge
-                                                count={`${link._count.conversations} Chats`}
-                                                style={{ background: 'rgba(0, 223, 154, 0.1)', color: '#00df9a', border: 'none', fontWeight: 600, padding: '0 8px' }}
-                                            />
-                                        </div>
+            {/* Links Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+                {filteredLinks.map((link: any) => (
+                    <div key={link.id} className="bg-white rounded-2xl border border-slate-200/80 p-6 flex flex-col justify-between shadow-xs hover:shadow-md transition-all relative group">
+                        <div>
+                            {/* Link Title and Slug */}
+                            <div className="flex justify-between items-start gap-4 mb-5 pb-4 border-b border-slate-100">
+                                <div className="truncate min-w-0">
+                                    <h3 className="text-base font-bold text-slate-900 m-0 truncate group-hover:text-primary transition-colors">{link.title}</h3>
+                                    <p className="text-xs font-semibold text-slate-500 m-0 mt-1 truncate">
+                                        {window.location.host}/chat/{link.slug}
+                                    </p>
+                                </div>
+                                <span className="px-3 py-1 bg-primary/10 text-primary font-semibold rounded-xl text-xs border border-primary/20 shrink-0 shadow-2xs">
+                                    {link._count?.conversations || 0} Chats
+                                </span >
+                            </div>
 
-                                        <div style={{ padding: '12px 0', borderTop: '1px solid var(--divider)', margin: '0 -16px 16px -16px', paddingLeft: 16, paddingRight: 16 }}>
-                                            <Text type="secondary" style={{ fontSize: 10, letterSpacing: 1, textTransform: 'uppercase', fontWeight: 600 }}>WELCOME MESSAGE</Text>
-                                            <div style={{ marginTop: 4, fontStyle: 'italic', fontSize: 13, color: 'rgba(255, 255, 255, 0.9)', lineHeight: 1.4 }}>"{link.welcomeMessage || 'No message set'}"</div>
-                                        </div>
+                            {/* Welcome Message Preview */}
+                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 mb-6">
+                                <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+                                    <MessageSquare className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                    <span>Welcome Message</span>
+                                </div>
+                                <p className="text-xs text-slate-700 italic line-clamp-2 m-0 leading-normal font-medium">
+                                    "{link.welcomeMessage || 'No message set'}"
+                                </p>
+                            </div>
+                        </div>
 
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
-                                            <Space size={8} wrap>
-                                                <Button
-                                                    icon={copiedId === link.id ? <CheckCircleOutlined /> : <CopyOutlined />}
-                                                    onClick={() => copyToClipboard(link.slug, link.id)}
-                                                    style={{ borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--divider)', fontWeight: 500 }}
-                                                >
-                                                    {copiedId === link.id ? 'Copied' : 'Copy'}
-                                                </Button>
-                                                <Button
-                                                    onClick={() => handleEdit(link)}
-                                                    style={{ borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--divider)' }}
-                                                >
-                                                    Edit
-                                                </Button>
-                                                <Tooltip title="Preview Chat">
-                                                    <Button
-                                                        icon={<ExportOutlined />}
-                                                        href={`/chat/${link.slug}`}
-                                                        target="_blank"
-                                                        style={{ borderRadius: 8, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--divider)' }}
-                                                    />
-                                                </Tooltip>
-                                            </Space>
-                                            <Popconfirm
-                                                title="Delete link"
-                                                description="Are you sure you want to delete this chat link?"
-                                                onConfirm={() => deleteMutation.mutate(link.id)}
-                                                okButtonProps={{ danger: true }}
-                                            >
-                                                <Button danger icon={<DeleteOutlined style={{ fontSize: 16 }} />} type="text" style={{ borderRadius: 8 }} />
-                                            </Popconfirm>
-                                        </div>
-                                    </>
-                                </Card>
-                            </motion.div>
-                        </Col>
-                    ))}
-                </AnimatePresence>
-            </Row>
+                        {/* Actions Footer */}
+                        <div className="flex items-center justify-between gap-2 pt-4 border-t border-slate-100">
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <button
+                                    onClick={() => copyToClipboard(link.slug, link.id)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                                >
+                                    {copiedId === link.id ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                                    <span>{copiedId === link.id ? 'Copied' : 'Copy'}</span>
+                                </button>
+                                <button
+                                    onClick={() => handleEdit(link)}
+                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-100 rounded-xl text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
+                                >
+                                    <Edit2 className="w-3.5 h-3.5" />
+                                    <span>Edit</span>
+                                </button>
+                                <a
+                                    href={`/chat/${link.slug}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="flex items-center justify-center w-8 h-8 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-colors shadow-2xs cursor-pointer"
+                                    title="Open Live Chat"
+                                >
+                                    <ExternalLink className="w-3.5 h-3.5 text-slate-600" />
+                                </a>
+                            </div>
 
-            {filteredLinks.length === 0 && !isLoading && (
-                <Empty description="No links found" style={{ marginTop: 80 }} />
-            )}
+                            {/* Delete Button with inline confirm */}
+                            <div className="relative">
+                                {deleteConfirmId === link.id ? (
+                                    <div className="absolute right-0 bottom-0 bg-white p-3 rounded-2xl shadow-xl border border-red-200 flex items-center gap-2 z-20 min-w-[160px] animate-in zoom-in-95 duration-150">
+                                        <span className="text-xs font-bold text-slate-700">Delete?</span>
+                                        <button 
+                                            onClick={() => setDeleteConfirmId(null)}
+                                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold cursor-pointer"
+                                        >
+                                            No
+                                        </button>
+                                        <button 
+                                            onClick={() => deleteMutation.mutate(link.id)}
+                                            className="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-semibold shadow-2xs cursor-pointer"
+                                        >
+                                            Yes
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => setDeleteConfirmId(link.id)}
+                                        className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                                        title="Delete Link"
+                                    >
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
 
-            {totalLinks > pageSize && (
-                <div style={{ display: 'flex', justifyContent: 'center', marginTop: 40 }}>
-                    <Pagination
-                        current={currentPage}
-                        pageSize={pageSize}
-                        total={totalLinks}
-                        onChange={setCurrentPage}
-                        showSizeChanger={false}
-                    />
+            {/* Empty State */}
+            {filteredLinks.length === 0 && (
+                <div className="text-center py-16 bg-white border border-slate-200/80 rounded-2xl shadow-xs mb-8 p-8">
+                    <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-200/60 shadow-2xs">
+                        <AlertCircle className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900 m-0">No chat links found</h3>
+                    <p className="text-xs text-slate-500 mt-1 mb-6 font-medium">You have not created any chat links yet or none match your search.</p>
+                    {totalLinks < (user?.linksLimit || 0) && (
+                        <button
+                            onClick={handleOpenCreate}
+                            className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl text-xs shadow-xs transition-all cursor-pointer"
+                        >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Create Link Now</span>
+                        </button>
+                    )}
                 </div>
             )}
 
-            <Modal
-                title={editingLink ? "Edit Chat Link" : "Create Chat Link"}
-                open={showModal}
-                onCancel={() => { setShowModal(false); setEditingLink(null); form.resetFields(); }}
-                footer={null}
-                centered
-                mask={{ closable: false }}
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={values => {
-                        if (editingLink) {
-                            updateMutation.mutate({ id: editingLink.id, values });
-                        } else {
-                            createMutation.mutate(values);
-                        }
-                    }}
-                    initialValues={{
-                        welcomeMessage: 'Hello! How can I help you today?',
-                        whatsappThreshold: 5,
-                        leadCaptureDelay: 3
-                    }}
-                    style={{ marginTop: 20 }}
-                >
-                    <Form.Item
-                        label="Internal Title"
-                        name="title"
-                        rules={[{ required: true, message: 'Please enter a title' }]}
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <div className="flex justify-between items-center p-5 bg-white border border-slate-200/80 rounded-2xl shadow-xs">
+                    <span className="text-xs text-slate-500">
+                        Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, totalLinks)} of {totalLinks} entries
+                    </span>
+                    <div className="flex gap-1.5">
+                        <button 
+                            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                            disabled={currentPage === 1}
+                            className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                        >
+                            <ChevronLeft className="w-4 h-4" />
+                            <span>Previous</span>
+                        </button>
+                        <button 
+                            onClick={() => setCurrentPage(p => p + 1)}
+                            disabled={currentPage >= totalPages}
+                            className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                        >
+                            <span>Next</span>
+                            <ChevronRight className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Sliding Side Drawer for Create / Edit */}
+            {isDrawerOpen && (
+                <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-xs animate-in fade-in duration-300">
+                    <div 
+                        className="w-full max-w-xl bg-white shadow-2xl h-full flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200 overflow-hidden"
+                        onClick={e => e.stopPropagation()}
                     >
-                        <Input
-                            placeholder="e.g. Sales Support"
-                            variant="borderless"
-                            style={{
-                                height: 48,
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid var(--divider)',
-                                borderRadius: 8,
-                                color: '#fff'
-                            }}
-                        />
-                    </Form.Item>
-
-                    {editingLink && (
-                        <div style={{
-                            padding: '12px 16px',
-                            background: 'rgba(255,255,255,0.03)',
-                            border: '1px solid var(--divider)',
-                            borderRadius: 8,
-                            marginBottom: 24
-                        }}>
-                            <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 4 }}>Chat URL (auto-generated)</Text>
-                            <Text style={{ fontSize: 14 }}>dochats.com/chat/{editingLink.slug}</Text>
+                        {/* Drawer Header */}
+                        <div className="flex justify-between items-center p-6 border-b border-slate-100 bg-slate-50 shrink-0">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold shadow-2xs">
+                                    {editingLink ? <Edit2 className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                                </div>
+                                <h2 className="text-lg font-bold text-slate-900 m-0 tracking-tight">
+                                    {editingLink ? "Edit Smart Chat Link" : "Create Smart Chat Link"}
+                                </h2>
+                            </div>
+                            <button onClick={() => setIsDrawerOpen(false)} className="w-8 h-8 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-all shadow-2xs cursor-pointer">
+                                <X className="w-4 h-4" />
+                            </button>
                         </div>
-                    )}
 
-                    <Form.Item label="Welcome Message" name="welcomeMessage">
-                        <TextArea
-                            rows={3}
-                            placeholder="Auto-reply whenever someone opens the link"
-                            variant="borderless"
-                            style={{
-                                background: 'rgba(255,255,255,0.03)',
-                                border: '1px solid var(--divider)',
-                                borderRadius: 8,
-                                color: '#fff',
-                                padding: '12px 16px'
-                            }}
-                        />
-                    </Form.Item>
-
-                    <div style={{ padding: '16px 0', borderTop: '1px solid var(--divider)', marginTop: 16 }}>
-                        <Title level={5} style={{ fontSize: 14, color: '#00df9a', marginBottom: 16 }}>WhatsApp Redirection (Optional)</Title>
-
-                        <Form.Item
-                            label="WhatsApp Redirection Link"
-                            name="whatsappLink"
-                            extra="Format: https://wa.me/phonenumber?text=Hi Message"
-                        >
-                            <Input
-                                placeholder="https://wa.me/1234567890?text=Hi"
-                                variant="borderless"
-                                style={{
-                                    height: 48,
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid var(--divider)',
-                                    borderRadius: 8,
-                                    color: '#fff'
-                                }}
-                            />
-                        </Form.Item>
-
-                        <Form.Item
-                            label="Redirection Threshold (Messages)"
-                            name="whatsappThreshold"
-                            extra="Show popup after these many messages from customer"
-                        >
-                            <Input
-                                type="number"
-                                placeholder="e.g. 5"
-                                variant="borderless"
-                                style={{
-                                    height: 48,
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid var(--divider)',
-                                    borderRadius: 8,
-                                    color: '#fff'
-                                }}
-                            />
-                        </Form.Item>
-                    </div>
-
-                    <div style={{ padding: '16px 0', borderTop: '1px solid var(--divider)', marginTop: 16 }}>
-                        <Title level={5} style={{ fontSize: 14, color: '#00df9a', marginBottom: 16 }}>Lead Capture (Optional)</Title>
-
-                        <Form.Item
-                            label="Lead Capture Form"
-                            name="leadCaptureFormId"
-                            extra="Select a form to display to the visitor."
-                        >
-                            <Select 
-                                placeholder="Select a form..."
-                                variant="borderless"
-                                style={{
-                                    height: 48,
-                                    background: 'rgba(255,255,255,0.03)',
-                                    border: '1px solid var(--divider)',
-                                    borderRadius: 8,
-                                    color: '#fff'
-                                }}
-                            >
-                                <Select.Option value="">None (Disabled)</Select.Option>
-                                {forms.map((f: any) => (
-                                    <Select.Option key={f.id} value={f.id}>{f.title}</Select.Option>
-                                ))}
-                            </Select>
-                        </Form.Item>
-
-                        <Form.Item
-                            noStyle
-                            shouldUpdate={(prev, curr) => prev.leadCaptureFormId !== curr.leadCaptureFormId}
-                        >
-                            {({ getFieldValue }) => getFieldValue('leadCaptureFormId') && (
-                                <Form.Item
-                                    label="Show Form After (Messages)"
-                                    name="leadCaptureDelay"
-                                    extra="Wait for this many messages before presenting the form."
-                                    style={{ marginTop: 16 }}
-                                >
-                                    <Input
-                                        type="number"
-                                        placeholder="e.g. 3"
-                                        variant="borderless"
-                                        style={{
-                                            height: 48,
-                                            background: 'rgba(255,255,255,0.03)',
-                                            border: '1px solid var(--divider)',
-                                            borderRadius: 8,
-                                            color: '#fff'
-                                        }}
+                        {/* Drawer Form Content */}
+                        <form id="link-drawer-form" onSubmit={handleFormSubmit} className="flex-1 flex flex-col overflow-hidden text-xs">
+                            <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6 custom-scrollbar">
+                                <div>
+                                    <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">Internal Link Title *</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        placeholder="e.g. Website Sales Widget"
+                                        value={formData.title}
+                                        onChange={e => setFormData({ ...formData, title: e.target.value })}
+                                        className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all font-medium"
                                     />
-                                </Form.Item>
-                            )}
-                        </Form.Item>
-                    </div>
+                                </div>
 
-                    <Space style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 20 }}>
-                        <Button onClick={() => { setShowModal(false); setEditingLink(null); form.resetFields(); }}>Cancel</Button>
-                        <Button type="primary" htmlType="submit" loading={createMutation.isPending || updateMutation.isPending} className="premium-button">
-                            {editingLink ? "Update Link" : "Generate Link"}
-                        </Button>
-                    </Space>
-                </Form>
-            </Modal>
+                                {editingLink && (
+                                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Chat URL (Auto-Generated)</span>
+                                        <span className="text-xs font-bold text-primary">{window.location.host}/chat/{editingLink.slug}</span>
+                                    </div>
+                                )}
+
+                                <div>
+                                    <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">AI Welcome Message</label>
+                                    <textarea
+                                        rows={3}
+                                        placeholder="Auto-reply whenever someone opens the link"
+                                        value={formData.welcomeMessage}
+                                        onChange={e => setFormData({ ...formData, welcomeMessage: e.target.value })}
+                                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all resize-none font-medium"
+                                    />
+                                </div>
+
+                                {/* WhatsApp Redirection */}
+                                <div className="pt-6 border-t border-slate-100 space-y-4">
+                                    <h3 className="text-xs font-bold text-primary flex items-center gap-2 m-0 uppercase tracking-wider">
+                                        <Phone className="w-3.5 h-3.5" />
+                                        <span>WhatsApp Redirection (Optional)</span>
+                                    </h3>
+
+                                    <div>
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">WhatsApp Target URL</label>
+                                        <p className="text-[11px] text-slate-400 mb-2 font-medium">Format: https://wa.me/phonenumber?text=Hi Message</p>
+                                        <input
+                                            type="url"
+                                            placeholder="https://wa.me/1234567890?text=Hi"
+                                            value={formData.whatsappLink}
+                                            onChange={e => setFormData({ ...formData, whatsappLink: e.target.value })}
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all font-medium"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Redirection Message Threshold</label>
+                                        <p className="text-[11px] text-slate-400 mb-2 font-medium">Prompt customer to move to WhatsApp after these many messages</p>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={formData.whatsappThreshold}
+                                            onChange={e => setFormData({ ...formData, whatsappThreshold: Number(e.target.value) })}
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all font-medium"
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Lead Capture Form Integration */}
+                                <div className="pt-6 border-t border-slate-100 space-y-4">
+                                    <h3 className="text-xs font-bold text-primary flex items-center gap-2 m-0 uppercase tracking-wider">
+                                        <FileText className="w-3.5 h-3.5" />
+                                        <span>Form Builder Lead Capture (Optional)</span>
+                                    </h3>
+
+                                    <div>
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Inline Capture Form</label>
+                                        <p className="text-[11px] text-slate-400 mb-2 font-medium">Select a custom form to display during chat</p>
+                                        <select
+                                            value={formData.leadCaptureFormId}
+                                            onChange={e => setFormData({ ...formData, leadCaptureFormId: e.target.value })}
+                                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all cursor-pointer font-medium"
+                                        >
+                                            <option value="">None (Disabled)</option>
+                                            {forms.map((f: any) => (
+                                                <option key={f.id} value={f.id}>{f.title}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {formData.leadCaptureFormId && (
+                                        <div>
+                                            <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Trigger Form After (Messages)</label>
+                                            <p className="text-[11px] text-slate-400 mb-2 font-medium">Wait for this many messages before requiring form submission</p>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                value={formData.leadCaptureDelay}
+                                                onChange={e => setFormData({ ...formData, leadCaptureDelay: Number(e.target.value) })}
+                                                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all font-medium"
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Submit Buttons */}
+                            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsDrawerOpen(false)}
+                                    className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer shadow-2xs"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    form="link-drawer-form"
+                                    type="submit"
+                                    disabled={createMutation.isPending || updateMutation.isPending}
+                                    className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl text-xs shadow-xs transition-all flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+                                >
+                                    {(createMutation.isPending || updateMutation.isPending) && (
+                                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin shrink-0" />
+                                    )}
+                                    <span>{editingLink ? "Update Link" : "Generate Link"}</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

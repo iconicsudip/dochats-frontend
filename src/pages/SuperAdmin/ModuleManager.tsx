@@ -1,36 +1,34 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Typography, Button, Row, Col, Switch, Tag, Avatar, Select, Table, Modal, Form, message } from 'antd';
+import { message } from 'antd';
 import apiClient from '../../api/apiClient';
 import { moduleConfigApi } from '../../api/moduleConfig';
 import {
-    AppstoreOutlined, TeamOutlined, RobotOutlined, CalendarOutlined,
-    FundOutlined, PlayCircleOutlined, PieChartOutlined, LinkOutlined, MessageOutlined,
-    CreditCardOutlined, ThunderboltOutlined, SettingOutlined, CheckCircleOutlined,
-    FormOutlined,
-    WhatsAppOutlined,
-    MailOutlined
-} from '@ant-design/icons';
+    Layout, Users, MessageSquare, BarChart3, Calendar,
+    TrendingUp, Zap, PieChart, Link as LinkIcon, ShieldCheck,
+    CreditCard, Settings, CheckCircle2, FormInput, MessageCircle, Mail, X
+} from 'lucide-react';
 import { Module, ModuleLabel } from '../../enums';
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-const { Title, Text } = Typography;
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
-// All modules with metadata
 const ALL_MODULES: { key: Module; icon: React.ReactNode; color: string; desc: string }[] = [
-    { key: Module.LIVE_CHAT, icon: <MessageOutlined />, color: '#a855f7', desc: 'Real-time chat with visitors' },
-    { key: Module.CRM, icon: <FundOutlined />, color: '#a855f7', desc: 'Pipeline, leads, deals' },
-    { key: Module.BOOKINGS, icon: <CalendarOutlined />, color: '#3b82f6', desc: 'Appointments & reservations' },
-    { key: Module.AUTOMATION, icon: <PlayCircleOutlined />, color: '#f59e0b', desc: 'Workflow automation engine' },
-    { key: Module.ANALYTICS, icon: <PieChartOutlined />, color: '#06b6d4', desc: 'Reports & insights' },
-    { key: Module.LINKS, icon: <LinkOutlined />, color: '#ec4899', desc: 'Smart link management' },
-    { key: Module.SUB_USERS, icon: <TeamOutlined />, color: '#8b5cf6', desc: 'Team & agent access' },
-    { key: Module.BILLING, icon: <CreditCardOutlined />, color: '#64748b', desc: 'Billing & subscriptions' },
-    { key: Module.PLANS, icon: <ThunderboltOutlined />, color: '#f59e0b', desc: 'Plan management' },
-    { key: Module.FORMS, icon: <FormOutlined />, color: '#00df9a', desc: 'Dynamic form creation' },
-    { key: Module.WHATSAPP, icon: <WhatsAppOutlined />, color: '#25d366', desc: 'WhatsApp Meta Business Hub' },
-    { key: Module.EMAIL, icon: <MailOutlined />, color: '#3b82f6', desc: 'Drag-and-Drop Email Marketing' },
+    { key: Module.LIVE_CHAT, icon: <MessageSquare className="w-5 h-5 text-purple-500" />, color: 'border-purple-200 bg-purple-50 text-purple-700', desc: 'Real-time chat with visitors' },
+    { key: Module.CRM, icon: <TrendingUp className="w-5 h-5 text-purple-500" />, color: 'border-purple-200 bg-purple-50 text-purple-700', desc: 'Pipeline, leads, deals' },
+    { key: Module.BOOKINGS, icon: <Calendar className="w-5 h-5 text-blue-500" />, color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Appointments & reservations' },
+    { key: Module.AUTOMATION, icon: <Zap className="w-5 h-5 text-amber-500" />, color: 'border-amber-200 bg-amber-50 text-amber-700', desc: 'Workflow automation engine' },
+    { key: Module.ANALYTICS, icon: <PieChart className="w-5 h-5 text-cyan-500" />, color: 'border-cyan-200 bg-cyan-50 text-cyan-700', desc: 'Reports & insights' },
+    { key: Module.LINKS, icon: <LinkIcon className="w-5 h-5 text-pink-500" />, color: 'border-pink-200 bg-pink-50 text-pink-700', desc: 'Smart link management' },
+    { key: Module.SUB_USERS, icon: <Users className="w-5 h-5 text-indigo-500" />, color: 'border-indigo-200 bg-indigo-50 text-indigo-700', desc: 'Team & agent access' },
+    { key: Module.BILLING, icon: <CreditCard className="w-5 h-5 text-slate-500" />, color: 'border-slate-200 bg-slate-50 text-slate-700', desc: 'Billing & subscriptions' },
+    { key: Module.PLANS, icon: <ShieldCheck className="w-5 h-5 text-amber-500" />, color: 'border-amber-200 bg-amber-50 text-amber-700', desc: 'Plan management' },
+    { key: Module.FORMS, icon: <FormInput className="w-5 h-5 text-emerald-500" />, color: 'border-emerald-200 bg-emerald-50 text-emerald-700', desc: 'Dynamic form creation' },
+    { key: Module.WHATSAPP, icon: <MessageCircle className="w-5 h-5 text-green-500" />, color: 'border-green-200 bg-green-50 text-green-700', desc: 'WhatsApp Meta Business Hub' },
+    { key: Module.EMAIL, icon: <Mail className="w-5 h-5 text-blue-500" />, color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Drag-and-Drop Email Marketing' },
 ];
-
-
 
 const ModuleManager: React.FC = () => {
     const [admins, setAdmins] = useState<any[]>([]);
@@ -50,7 +48,6 @@ const ModuleManager: React.FC = () => {
                 const plan = Array.isArray(admin.plan?.enabledModules) ? admin.plan.enabledModules : [];
                 let combined = Array.from(new Set([...custom, ...plan]));
                 
-                // Fallback to defaults if everything is empty, matching authController.ts logic
                 if (combined.length === 0) {
                     combined = [
                         Module.LIVE_CHAT, Module.CRM, Module.BOOKINGS, 
@@ -96,134 +93,170 @@ const ModuleManager: React.FC = () => {
     };
 
     const PLAN_COLOR: Record<string, string> = {
-        Basic: '#64748b', Pro: '#3b82f6', Business: '#a855f7', Enterprise: '#00df9a'
+        Basic: 'bg-slate-50 text-slate-700 border-slate-200',
+        Pro: 'bg-blue-50 text-blue-700 border-blue-200',
+        Business: 'bg-purple-50 text-purple-700 border-purple-200',
+        Enterprise: 'bg-emerald-50 text-emerald-700 border-emerald-200'
     };
 
+    const totalAdmins = admins.length;
+    const avgModules = totalAdmins > 0 ? Math.round(admins.reduce((a, ad) => a + ad.enabledModules.length, 0) / totalAdmins) : 0;
+    const fullAccessCount = admins.filter(a => a.enabledModules.length === ALL_MODULES.length).length;
+
     return (
-        <div>
-            <div style={{ marginBottom: 28 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                    <AppstoreOutlined style={{ color: '#00df9a', fontSize: 20 }} />
-                    <Title level={3} style={{ margin: 0, fontWeight: 800, color: '#fff' }}>Module Manager</Title>
+        <div className="pb-20 animate-in fade-in duration-500 font-sans text-slate-800">
+            {/* Header */}
+            <div className="mb-8">
+                <div className="flex items-center gap-2 mb-1">
+                    <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
+                        <Layout className="w-6 h-6 text-primary" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900 m-0">Module Manager</h1>
                 </div>
-                <Text type="secondary" style={{ fontSize: 13 }}>
-                    Control which AI BOS modules each admin account can access.
-                </Text>
+                <p className="text-sm text-slate-500 mt-2">Control which Business OS modules each admin account can access.</p>
             </div>
 
-            {/* Summary row */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-                {[
-                    { label: 'Total Admins', value: admins.length, color: '#3b82f6' },
-                    { label: 'Avg Modules/Admin', value: Math.round(admins.reduce((a, ad) => a + ad.enabledModules.length, 0) / admins.length), color: '#00df9a' },
-                    { label: 'Full Access Admins', value: admins.filter(a => a.enabledModules.length === ALL_MODULES.length).length, color: '#a855f7' },
-                ].map((s, i) => (
-                    <Col xs={8} key={i}>
-                        <Card className="premium-card" style={{ borderColor: `${s.color}20`, textAlign: 'center' }}>
-                            <Text style={{ fontSize: 28, fontWeight: 800, color: s.color, display: 'block' }}>{s.value}</Text>
-                            <Text style={{ fontSize: 11, color: '#475569', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600 }}>{s.label}</Text>
-                        </Card>
-                    </Col>
-                ))}
-            </Row>
+            {/* Summary Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <div className="text-3xl font-extrabold text-blue-600 mb-1">{totalAdmins}</div>
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Admins</div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <div className="text-3xl font-extrabold text-emerald-600 mb-1">{avgModules}</div>
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Avg Modules / Admin</div>
+                </div>
+                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm text-center">
+                    <div className="text-3xl font-extrabold text-purple-600 mb-1">{fullAccessCount}</div>
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Access Admins</div>
+                </div>
+            </div>
 
-            {/* Admin cards */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {admins.map(admin => (
-                    <Card key={admin.id} className="premium-card" style={{ border: '1px solid rgba(255,255,255,0.05)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                                <Avatar size={44} style={{ background: 'rgba(0,223,154,0.1)', color: '#00df9a', fontSize: 18, flexShrink: 0 }}>
-                                    {admin.name ? admin.name.charAt(0) : admin.username.charAt(0)}
-                                </Avatar>
-                                <div>
-                                    <Text strong style={{ color: '#fff', fontSize: 15, display: 'block' }}>{admin.name}</Text>
-                                    <Text style={{ color: '#475569', fontSize: 12 }}>@{admin.username} · {admin.industry}</Text>
+            {/* Admin Cards */}
+            <div className="space-y-4">
+                {admins.map(admin => {
+                    const planBadgeClass = PLAN_COLOR[admin.plan?.name] || 'bg-slate-50 text-slate-700 border-slate-200';
+                    return (
+                        <div key={admin.id} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-5 border-b border-slate-100">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg border border-primary/20 shrink-0">
+                                        {(admin.name || admin.username || '?').charAt(0).toUpperCase()}
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold text-slate-900 m-0">{admin.name || admin.username}</h3>
+                                        <p className="text-xs text-slate-500 m-0 mt-0.5">@{admin.username} {admin.industry ? `· ${admin.industry}` : ''}</p>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <span className={cn("px-3 py-1 rounded-lg text-xs font-bold border shadow-xs", planBadgeClass)}>
+                                        {admin.plan?.name || 'No Plan'}
+                                    </span>
+                                    <span className="px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                                        {admin.enabledModules?.length || 0} / {ALL_MODULES.length} modules
+                                    </span>
+                                    <button
+                                        onClick={() => openConfig(admin)}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-primary/10 hover:bg-primary/20 text-primary rounded-xl text-xs font-bold transition-colors border border-primary/20"
+                                    >
+                                        <Settings className="w-4 h-4" /> Configure
+                                    </button>
                                 </div>
                             </div>
 
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                                <Tag style={{ background: `${PLAN_COLOR[admin.plan?.name] || '#64748b'}15`, color: PLAN_COLOR[admin.plan?.name] || '#64748b', border: `1px solid ${PLAN_COLOR[admin.plan?.name] || '#64748b'}30`, borderRadius: 6, fontWeight: 700 }}>
-                                    {admin.plan?.name || 'No Plan'}
-                                </Tag>
-                                <Tag style={{ background: 'rgba(255,255,255,0.04)', color: '#94a3b8', border: 'none', borderRadius: 6 }}>
-                                    {admin.enabledModules.length}/{ALL_MODULES.length} modules
-                                </Tag>
-                                <Button
-                                    icon={<SettingOutlined />}
-                                    onClick={() => openConfig(admin)}
-                                    style={{ background: 'rgba(0,223,154,0.08)', borderColor: 'rgba(0,223,154,0.2)', color: '#00df9a', borderRadius: 8, fontWeight: 600 }}
-                                >
-                                    Configure
-                                </Button>
+                            {/* Active Module Tags */}
+                            <div className="flex flex-wrap gap-2 mt-5">
+                                {ALL_MODULES.map(m => {
+                                    const active = admin.enabledModules?.includes(m.key);
+                                    return (
+                                        <span 
+                                            key={m.key} 
+                                            className={cn(
+                                                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border transition-all select-none",
+                                                active ? "bg-primary/5 border-primary/30 text-primary font-bold shadow-xs" : "bg-slate-50 text-slate-400 border-slate-200"
+                                            )}
+                                        >
+                                            {active && <CheckCircle2 className="w-3.5 h-3.5 text-primary" />}
+                                            {ModuleLabel[m.key]}
+                                        </span>
+                                    );
+                                })}
                             </div>
                         </div>
-
-                        {/* Module tags */}
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 14 }}>
-                            {ALL_MODULES.map(m => {
-                                const active = admin.enabledModules.includes(m.key);
-                                return (
-                                    <Tag key={m.key} style={{
-                                        background: active ? `${m.color}12` : 'rgba(255,255,255,0.02)',
-                                        color: active ? m.color : '#2d3748',
-                                        border: `1px solid ${active ? `${m.color}25` : 'rgba(255,255,255,0.05)'}`,
-                                        borderRadius: 6, fontSize: 11, fontWeight: active ? 600 : 400,
-                                        display: 'flex', alignItems: 'center', gap: 4
-                                    }}>
-                                        {active && <CheckCircleOutlined style={{ fontSize: 10 }} />}
-                                        {ModuleLabel[m.key]}
-                                    </Tag>
-                                );
-                            })}
-                        </div>
-                    </Card>
-                ))}
+                    );
+                })}
             </div>
 
             {/* Configure Modal */}
-            <Modal
-                title={<Text style={{ color: '#fff', fontSize: 18, fontWeight: 700 }}>Configure Modules — {selectedAdmin?.name}</Text>}
-                open={configOpen}
-                onCancel={() => setConfigOpen(false)}
-                onOk={saveModules}
-                okText="Save Changes"
-                okButtonProps={{ className: 'premium-button' }}
-                width={560}
-            >
-                <Text style={{ color: '#475569', fontSize: 13, display: 'block', marginBottom: 20 }}>
-                    Toggle modules on/off for this admin. Changes apply immediately on next login.
-                </Text>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                    {ALL_MODULES.map(m => {
-                        const active = editModules.includes(m.key);
-                        return (
-                            <div key={m.key} style={{
-                                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                padding: '12px 16px', borderRadius: 10,
-                                background: active ? `${m.color}06` : 'rgba(255,255,255,0.02)',
-                                border: `1px solid ${active ? `${m.color}20` : 'rgba(255,255,255,0.05)'}`,
-                                transition: 'all 0.2s',
-                            }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                                    <div style={{ width: 34, height: 34, borderRadius: 8, background: `${m.color}12`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: m.color }}>
-                                        {m.icon}
+            {configOpen && selectedAdmin && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                            <h2 className="text-lg font-bold text-slate-900">
+                                Configure Modules — {selectedAdmin.name || selectedAdmin.username}
+                            </h2>
+                            <button onClick={() => setConfigOpen(false)} className="text-slate-400 hover:text-slate-600">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-3">
+                            <p className="text-xs font-medium text-slate-500 mb-4">
+                                Toggle modules on/off for this admin. Changes apply immediately on next login.
+                            </p>
+
+                            {ALL_MODULES.map(m => {
+                                const active = editModules.includes(m.key);
+                                return (
+                                    <div 
+                                        key={m.key}
+                                        onClick={() => toggleModule(m.key)}
+                                        className={cn(
+                                            "flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all bg-white",
+                                            active ? "border-primary bg-primary/5 shadow-xs" : "border-slate-200 hover:border-slate-300"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-3.5">
+                                            <div className="w-10 h-10 rounded-xl bg-white border border-slate-100 shadow-sm flex items-center justify-center shrink-0">
+                                                {m.icon}
+                                            </div>
+                                            <div>
+                                                <div className="text-sm font-bold text-slate-900">{ModuleLabel[m.key]}</div>
+                                                <div className="text-xs text-slate-500 mt-0.5">{m.desc}</div>
+                                            </div>
+                                        </div>
+
+                                        <div className={cn(
+                                            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
+                                            active ? "border-primary bg-primary text-white" : "border-slate-300 bg-white"
+                                        )}>
+                                            {active && <CheckCircle2 className="w-4 h-4 text-white" />}
+                                        </div>
                                     </div>
-                                    <div>
-                                        <Text style={{ color: active ? '#fff' : '#475569', fontSize: 14, fontWeight: 600, display: 'block' }}>{ModuleLabel[m.key]}</Text>
-                                        <Text style={{ color: '#2d3748', fontSize: 12 }}>{m.desc}</Text>
-                                    </div>
-                                </div>
-                                <Switch
-                                    checked={active}
-                                    onChange={() => toggleModule(m.key)}
-                                    style={{ background: active ? m.color : undefined }}
-                                />
-                            </div>
-                        );
-                    })}
+                                );
+                            })}
+                        </div>
+
+                        <div className="flex justify-end gap-3 p-5 border-t border-slate-100 shrink-0 bg-white">
+                            <button 
+                                type="button" 
+                                onClick={() => setConfigOpen(false)} 
+                                className="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors"
+                            >
+                                Cancel
+                            </button>
+                            <button 
+                                type="button" 
+                                onClick={saveModules}
+                                className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 transition-all flex items-center gap-2"
+                            >
+                                Save Configuration
+                            </button>
+                        </div>
+                    </div>
                 </div>
-            </Modal>
+            )}
         </div>
     );
 };

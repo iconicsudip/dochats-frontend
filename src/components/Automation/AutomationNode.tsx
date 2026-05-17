@@ -1,11 +1,15 @@
 import React from 'react';
-import { Card, Select, Button, Space, Typography } from 'antd';
-import { DeleteOutlined, WhatsAppOutlined, MailOutlined, CloseCircleOutlined, ArrowRightOutlined, CalendarOutlined } from '@ant-design/icons';
+import { 
+    Trash2, 
+    Smartphone, 
+    Mail, 
+    XCircle, 
+    ArrowDown, 
+    Calendar 
+} from 'lucide-react';
 import { ACTION_META, ActionType } from '../../constants/automation';
 import { useModules } from '../../contexts/ModuleContext';
 import { Module } from '../../enums';
-
-const { Text } = Typography;
 
 interface AutomationNodeProps {
     node: any;
@@ -16,7 +20,7 @@ interface AutomationNodeProps {
     loadingWa: boolean;
     loadingEmail: boolean;
     hasWaConfig: boolean;
-    availableVariables: string[]; // From the trigger
+    availableVariables: string[];
     updateNode: (id: string, updates: any) => void;
     removeNode: (id: string) => void;
 }
@@ -27,26 +31,20 @@ const AutomationNode: React.FC<AutomationNodeProps> = ({
     const { hasModule } = useModules();
 
     return (
-        <div style={{ position: 'relative' }}>
-            <Card 
-                size="small" 
-                className="premium-card" 
-                style={{ border: '1px solid rgba(59, 130, 246, 0.2)', transition: 'all 0.3s ease' }}
-                bodyStyle={{ padding: 24 }}
-            >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20 }}>
-                    <div style={{ width: 32, height: 32, borderRadius: '50%', background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 14 }}>
+        <div className="relative group">
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:border-primary/30 hover:shadow-md transition-all">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+                    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-sm shrink-0">
                         {index + 1}
                     </div>
-                    <Select 
-                        style={{ width: 220 }} 
-                        className="premium-select"
-                        value={node.action}
-                        onChange={(val) => updateNode(node.id, { action: val })}
-                        placeholder="Select Action"
+                    <select 
+                        value={node.action || ''}
+                        onChange={(e) => updateNode(node.id, { action: e.target.value })}
+                        className="w-full sm:w-64 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm appearance-none"
                     >
+                        <option value="" disabled>Select Action</option>
                         {Array.from(new Set(Object.values(ACTION_META).map(m => m.category))).map(category => (
-                            <Select.OptGroup key={category} label={category.toUpperCase()}>
+                            <optgroup key={category} label={category.toUpperCase()}>
                                 {Object.entries(ACTION_META)
                                     .filter(([key, meta]) => {
                                         if (meta.category !== category) return false;
@@ -55,88 +53,77 @@ const AutomationNode: React.FC<AutomationNodeProps> = ({
                                         return true;
                                     })
                                     .map(([key, meta]) => (
-                                        <Select.Option key={key} value={key}>
-                                            <Space>
-                                                <span style={{ color: meta.color }}>{meta.icon}</span>
-                                                {meta.label}
-                                            </Space>
-                                        </Select.Option>
+                                        <option key={key} value={key}>
+                                            {meta.label}
+                                        </option>
                                     ))
                                 }
-                            </Select.OptGroup>
+                            </optgroup>
                         ))}
-                    </Select>
-                    <Button 
-                        type="text" 
-                        danger 
-                        icon={<DeleteOutlined />} 
+                    </select>
+                    <button 
+                        type="button"
                         onClick={() => removeNode(node.id)}
-                        style={{ marginLeft: 'auto' }}
-                    />
+                        className="sm:ml-auto w-8 h-8 rounded-lg bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-100 hover:text-red-600 transition-colors"
+                    >
+                        <Trash2 className="w-4 h-4" />
+                    </button>
                 </div>
 
                 {/* Node Level Delay */}
-                <div style={{ marginBottom: 20 }}>
-                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' }}>Delay After Previous Step</Text>
-                    <Select 
-                        className="premium-select" 
-                        style={{ width: '100%' }}
+                <div className="mb-6">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Delay After Previous Step</span>
+                    <select 
                         value={node.config?.delayMinutes || 0}
-                        onChange={(val) => updateNode(node.id, { config: { ...node.config, delayMinutes: val } })}
+                        onChange={(e) => updateNode(node.id, { config: { ...node.config, delayMinutes: Number(e.target.value) } })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm appearance-none"
                     >
-                        <Select.Option value={0}>Immediate</Select.Option>
-                        <Select.Option value={5}>5 Minutes</Select.Option>
-                        <Select.Option value={60}>1 Hour</Select.Option>
-                        <Select.Option value={1440}>1 Day</Select.Option>
-                        <Select.Option value={2880}>2 Days</Select.Option>
-                        <Select.Option value={4320}>3 Days</Select.Option>
-                        <Select.Option value={10080}>1 Week</Select.Option>
-                    </Select>
+                        <option value={0}>Immediate</option>
+                        <option value={5}>5 Minutes</option>
+                        <option value={60}>1 Hour</option>
+                        <option value={1440}>1 Day</option>
+                        <option value={2880}>2 Days</option>
+                        <option value={4320}>3 Days</option>
+                        <option value={10080}>1 Week</option>
+                    </select>
                 </div>
 
                 {node.action === ActionType.SEND_WHATSAPP && !hasWaConfig && (
-                    <div style={{ marginBottom: 20, padding: 16, background: 'rgba(245, 158, 11, 0.1)', borderRadius: 12, border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                        <Space direction="vertical" size={4}>
-                            <Text style={{ color: '#f59e0b', fontWeight: 700, fontSize: 13 }}>WhatsApp Not Connected</Text>
-                            <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 8 }}>You need to configure your Meta API credentials before you can send automated WhatsApp messages.</Text>
-                            <Button 
-                                type="primary" 
-                                size="small" 
-                                icon={<WhatsAppOutlined />}
-                                onClick={() => (window as any).showWaSettings && (window as any).showWaSettings()}
-                                style={{ background: '#25d366', borderColor: '#25d366' }}
-                            >
-                                Connect WhatsApp API
-                            </Button>
-                        </Space>
+                    <div className="mb-6 p-4 bg-orange-50 border border-orange-200 rounded-xl">
+                        <h4 className="text-sm font-bold text-orange-600 mb-1">WhatsApp Not Connected</h4>
+                        <p className="text-xs text-orange-700/80 mb-3">You need to configure your Meta API credentials before you can send automated WhatsApp messages.</p>
+                        <button 
+                            type="button"
+                            onClick={() => (window as any).showWaSettings && (window as any).showWaSettings()}
+                            className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#25d366] text-white rounded-lg text-xs font-bold shadow-sm hover:bg-[#20bd5a] transition-colors"
+                        >
+                            <Smartphone className="w-3.5 h-3.5" />
+                            Connect WhatsApp API
+                        </button>
                     </div>
                 )}
 
                 {node.action === ActionType.SEND_WHATSAPP && hasWaConfig && (
-                    <div style={{ marginBottom: 20 }}>
-                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' }}>WhatsApp Template</Text>
-                        <Select 
-                            placeholder="Select verified template" 
-                            className="premium-select" 
-                            style={{ width: '100%' }}
-                            loading={loadingWa}
-                            value={node.config?.whatsappTemplate}
-                            onChange={(val) => {
-                                // Reset mapping when template changes
-                                updateNode(node.id, { config: { ...node.config, whatsappTemplate: val, variableMapping: {} } });
+                    <div className="mb-6">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">WhatsApp Template</span>
+                        <select 
+                            value={node.config?.whatsappTemplate || ''}
+                            onChange={(e) => {
+                                updateNode(node.id, { config: { ...node.config, whatsappTemplate: e.target.value, variableMapping: {} } });
                             }}
+                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm appearance-none"
                         >
+                            <option value="" disabled>{loadingWa ? 'Loading templates...' : 'Select verified template'}</option>
                             {waTemplates.map(t => (
-                                <Select.Option key={t.name} value={t.name}>{t.name}</Select.Option>
+                                <option key={t.name} value={t.name}>{t.name}</option>
                             ))}
-                        </Select>
+                        </select>
 
                         {/* WhatsApp Variable Mapping UI */}
                         {node.config?.whatsappTemplate && (() => {
                             const template = waTemplates.find(t => t.name === node.config.whatsappTemplate);
                             if (!template) return null;
                             
-                            // Find all {{n}} in all components
                             const vars: string[] = [];
                             template.components?.forEach((comp: any) => {
                                 if (comp.text) {
@@ -149,30 +136,28 @@ const AutomationNode: React.FC<AutomationNodeProps> = ({
                             if (uniqueVars.length === 0) return null;
 
                             return (
-                                <div style={{ marginTop: 16, padding: 16, background: 'rgba(37, 211, 102, 0.04)', borderRadius: 12, border: '1px solid rgba(37, 211, 102, 0.1)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                                        <WhatsAppOutlined style={{ color: '#25d366', fontSize: 12 }} />
-                                        <Text style={{ fontSize: 11, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>Template Variables</Text>
+                                <div className="mt-4 p-4 bg-[#25d366]/5 border border-[#25d366]/20 rounded-xl">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <Smartphone className="w-4 h-4 text-[#25d366]" />
+                                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">Template Variables</span>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <div className="flex flex-col gap-3">
                                         {uniqueVars.map(v => (
-                                            <div key={v} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                                                <Text style={{ fontSize: 12, color: '#94a3b8', flexShrink: 0 }}>Variable &#123;&#123;{v}&#125;&#125;</Text>
-                                                <Select 
-                                                    size="small"
-                                                    placeholder="Map to field..."
-                                                    className="premium-select"
-                                                    style={{ flex: 1 }}
-                                                    value={node.config.variableMapping?.[v]}
-                                                    onChange={(val) => {
-                                                        const newMapping = { ...(node.config.variableMapping || {}), [v]: val };
+                                            <div key={v} className="flex items-center justify-between gap-3">
+                                                <span className="text-xs text-slate-500 shrink-0 font-medium">Variable &#123;&#123;{v}&#125;&#125;</span>
+                                                <select 
+                                                    value={node.config.variableMapping?.[v] || ''}
+                                                    onChange={(e) => {
+                                                        const newMapping = { ...(node.config.variableMapping || {}), [v]: e.target.value };
                                                         updateNode(node.id, { config: { ...node.config, variableMapping: newMapping } });
                                                     }}
+                                                    className="flex-1 bg-white border border-slate-200 rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-[#25d366]/20 shadow-sm appearance-none"
                                                 >
+                                                    <option value="" disabled>Map to field...</option>
                                                     {availableVariables.map(av => (
-                                                        <Select.Option key={av} value={av}>{av}</Select.Option>
+                                                        <option key={av} value={av}>{av}</option>
                                                     ))}
-                                                </Select>
+                                                </select>
                                             </div>
                                         ))}
                                     </div>
@@ -183,35 +168,28 @@ const AutomationNode: React.FC<AutomationNodeProps> = ({
                 )}
 
                 {node.action === ActionType.SEND_EMAIL && (
-                    <div style={{ marginBottom: 20 }}>
-                        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 8, fontWeight: 600, textTransform: 'uppercase' }}>Email Template</Text>
-                        <Select 
-                            placeholder="Select from synced templates" 
-                            className="premium-select" 
-                            style={{ width: '100%' }}
-                            loading={loadingEmail}
-                            value={node.config?.emailTemplateId}
-                            onChange={(val) => {
-                                // Reset mapping when template changes
-                                updateNode(node.id, { config: { ...node.config, emailTemplateId: val, variableMapping: {} } });
+                    <div className="mb-6">
+                        <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-2">Email Template</span>
+                        <select 
+                            value={node.config?.emailTemplateId || ''}
+                            onChange={(e) => {
+                                updateNode(node.id, { config: { ...node.config, emailTemplateId: e.target.value, variableMapping: {} } });
                             }}
+                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm appearance-none"
                         >
+                            <option value="" disabled>{loadingEmail ? 'Loading templates...' : 'Select from synced templates'}</option>
                             {emailTemplates.map(t => (
-                                <Select.Option key={t.id} value={t.id}>
-                                    <Space>
-                                        {t.name}
-                                        <Text type="secondary" style={{ fontSize: 11 }}>— {t.subject}</Text>
-                                    </Space>
-                                </Select.Option>
+                                <option key={t.id} value={t.id}>
+                                    {t.name} — {t.subject}
+                                </option>
                             ))}
-                        </Select>
+                        </select>
 
                         {/* Variable Mapping UI */}
                         {node.config?.emailTemplateId && (() => {
                             const template = emailTemplates.find(t => t.id === node.config.emailTemplateId);
                             if (!template) return null;
                             
-                            // Extract variables from content
                             const content = template.content || '';
                             const vars = Array.from(content.matchAll(/{{\s*(.*?)\s*}}/g)).map((m:any) => m[1].trim());
                             const uniqueVars = Array.from(new Set(vars));
@@ -219,30 +197,28 @@ const AutomationNode: React.FC<AutomationNodeProps> = ({
                             if (uniqueVars.length === 0) return null;
 
                             return (
-                                <div style={{ marginTop: 16, padding: 16, background: 'rgba(59, 130, 246, 0.04)', borderRadius: 12, border: '1px solid rgba(59, 130, 246, 0.1)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                                        <MailOutlined style={{ color: '#3b82f6', fontSize: 12 }} />
-                                        <Text style={{ fontSize: 11, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>Template Personalization</Text>
+                                <div className="mt-4 p-4 bg-primary/5 border border-primary/10 rounded-xl">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <Mail className="w-4 h-4 text-primary" />
+                                        <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">Template Personalization</span>
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                                    <div className="flex flex-col gap-3">
                                         {uniqueVars.map(v => (
-                                            <div key={v} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                                                <Text style={{ fontSize: 12, color: '#94a3b8', flexShrink: 0 }}>{v}</Text>
-                                                <Select 
-                                                    size="small"
-                                                    placeholder="Map to field..."
-                                                    className="premium-select"
-                                                    style={{ flex: 1 }}
-                                                    value={node.config.variableMapping?.[v]}
-                                                    onChange={(val) => {
-                                                        const newMapping = { ...(node.config.variableMapping || {}), [v]: val };
+                                            <div key={v} className="flex items-center justify-between gap-3">
+                                                <span className="text-xs text-slate-500 shrink-0 font-medium">{v}</span>
+                                                <select 
+                                                    value={node.config.variableMapping?.[v] || ''}
+                                                    onChange={(e) => {
+                                                        const newMapping = { ...(node.config.variableMapping || {}), [v]: e.target.value };
                                                         updateNode(node.id, { config: { ...node.config, variableMapping: newMapping } });
                                                     }}
+                                                    className="flex-1 bg-white border border-slate-200 rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm appearance-none"
                                                 >
+                                                    <option value="" disabled>Map to field...</option>
                                                     {availableVariables.map(av => (
-                                                        <Select.Option key={av} value={av}>{av}</Select.Option>
+                                                        <option key={av} value={av}>{av}</option>
                                                     ))}
-                                                </Select>
+                                                </select>
                                             </div>
                                         ))}
                                     </div>
@@ -253,32 +229,30 @@ const AutomationNode: React.FC<AutomationNodeProps> = ({
                 )}
 
                 {node.action === ActionType.CREATE_BOOKING && (
-                    <div style={{ marginBottom: 20 }}>
-                        <div style={{ padding: 16, background: 'rgba(59, 130, 246, 0.04)', borderRadius: 12, border: '1px solid rgba(59, 130, 246, 0.1)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                                <CalendarOutlined style={{ color: '#3b82f6', fontSize: 12 }} />
-                                <Text style={{ fontSize: 11, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>Booking Details Mapping</Text>
+                    <div className="mb-6">
+                        <div className="p-4 bg-primary/5 border border-primary/10 rounded-xl">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Calendar className="w-4 h-4 text-primary" />
+                                <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">Booking Details Mapping</span>
                             </div>
                             
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                            <div className="flex flex-col gap-3">
                                 {['guest_name', 'phone', 'booking_date'].map(field => (
-                                    <div key={field} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
-                                        <Text style={{ fontSize: 12, color: '#94a3b8', flexShrink: 0, textTransform: 'capitalize' }}>{field.replace('_', ' ')}</Text>
-                                        <Select 
-                                            size="small"
-                                            placeholder="Map to variable..."
-                                            className="premium-select"
-                                            style={{ flex: 1 }}
-                                            value={node.config?.variableMapping?.[field]}
-                                            onChange={(val) => {
-                                                const newMapping = { ...(node.config?.variableMapping || {}), [field]: val };
+                                    <div key={field} className="flex items-center justify-between gap-3">
+                                        <span className="text-xs text-slate-500 shrink-0 font-medium capitalize">{field.replace('_', ' ')}</span>
+                                        <select 
+                                            value={node.config?.variableMapping?.[field] || ''}
+                                            onChange={(e) => {
+                                                const newMapping = { ...(node.config?.variableMapping || {}), [field]: e.target.value };
                                                 updateNode(node.id, { config: { ...node.config, variableMapping: newMapping } });
                                             }}
+                                            className="flex-1 bg-white border border-slate-200 rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm appearance-none"
                                         >
+                                            <option value="" disabled>Map to variable...</option>
                                             {availableVariables.map(av => (
-                                                <Select.Option key={av} value={av}>{av}</Select.Option>
+                                                <option key={av} value={av}>{av}</option>
                                             ))}
-                                        </Select>
+                                        </select>
                                     </div>
                                 ))}
                             </div>
@@ -287,21 +261,19 @@ const AutomationNode: React.FC<AutomationNodeProps> = ({
                 )}
 
                 {/* Failover Logic */}
-                <div style={{ marginTop: 12, padding: '16px', background: 'rgba(239, 68, 68, 0.04)', borderRadius: 12, border: '1px dashed rgba(239, 68, 68, 0.2)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                        <CloseCircleOutlined style={{ color: '#ef4444', fontSize: 14 }} />
-                        <Text style={{ fontSize: 12, color: '#ef4444', fontWeight: 700, textTransform: 'uppercase' }}>Failover Protection</Text>
+                <div className="mt-4 p-4 bg-red-50/50 border border-red-100 border-dashed rounded-xl">
+                    <div className="flex items-center gap-2 mb-3">
+                        <XCircle className="w-4 h-4 text-red-500" />
+                        <span className="text-xs font-bold text-red-600 uppercase tracking-wide">Failover Protection</span>
                     </div>
-                    <Select 
-                        placeholder="If this step fails, execute..." 
-                        className="premium-select" 
-                        style={{ width: '100%' }}
-                        value={node.failover}
-                        onChange={(val) => updateNode(node.id, { failover: val })}
+                    <select 
+                        value={node.failover || ''}
+                        onChange={(e) => updateNode(node.id, { failover: e.target.value === '' ? null : e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500/20 shadow-sm appearance-none mb-2"
                     >
-                        <Select.Option value={null}>Stop Workflow (Default)</Select.Option>
+                        <option value="">Stop Workflow (Default)</option>
                         {Array.from(new Set(Object.values(ACTION_META).map(m => m.category))).map(category => (
-                            <Select.OptGroup key={category} label={category.toUpperCase()}>
+                            <optgroup key={category} label={category.toUpperCase()}>
                                 {Object.entries(ACTION_META)
                                     .filter(([key, meta]) => {
                                         if (meta.category !== category) return false;
@@ -311,29 +283,26 @@ const AutomationNode: React.FC<AutomationNodeProps> = ({
                                         return true;
                                     })
                                     .map(([key, meta]) => (
-                                        <Select.Option key={key} value={key}>
-                                            <Space>
-                                                <span style={{ color: meta.color }}>{meta.icon}</span>
-                                                {meta.label}
-                                            </Space>
-                                        </Select.Option>
+                                        <option key={key} value={key}>
+                                            {meta.label}
+                                        </option>
                                     ))
                                 }
-                            </Select.OptGroup>
+                            </optgroup>
                         ))}
-                    </Select>
-                    <Text type="secondary" style={{ fontSize: 11, display: 'block', marginTop: 8 }}>
+                    </select>
+                    <p className="text-[11px] text-slate-500 leading-relaxed">
                         Choose an alternative action if the primary delivery channel fails or is not available.
-                    </Text>
+                    </p>
                 </div>
 
                 {!isLast && (
-                    <div style={{ position: 'absolute', bottom: -32, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
-                        <div style={{ height: 32, width: 2, background: 'rgba(0, 223, 154, 0.3)' }} />
-                        <ArrowRightOutlined style={{ color: '#00df9a', transform: 'rotate(90deg)', position: 'absolute', bottom: -8, left: -7 }} />
+                    <div className="absolute -bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center z-10">
+                        <div className="h-8 w-0.5 bg-primary/20"></div>
+                        <ArrowDown className="w-4 h-4 text-primary absolute -bottom-2" />
                     </div>
                 )}
-            </Card>
+            </div>
         </div>
     );
 };

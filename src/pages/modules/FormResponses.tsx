@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Card, Typography, Button, Space, message, Modal, Row, Col, Statistic } from 'antd';
-import { ArrowLeftOutlined, DownloadOutlined, DeleteOutlined } from '@ant-design/icons';
+import { ArrowLeft, Download, BarChart3, Clock, X } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { formsApi } from '../../api/forms';
 import dayjs from 'dayjs';
-
-const { Title, Text } = Typography;
 
 const FormResponses: React.FC = () => {
     const { id } = useParams();
@@ -13,6 +10,13 @@ const FormResponses: React.FC = () => {
     const [responses, setResponses] = useState<any[]>([]);
     const [form, setForm] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+
+    // Custom Toast State
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
+    };
 
     useEffect(() => {
         if (id) {
@@ -30,7 +34,7 @@ const FormResponses: React.FC = () => {
             setForm(formRes.data);
             setResponses(respRes.data);
         } catch (e) {
-            message.error('Failed to fetch responses');
+            showToast('Failed to fetch responses', 'error');
         } finally {
             setLoading(false);
         }
@@ -43,7 +47,7 @@ const FormResponses: React.FC = () => {
         const rows = responses.map(r => {
             return [
                 dayjs(r.createdAt).format('YYYY-MM-DD HH:mm:ss'),
-                ...form.fields.map((f: any) => r.data[f.label] || '')
+                ...form.fields.map((f: any) => `"${(r.data[f.label] || '').toString().replace(/"/g, '""')}"`)
             ];
         });
 
@@ -59,70 +63,108 @@ const FormResponses: React.FC = () => {
         document.body.removeChild(link);
     };
 
-    const columns = [
-        {
-            title: 'Submitted At',
-            dataIndex: 'createdAt',
-            key: 'createdAt',
-            width: 180,
-            render: (date: string) => dayjs(date).format('MMM D, YYYY HH:mm'),
-            sorter: (a: any, b: any) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
-        },
-        ...(form?.fields || []).map((f: any) => ({
-            title: f.label,
-            key: f.label,
-            render: (_: any, record: any) => <Text style={{ color: '#fff' }}>{record.data[f.label] || '-'}</Text>
-        }))
-    ];
+    const todayResponses = responses.filter(r => dayjs(r.createdAt).isSame(dayjs(), 'day')).length;
 
     return (
-        <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-                <Space direction="vertical" size={0}>
-                    <Button 
-                        type="text" 
-                        icon={<ArrowLeftOutlined />} 
+        <div className="pb-20 animate-in fade-in duration-500 font-sans text-slate-800">
+            {/* Custom Toast Notification */}
+            {toast && (
+                <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-slate-900 text-white shadow-xl text-sm font-medium animate-in slide-in-from-bottom-4 duration-200">
+                    <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-400' : toast.type === 'error' ? 'bg-red-400' : 'bg-blue-400'}`} />
+                    <span>{toast.message}</span>
+                    <button onClick={() => setToast(null)} className="ml-2 text-slate-400 hover:text-white">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
+            )}
+
+            {/* Header */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 bg-white border border-slate-200/80 p-6 sm:p-8 rounded-2xl shadow-xs mb-8">
+                <div>
+                    <button 
                         onClick={() => navigate('/dashboard/forms')}
-                        style={{ padding: 0, color: '#94a3b8', marginBottom: 8 }}
+                        className="flex items-center gap-2 text-xs font-semibold text-slate-400 hover:text-slate-700 transition-colors mb-2 cursor-pointer"
                     >
-                        Back to Forms
-                    </Button>
-                    <Title level={4} style={{ margin: 0, fontWeight: 800 }}>{form?.title} — Responses</Title>
-                </Space>
-                <Button 
-                    icon={<DownloadOutlined />} 
+                        <ArrowLeft className="w-3.5 h-3.5" /> <span>Back to Forms</span>
+                    </button>
+                    <h1 className="text-xl font-bold text-slate-900 m-0 tracking-tight">{form?.title || 'Form Responses'}</h1>
+                </div>
+                <button 
                     onClick={exportToCSV}
                     disabled={!responses.length}
-                    className="premium-button"
+                    className="flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-primary rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 disabled:hover:text-slate-700 cursor-pointer"
                 >
-                    Export CSV
-                </Button>
+                    <Download className="w-3.5 h-3.5" /> <span>Export CSV</span>
+                </button>
             </div>
 
-            <Row gutter={16} style={{ marginBottom: 24 }}>
-                <Col span={6}>
-                    <Card className="premium-card">
-                        <Statistic title="Total Responses" value={responses.length} />
-                    </Card>
-                </Col>
-                <Col span={6}>
-                    <Card className="premium-card">
-                        <Statistic title="Responses Today" value={responses.filter(r => dayjs(r.createdAt).isSame(dayjs(), 'day')).length} />
-                    </Card>
-                </Col>
-            </Row>
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs">
+                    <div className="flex justify-between items-start mb-3">
+                        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Responses</span>
+                        <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 border border-blue-100 shadow-2xs">
+                            <BarChart3 className="w-5 h-5" />
+                        </div>
+                    </div>
+                    <div className="text-2xl font-bold text-slate-900 tracking-tight">{responses.length}</div>
+                </div>
+                <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-xs">
+                    <div className="flex justify-between items-start mb-3">
+                        <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Responses Today</span>
+                        <div className="w-10 h-10 rounded-xl bg-green-50 flex items-center justify-center text-green-600 border border-green-100 shadow-2xs">
+                            <Clock className="w-5 h-5" />
+                        </div>
+                    </div>
+                    <div className="text-2xl font-bold text-slate-900 tracking-tight">{todayResponses}</div>
+                </div>
+            </div>
 
-            <Card styles={{ body: { padding: 0 } }} className="premium-card">
-                <Table 
-                    className="premium-table"
-                    columns={columns} 
-                    dataSource={responses} 
-                    rowKey="id" 
-                    loading={loading}
-                    pagination={{ pageSize: 20 }}
-                    scroll={{ x: 'max-content' }}
-                />
-            </Card>
+            {/* Table */}
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                    {loading ? (
+                        <div className="flex justify-center items-center py-20">
+                            <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                        </div>
+                    ) : (
+                        <table className="w-full text-left border-collapse min-w-[800px]">
+                            <thead>
+                                <tr className="bg-slate-50 border-b border-slate-200">
+                                    <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">Submitted At</th>
+                                    {(form?.fields || []).map((f: any) => (
+                                        <th key={f.label} className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider whitespace-nowrap">
+                                            {f.label}
+                                        </th>
+                                    ))}
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                                {responses.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={(form?.fields?.length || 0) + 1} className="py-16 text-center text-xs text-slate-500">
+                                            No responses yet
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    responses.map((r, i) => (
+                                        <tr key={r.id || i} className="hover:bg-slate-50/80 transition-colors">
+                                            <td className="py-4 px-6 text-slate-500 whitespace-nowrap">
+                                                {dayjs(r.createdAt).format('MMM D, YYYY HH:mm')}
+                                            </td>
+                                            {(form?.fields || []).map((f: any) => (
+                                                <td key={f.label} className="py-4 px-6 text-slate-800 font-semibold">
+                                                    {r.data[f.label] || <span className="text-slate-300 font-normal">-</span>}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </div>
         </div>
     );
 };

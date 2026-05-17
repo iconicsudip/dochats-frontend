@@ -1,25 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import {
-    Card, Typography, Button, Row, Col, Space, Form, Input,
-    message, Tooltip, Divider, ColorPicker, Select, InputNumber,
-    Tag, Badge, Spin,
-    Empty
-} from 'antd';
-import {
-    MailOutlined, PlusOutlined, DeleteOutlined,
-    ArrowUpOutlined, ArrowDownOutlined, EyeOutlined, SaveOutlined,
-    FontSizeOutlined, AlignLeftOutlined, AlignCenterOutlined, AlignRightOutlined,
-    LinkOutlined, PictureOutlined, MinusOutlined,
-    BgColorsOutlined, AppstoreOutlined, FileTextOutlined, DragOutlined,
-    ArrowLeftOutlined, ThunderboltOutlined, SettingOutlined
-} from '@ant-design/icons';
 import { useNavigate, useParams } from 'react-router-dom';
 import { emailApi, EmailTemplate } from '../../api/email';
 import { useAuth } from '../../contexts/AuthContext';
 import ReactQuill from 'react-quill-new';
 import 'react-quill-new/dist/quill.snow.css';
+import { message } from 'antd'; // Keep for toasts
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
+import {
+    ArrowLeft, Mail, Eye, Save, LayoutGrid, Type, Heading1, AlignLeft, 
+    AlignCenter, AlignRight, Link, Image as ImageIcon, Minus, Maximize2,
+    MousePointer2, Palette, FileText, Zap, Settings, ArrowUp, ArrowDown, Trash2, Loader2
+} from 'lucide-react';
 
-const { Title, Text } = Typography;
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 type BlockType = 'HEADING' | 'TEXT' | 'BUTTON' | 'IMAGE' | 'DIVIDER' | 'SPACER';
 
@@ -43,9 +39,9 @@ interface EmailBlock {
 }
 
 const DEFAULT_BLOCKS: Record<BlockType, EmailBlock> = {
-    HEADING: { id: '', type: 'HEADING', content: 'Catchy Heading', style: { fontSize: 28, textAlign: 'center', padding: 20, fontWeight: 800, color: '#1a202c' } },
-    TEXT: { id: '', type: 'TEXT', content: 'Share your story here. Use this space to connect with your audience and deliver your message effectively.', style: { fontSize: 16, textAlign: 'left', padding: 15, color: '#4a5568' } },
-    BUTTON: { id: '', type: 'BUTTON', content: 'Claim Your Offer', style: { backgroundColor: '#3b82f6', color: '#ffffff', borderRadius: 8, textAlign: 'center', padding: 16, link: '#' } },
+    HEADING: { id: '', type: 'HEADING', content: 'Catchy Heading', style: { fontSize: 28, textAlign: 'center', padding: 20, fontWeight: 800, color: '#1e293b' } },
+    TEXT: { id: '', type: 'TEXT', content: 'Share your story here. Use this space to connect with your audience and deliver your message effectively.', style: { fontSize: 16, textAlign: 'left', padding: 15, color: '#475569' } },
+    BUTTON: { id: '', type: 'BUTTON', content: 'Claim Your Offer', style: { backgroundColor: '#2563eb', color: '#ffffff', borderRadius: 8, textAlign: 'center', padding: 16, link: '#' } },
     IMAGE: { id: '', type: 'IMAGE', content: '', style: { imageUrl: 'https://images.unsplash.com/photo-1579389083078-4e7018379f7e?auto=format&fit=crop&q=80&w=800', textAlign: 'center', padding: 10 } },
     DIVIDER: { id: '', type: 'DIVIDER', content: '', style: { padding: 24 } },
     SPACER: { id: '', type: 'SPACER', content: '', style: { height: 30 } },
@@ -55,14 +51,16 @@ const EmailBuilder: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const { user } = useAuth();
+    
     const [loading, setLoading] = useState(false);
     const [fetching, setFetching] = useState(false);
     const [blocks, setBlocks] = useState<EmailBlock[]>([]);
     const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
-    const [form] = Form.useForm();
-
+    
     // Global Settings
-    const [globalBg, setGlobalBg] = useState('#f7fafc');
+    const [templateName, setTemplateName] = useState('');
+    const [templateSubject, setTemplateSubject] = useState('');
+    const [globalBg, setGlobalBg] = useState('#f8fafc');
     const [contentBg, setContentBg] = useState('#ffffff');
     const [fontFamily, setFontFamily] = useState('Inter, system-ui, sans-serif');
 
@@ -70,7 +68,6 @@ const EmailBuilder: React.FC = () => {
         if (id) {
             fetchTemplate(id);
         } else {
-            // Initial default blocks
             setBlocks([
                 { ...DEFAULT_BLOCKS.HEADING, id: 'init-1', content: 'Welcome to Our Newsletter' },
                 { ...DEFAULT_BLOCKS.TEXT, id: 'init-2' },
@@ -85,10 +82,11 @@ const EmailBuilder: React.FC = () => {
             const template = await emailApi.getTemplates().then(ts => ts.find(t => t.id === templateId));
             if (template) {
                 setBlocks(template.design?.blocks || []);
-                setGlobalBg(template.design?.globalBg || '#f7fafc');
+                setGlobalBg(template.design?.globalBg || '#f8fafc');
                 setContentBg(template.design?.contentBg || '#ffffff');
                 setFontFamily(template.design?.fontFamily || 'Inter, system-ui, sans-serif');
-                form.setFieldsValue({ name: template.name, subject: template.subject });
+                setTemplateName(template.name || '');
+                setTemplateSubject(template.subject || '');
             }
         } catch (error) {
             message.error('Failed to load template');
@@ -160,7 +158,7 @@ const EmailBuilder: React.FC = () => {
                         body { margin: 0; padding: 0; background-color: ${globalBg}; font-family: ${fontFamily}; }
                         .container { max-width: 600px; margin: 40px auto; background-color: ${contentBg}; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
                         .content { padding: 30px; word-wrap: break-word; overflow-wrap: break-word; word-break: break-word; }
-                        .footer { padding: 30px; text-align: center; color: #718096; font-size: 13px; background-color: rgba(0,0,0,0.02); }
+                        .footer { padding: 30px; text-align: center; color: #64748b; font-size: 13px; background-color: rgba(0,0,0,0.02); }
                         @media only screen and (max-width: 620px) {
                             .container { width: 100% !important; margin: 0 !important; border-radius: 0 !important; }
                         }
@@ -178,12 +176,17 @@ const EmailBuilder: React.FC = () => {
         `;
     };
 
-    const handleSave = async (values: any) => {
+    const handleSave = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!templateName || !templateSubject) {
+            return message.error('Template name and subject are required');
+        }
+
         setLoading(true);
         try {
             const payload = {
-                name: values.name,
-                subject: values.subject,
+                name: templateName,
+                subject: templateSubject,
                 content: generateHTML(),
                 design: {
                     blocks,
@@ -210,338 +213,413 @@ const EmailBuilder: React.FC = () => {
 
     if (fetching) {
         return (
-            <div style={{ height: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <Spin size="large" tip="Loading designer..." />
+            <div className="flex items-center justify-center h-[80vh]">
+                <div className="flex flex-col items-center gap-4">
+                    <Loader2 className="w-10 h-10 text-primary animate-spin" />
+                    <span className="text-slate-500 font-medium">Loading designer...</span>
+                </div>
             </div>
         );
     }
 
+    const selectedBlock = blocks.find(b => b.id === selectedBlockId);
+
     return (
-        <div style={{ padding: '0 24px 24px 24px' }}>
+        <div className="flex flex-col h-[calc(100vh-80px)] -m-6 animate-in fade-in duration-500">
             {/* Top Navigation */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', height: 72, borderBottom: '1px solid rgba(255,255,255,0.05)', marginBottom: 24 }}>
-                <Space size="middle">
-                    <Button
-                        type="text"
-                        icon={<ArrowLeftOutlined />}
+            <div className="flex justify-between items-center h-[72px] px-6 border-b border-slate-200 bg-white shrink-0 shadow-sm z-10">
+                <div className="flex items-center gap-4">
+                    <button 
                         onClick={() => navigate('/dashboard/email')}
-                        style={{ color: '#94a3b8' }}
+                        className="flex items-center gap-2 text-sm font-bold text-slate-400 hover:text-slate-700 transition-colors"
                     >
-                        Back to Hub
-                    </Button>
-                    <Divider type="vertical" style={{ borderColor: 'rgba(255,255,255,0.1)', height: 24 }} />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <MailOutlined style={{ color: '#3b82f6', fontSize: 18 }} />
-                        <Title level={4} style={{ color: '#fff', margin: 0 }}>{id ? 'Edit Template' : 'New Email Template'}</Title>
+                        <ArrowLeft className="w-4 h-4" /> Back to Hub
+                    </button>
+                    <div className="w-px h-6 bg-slate-200"></div>
+                    <div className="flex items-center gap-3">
+                        <Mail className="w-5 h-5 text-primary" />
+                        <h1 className="text-lg font-extrabold text-slate-900 m-0">{id ? 'Edit Template' : 'New Email Template'}</h1>
                     </div>
-                </Space>
-                <Space>
-                    <Button icon={<EyeOutlined />} onClick={() => {
-                        const win = window.open('', '_blank');
-                        win?.document.write(generateHTML());
-                    }}>
-                        Preview
-                    </Button>
-                    <Button type="primary" icon={<SaveOutlined />} onClick={() => form.submit()} loading={loading} className="premium-button">
+                </div>
+                <div className="flex items-center gap-3">
+                    <button 
+                        type="button"
+                        onClick={() => {
+                            const win = window.open('', '_blank');
+                            win?.document.write(generateHTML());
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-sm font-bold transition-colors"
+                    >
+                        <Eye className="w-4 h-4" /> Preview
+                    </button>
+                    <button 
+                        type="button"
+                        onClick={handleSave as any}
+                        disabled={loading}
+                        className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 transition-all disabled:opacity-50"
+                    >
+                        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         {id ? 'Update Template' : 'Save Template'}
-                    </Button>
-                </Space>
+                    </button>
+                </div>
             </div>
 
-            <Form form={form} layout="vertical" onFinish={handleSave}>
-                <Row gutter={[24, 24]}>
-                    {/* Left: Components */}
-                    <Col span={6}>
-                        <Card className="premium-card designer-sidebar" size="small" style={{ height: 'calc(100vh - 140px)', overflowY: 'auto' }}>
-                            <Title level={5} style={{ color: '#fff', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, letterSpacing: 0.5 }}>
-                                <AppstoreOutlined style={{ fontSize: 14 }} /> BLOCKS
-                            </Title>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 24 }}>
-                                <Button block icon={<FontSizeOutlined />} onClick={() => addBlock('HEADING')} className="block-btn">Heading</Button>
-                                <Button block icon={<FileTextOutlined />} onClick={() => addBlock('TEXT')} className="block-btn">Text</Button>
-                                <Button block icon={<LinkOutlined />} onClick={() => addBlock('BUTTON')} className="block-btn">Button</Button>
-                                <Button block icon={<PictureOutlined />} onClick={() => addBlock('IMAGE')} className="block-btn">Image</Button>
-                                <Button block icon={<MinusOutlined />} onClick={() => addBlock('DIVIDER')} className="block-btn">Divider</Button>
-                                <Button block icon={<ArrowDownOutlined />} onClick={() => addBlock('SPACER')} className="block-btn">Spacer</Button>
-                            </div>
+            <form onSubmit={handleSave} className="flex flex-1 overflow-hidden">
+                {/* Left: Components */}
+                <div className="w-[300px] bg-white border-r border-slate-200 flex flex-col shrink-0 overflow-y-auto">
+                    <div className="p-5">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <LayoutGrid className="w-4 h-4" /> Blocks
+                        </h3>
+                        <div className="grid grid-cols-2 gap-3 mb-6">
+                            <button type="button" onClick={() => addBlock('HEADING')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
+                                <Heading1 className="w-5 h-5 text-slate-400" /> Heading
+                            </button>
+                            <button type="button" onClick={() => addBlock('TEXT')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
+                                <Type className="w-5 h-5 text-slate-400" /> Text
+                            </button>
+                            <button type="button" onClick={() => addBlock('BUTTON')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
+                                <Link className="w-5 h-5 text-slate-400" /> Button
+                            </button>
+                            <button type="button" onClick={() => addBlock('IMAGE')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
+                                <ImageIcon className="w-5 h-5 text-slate-400" /> Image
+                            </button>
+                            <button type="button" onClick={() => addBlock('DIVIDER')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
+                                <Minus className="w-5 h-5 text-slate-400" /> Divider
+                            </button>
+                            <button type="button" onClick={() => addBlock('SPACER')} className="flex flex-col items-center gap-2 p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 transition-colors">
+                                <Maximize2 className="w-5 h-5 text-slate-400" /> Spacer
+                            </button>
+                        </div>
 
-                            {selectedBlockId ? (
-                                <>
-                                    <Divider style={{ borderColor: 'rgba(255,255,255,0.05)', margin: '16px 0' }} />
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                                        <Title level={5} style={{ color: '#00df9a', margin: 0, fontSize: 13, letterSpacing: 0.5 }}>
-                                            <SettingOutlined style={{ fontSize: 14 }} /> BLOCK SETTINGS
-                                        </Title>
-                                        <Button danger size="small" type="text" icon={<DeleteOutlined />} onClick={() => deleteBlock(selectedBlockId)}>Delete</Button>
-                                    </div>
-                                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                                        {blocks.find(b => b.id === selectedBlockId)?.type !== 'DIVIDER' && (
-                                            <Form.Item label={<Text style={{ color: '#94a3b8', fontSize: 11 }}>CONTENT</Text>} style={{ marginBottom: 0 }}>
-                                                {blocks.find(b => b.id === selectedBlockId)?.type === 'TEXT' ? (
-                                                    <div className="premium-quill">
-                                                        <ReactQuill
-                                                            theme="snow"
-                                                            value={blocks.find(b => b.id === selectedBlockId)?.content}
-                                                            onChange={(content) => updateBlock(selectedBlockId, { content })}
-                                                            modules={{
-                                                                toolbar: [
-                                                                    ['bold', 'italic', 'underline', 'strike'],
-                                                                    [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-                                                                    ['clean']
-                                                                ]
-                                                            }}
-                                                        />
-                                                    </div>
-                                                ) : (
-                                                    <Input.TextArea
-                                                        className="premium-input"
-                                                        value={blocks.find(b => b.id === selectedBlockId)?.content}
-                                                        onChange={(e) => updateBlock(selectedBlockId, { content: e.target.value })}
-                                                        rows={4}
-                                                    />
-                                                )}
-                                            </Form.Item>
-                                        )}
-
-                                        <Row gutter={12}>
-                                            <Col span={12}>
-                                                <Text style={{ fontSize: 11, color: '#475569', fontWeight: 700 }}>SIZE</Text>
-                                                <InputNumber
-                                                    size="small" min={8} max={100} style={{ width: '100%', marginTop: 6 }}
-                                                    value={blocks.find(b => b.id === selectedBlockId)?.style?.fontSize}
-                                                    onChange={(v) => updateBlock(selectedBlockId, { style: { fontSize: v || 16 } })}
-                                                />
-                                            </Col>
-                                            <Col span={12}>
-                                                <Text style={{ fontSize: 11, color: '#475569', fontWeight: 700 }}>COLOR</Text><br />
-                                                <ColorPicker
-                                                    size="small" style={{ marginTop: 6 }}
-                                                    value={blocks.find(b => b.id === selectedBlockId)?.style?.color || '#000000'}
-                                                    onChange={(c) => updateBlock(selectedBlockId, { style: { color: c.toHexString() } })}
-                                                />
-                                            </Col>
-                                        </Row>
-
-                                        <Row gutter={12}>
-                                            <Col span={12}>
-                                                <Text style={{ fontSize: 11, color: '#475569', fontWeight: 700 }}>PADDING</Text>
-                                                <InputNumber
-                                                    size="small" min={0} max={100} style={{ width: '100%', marginTop: 6 }}
-                                                    value={blocks.find(b => b.id === selectedBlockId)?.style?.padding}
-                                                    onChange={(v) => updateBlock(selectedBlockId, { style: { padding: v || 0 } })}
-                                                />
-                                            </Col>
-                                            <Col span={12}>
-                                                <Text style={{ fontSize: 11, color: '#475569', fontWeight: 700 }}>ALIGN</Text><br />
-                                                <Space style={{ marginTop: 6 }}>
-                                                    <Button size="small" type={blocks.find(b => b.id === selectedBlockId)?.style?.textAlign === 'left' ? 'primary' : 'default'} icon={<AlignLeftOutlined />} onClick={() => updateBlock(selectedBlockId, { style: { textAlign: 'left' } })} />
-                                                    <Button size="small" type={blocks.find(b => b.id === selectedBlockId)?.style?.textAlign === 'center' ? 'primary' : 'default'} icon={<AlignCenterOutlined />} onClick={() => updateBlock(selectedBlockId, { style: { textAlign: 'center' } })} />
-                                                    <Button size="small" type={blocks.find(b => b.id === selectedBlockId)?.style?.textAlign === 'right' ? 'primary' : 'default'} icon={<AlignRightOutlined />} onClick={() => updateBlock(selectedBlockId, { style: { textAlign: 'right' } })} />
-                                                </Space>
-                                            </Col>
-                                        </Row>
-
-                                        {blocks.find(b => b.id === selectedBlockId)?.type === 'BUTTON' && (
-                                            <div style={{ background: 'rgba(255,255,255,0.02)', padding: 12, borderRadius: 10, border: '1px solid rgba(255,255,255,0.05)' }}>
-                                                <Form.Item label={<Text style={{ color: '#94a3b8', fontSize: 11 }}>LINK URL</Text>} style={{ marginBottom: 12 }}>
-                                                    <Input
-                                                        className="premium-input"
-                                                        value={blocks.find(b => b.id === selectedBlockId)?.style?.link}
-                                                        onChange={(e) => updateBlock(selectedBlockId, { style: { link: e.target.value } })}
-                                                        prefix={<LinkOutlined />}
-                                                    />
-                                                </Form.Item>
-                                                <Form.Item label={<Text style={{ color: '#94a3b8', fontSize: 11 }}>BUTTON COLOR</Text>} style={{ marginBottom: 0 }}>
-                                                    <ColorPicker
-                                                        showText style={{ width: '100%' }}
-                                                        value={blocks.find(b => b.id === selectedBlockId)?.style?.backgroundColor || '#3b82f6'}
-                                                        onChange={(c) => updateBlock(selectedBlockId, { style: { backgroundColor: c.toHexString() } })}
-                                                    />
-                                                </Form.Item>
-                                            </div>
-                                        )}
-
-                                        {blocks.find(b => b.id === selectedBlockId)?.type === 'IMAGE' && (
-                                            <Form.Item label={<Text style={{ color: '#94a3b8', fontSize: 11 }}>IMAGE URL</Text>} style={{ marginBottom: 0 }}>
-                                                <Input
-                                                    className="premium-input"
-                                                    value={blocks.find(b => b.id === selectedBlockId)?.style?.imageUrl}
-                                                    onChange={(e) => updateBlock(selectedBlockId, { style: { imageUrl: e.target.value } })}
-                                                    prefix={<PictureOutlined />}
-                                                />
-                                            </Form.Item>
-                                        )}
-                                    </Space>
-                                </>
-                            ) : (
-                                <div style={{ padding: '40px 20px', textAlign: 'center', background: 'rgba(255,255,255,0.02)', borderRadius: 12, border: '1px dashed rgba(255,255,255,0.1)' }}>
-                                    <DragOutlined style={{ fontSize: 24, color: '#2d3748', marginBottom: 12 }} />
-                                    <Text type="secondary" style={{ fontSize: 12, display: 'block' }}>Select a block in the preview to adjust its properties.</Text>
+                        {selectedBlock ? (
+                            <div className="animate-in fade-in slide-in-from-bottom-2">
+                                <hr className="border-slate-200 my-6" />
+                                <div className="flex justify-between items-center mb-4">
+                                    <h3 className="text-xs font-bold text-primary uppercase tracking-wider flex items-center gap-2">
+                                        <Settings className="w-4 h-4" /> Block Settings
+                                    </h3>
+                                    <button type="button" onClick={() => deleteBlock(selectedBlockId!)} className="text-red-400 hover:text-red-600 p-1 bg-red-50 hover:bg-red-100 rounded-md transition-colors">
+                                        <Trash2 className="w-4 h-4" />
+                                    </button>
                                 </div>
-                            )}
-
-                            <Divider style={{ borderColor: 'rgba(255,255,255,0.05)', margin: '24px 0' }} />
-                            <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: 16, borderRadius: 12, border: '1px solid rgba(59, 130, 246, 0.1)' }}>
-                                <Title level={5} style={{ color: '#fff', fontSize: 12, marginBottom: 12, display: 'flex', alignItems: 'center', gap: 6 }}>
-                                    <ThunderboltOutlined style={{ color: '#3b82f6' }} /> VARIABLES
-                                </Title>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                                    {['name', 'email', 'phone', 'booking_date', 'booking_time', 'lead_source'].map(v => (
-                                        <Tag
-                                            key={v}
-                                            color="blue"
-                                            style={{ cursor: 'pointer', borderRadius: 4, fontSize: 10, margin: 0 }}
-                                            onClick={() => {
-                                                const tag = `{{${v}}}`;
-                                                navigator.clipboard.writeText(tag);
-                                                message.success(`Copied ${tag}`);
-                                            }}
-                                        >
-                                            {`{{${v}}}`}
-                                        </Tag>
-                                    ))}
-                                </div>
-                            </div>
-                        </Card>
-                    </Col>
-
-                    {/* Middle: Live Canvas */}
-                    <Col span={12}>
-                        <div style={{
-                            background: globalBg,
-                            padding: '40px 20px',
-                            height: 'calc(100vh - 140px)',
-                            overflowY: 'auto',
-                            borderRadius: 16,
-                            border: '1px solid rgba(255,255,255,0.05)',
-                            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                        }}>
-                            <div style={{ maxWidth: 600, margin: '0 auto', background: contentBg, borderRadius: 12, overflow: 'hidden', boxShadow: '0 20px 50px rgba(0,0,0,0.2)', fontFamily: fontFamily, wordWrap: 'break-word', overflowWrap: 'break-word' }}>
-                                {blocks.length === 0 ? (
-                                    <div style={{ padding: 100, textAlign: 'center' }}>
-                                        <Empty description={<Text style={{ color: '#475569' }}>Your canvas is empty. Add blocks from the sidebar to begin.</Text>} />
-                                    </div>
-                                ) : (
-                                    <div style={{ padding: 30 }}>
-                                        {blocks.map((block, index) => (
-                                            <div
-                                                key={block.id}
-                                                onClick={() => setSelectedBlockId(block.id)}
-                                                style={{
-                                                    position: 'relative',
-                                                    cursor: 'pointer',
-                                                    padding: '2px 0',
-                                                    borderRadius: 8,
-                                                    border: selectedBlockId === block.id ? '2px solid #3b82f6' : '2px dashed transparent',
-                                                    transition: 'all 0.2s',
-                                                    marginBottom: 32, // Increased margin for controls
-                                                }}
-                                            >
-                                                {/* Logic to render block based on type - simplified for preview */}
-                                                <div style={{ pointerEvents: 'none' }}>
-                                                    {block.type === 'HEADING' && <h1 style={{ ...block.style, margin: 0, fontFamily }}>{block.content}</h1>}
-                                                    {block.type === 'TEXT' && <div style={{ ...block.style, lineHeight: 1.6, fontFamily }} dangerouslySetInnerHTML={{ __html: block.content }} />}
-                                                    {block.type === 'BUTTON' && (
-                                                        <div style={{ textAlign: block.style?.textAlign as any, padding: block.style?.padding }}>
-                                                            <div style={{
-                                                                background: block.style?.backgroundColor,
-                                                                color: block.style?.color,
-                                                                padding: '12px 24px',
-                                                                borderRadius: block.style?.borderRadius,
-                                                                display: 'inline-block',
-                                                                fontWeight: 'bold',
-                                                                fontFamily
-                                                            }}>
-                                                                {block.content}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {block.type === 'IMAGE' && (
-                                                        <div style={{ textAlign: block.style?.textAlign as any, padding: block.style?.padding }}>
-                                                            <img src={block.style?.imageUrl} style={{ maxWidth: '100%', borderRadius: 8 }} alt="Block" />
-                                                        </div>
-                                                    )}
-                                                    {block.type === 'DIVIDER' && <div style={{ padding: block.style?.padding }}><hr style={{ border: 0, borderTop: '1px solid #e2e8f0' }} /></div>}
-                                                    {block.type === 'SPACER' && <div style={{ height: block.style?.height }}></div>}
+                                
+                                <div className="space-y-5">
+                                    {selectedBlock.type !== 'DIVIDER' && (
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Content</label>
+                                            {selectedBlock.type === 'TEXT' ? (
+                                                <div className="border border-slate-200 rounded-lg overflow-hidden bg-white [&_.ql-toolbar]:border-none [&_.ql-toolbar]:border-b [&_.ql-toolbar]:border-slate-200 [&_.ql-container]:border-none [&_.ql-editor]:min-h-[150px]">
+                                                    <ReactQuill
+                                                        theme="snow"
+                                                        value={selectedBlock.content}
+                                                        onChange={(content) => updateBlock(selectedBlockId!, { content })}
+                                                        modules={{
+                                                            toolbar: [
+                                                                ['bold', 'italic', 'underline', 'strike'],
+                                                                [{ 'list': 'ordered' }, { 'list': 'bullet' }],
+                                                                ['clean']
+                                                            ]
+                                                        }}
+                                                    />
                                                 </div>
+                                            ) : (
+                                                <textarea
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 resize-y min-h-[100px]"
+                                                    value={selectedBlock.content}
+                                                    onChange={(e) => updateBlock(selectedBlockId!, { content: e.target.value })}
+                                                />
+                                            )}
+                                        </div>
+                                    )}
 
-                                                {selectedBlockId === block.id && (
-                                                    <div style={{
-                                                        position: 'absolute',
-                                                        right: 0,
-                                                        top: -36,
-                                                        display: 'flex',
-                                                        flexDirection: 'row',
-                                                        gap: 6,
-                                                        zIndex: 20,
-                                                        background: '#1a1b1e',
-                                                        padding: '4px 10px',
-                                                        borderRadius: '8px 8px 0 0',
-                                                        border: '1px solid rgba(255, 255, 255, 0.1)',
-                                                        borderBottom: 'none',
-                                                        boxShadow: '0 -4px 12px rgba(0,0,0,0.2)'
-                                                    }}>
-                                                        <Tooltip title="Move Up"><Button size="small" type="text" icon={<ArrowUpOutlined style={{ color: '#94a3b8' }} />} onClick={(e) => { e.stopPropagation(); moveBlock(index, 'up'); }} /></Tooltip>
-                                                        <Tooltip title="Move Down"><Button size="small" type="text" icon={<ArrowDownOutlined style={{ color: '#94a3b8' }} />} onClick={(e) => { e.stopPropagation(); moveBlock(index, 'down'); }} /></Tooltip>
-                                                        <Divider type="vertical" style={{ borderColor: 'rgba(255,255,255,0.1)', height: 16, margin: '4px 2px' }} />
-                                                        <Tooltip title="Delete"><Button size="small" type="text" icon={<DeleteOutlined style={{ color: '#ef4444' }} />} onClick={(e) => { e.stopPropagation(); deleteBlock(block.id); }} /></Tooltip>
-                                                    </div>
-                                                )}
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Size (px)</label>
+                                            <input 
+                                                type="number" 
+                                                min={8} max={100} 
+                                                value={selectedBlock.style?.fontSize || 16}
+                                                onChange={e => updateBlock(selectedBlockId!, { style: { fontSize: parseInt(e.target.value) || 16 } })}
+                                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Color</label>
+                                            <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-white focus-within:ring-2 focus-within:ring-primary/20">
+                                                <input 
+                                                    type="color" 
+                                                    value={selectedBlock.style?.color || '#000000'}
+                                                    onChange={e => updateBlock(selectedBlockId!, { style: { color: e.target.value } })}
+                                                    className="w-7 h-7 rounded border border-slate-200 cursor-pointer"
+                                                />
+                                                <input 
+                                                    type="text" 
+                                                    value={selectedBlock.style?.color || '#000000'}
+                                                    onChange={e => updateBlock(selectedBlockId!, { style: { color: e.target.value } })}
+                                                    className="w-full text-xs font-mono uppercase focus:outline-none"
+                                                />
                                             </div>
-                                        ))}
+                                        </div>
                                     </div>
-                                )}
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Padding (px)</label>
+                                            <input 
+                                                type="number" 
+                                                min={0} max={100} 
+                                                value={selectedBlock.style?.padding || 0}
+                                                onChange={e => updateBlock(selectedBlockId!, { style: { padding: parseInt(e.target.value) || 0 } })}
+                                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Align</label>
+                                            <div className="flex bg-slate-100 p-1 rounded-lg">
+                                                <button type="button" onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'left' } })} className={cn("p-1.5 rounded flex-1 flex justify-center", selectedBlock.style?.textAlign === 'left' ? "bg-white shadow-sm text-primary" : "text-slate-500")}>
+                                                    <AlignLeft className="w-4 h-4" />
+                                                </button>
+                                                <button type="button" onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'center' } })} className={cn("p-1.5 rounded flex-1 flex justify-center", selectedBlock.style?.textAlign === 'center' ? "bg-white shadow-sm text-primary" : "text-slate-500")}>
+                                                    <AlignCenter className="w-4 h-4" />
+                                                </button>
+                                                <button type="button" onClick={() => updateBlock(selectedBlockId!, { style: { textAlign: 'right' } })} className={cn("p-1.5 rounded flex-1 flex justify-center", selectedBlock.style?.textAlign === 'right' ? "bg-white shadow-sm text-primary" : "text-slate-500")}>
+                                                    <AlignRight className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {selectedBlock.type === 'BUTTON' && (
+                                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-4">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Link URL</label>
+                                                <div className="relative">
+                                                    <Link className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                                                    <input 
+                                                        type="text" 
+                                                        value={selectedBlock.style?.link || ''}
+                                                        onChange={e => updateBlock(selectedBlockId!, { style: { link: e.target.value } })}
+                                                        className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Button Color</label>
+                                                <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-white focus-within:ring-2 focus-within:ring-primary/20">
+                                                    <input 
+                                                        type="color" 
+                                                        value={selectedBlock.style?.backgroundColor || '#2563eb'}
+                                                        onChange={e => updateBlock(selectedBlockId!, { style: { backgroundColor: e.target.value } })}
+                                                        className="w-7 h-7 rounded border border-slate-200 cursor-pointer"
+                                                    />
+                                                    <input 
+                                                        type="text" 
+                                                        value={selectedBlock.style?.backgroundColor || '#2563eb'}
+                                                        onChange={e => updateBlock(selectedBlockId!, { style: { backgroundColor: e.target.value } })}
+                                                        className="w-full text-xs font-mono uppercase focus:outline-none"
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {selectedBlock.type === 'IMAGE' && (
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">Image URL</label>
+                                            <div className="relative">
+                                                <ImageIcon className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+                                                <input 
+                                                    type="text" 
+                                                    value={selectedBlock.style?.imageUrl || ''}
+                                                    onChange={e => updateBlock(selectedBlockId!, { style: { imageUrl: e.target.value } })}
+                                                    className="w-full bg-white border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                                                />
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="py-12 px-6 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 mt-6">
+                                <MousePointer2 className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                                <p className="text-xs font-medium text-slate-500">Select a block in the preview to adjust its properties.</p>
+                            </div>
+                        )}
+
+                        <hr className="border-slate-200 my-6" />
+                        
+                        <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                            <h3 className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <Zap className="w-4 h-4" /> Variables
+                            </h3>
+                            <div className="flex flex-wrap gap-2">
+                                {['name', 'email', 'phone', 'booking_date', 'booking_time', 'lead_source'].map(v => (
+                                    <button
+                                        key={v}
+                                        type="button"
+                                        onClick={() => {
+                                            const tag = `{{${v}}}`;
+                                            navigator.clipboard.writeText(tag);
+                                            message.success(`Copied ${tag}`);
+                                        }}
+                                        className="px-2 py-1 bg-white border border-blue-200 text-blue-600 rounded text-[10px] font-mono hover:bg-blue-100 transition-colors"
+                                    >
+                                        {`{{${v}}}`}
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                    </Col>
+                    </div>
+                </div>
 
-                    {/* Right: Global & Config */}
-                    <Col span={6}>
-                        <Card className="premium-card designer-sidebar" size="small" style={{ height: 'calc(100vh - 140px)', overflowY: 'auto' }}>
-                            <Title level={5} style={{ color: '#fff', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, letterSpacing: 0.5 }}>
-                                <FileTextOutlined style={{ fontSize: 14 }} /> TEMPLATE DETAILS
-                            </Title>
-                            <Form.Item name="name" label={<Text style={{ color: '#94a3b8', fontSize: 11 }}>TEMPLATE NAME</Text>} rules={[{ required: true }]}>
-                                <Input placeholder="e.g. Summer Promotion" className="premium-input" />
-                            </Form.Item>
-                            <Form.Item name="subject" label={<Text style={{ color: '#94a3b8', fontSize: 11 }}>EMAIL SUBJECT</Text>} rules={[{ required: true }]}>
-                                <Input placeholder="Don't miss out on our sale!" className="premium-input" />
-                            </Form.Item>
+                {/* Middle: Live Canvas */}
+                <div className="flex-1 overflow-y-auto p-6 lg:p-10" style={{ backgroundColor: globalBg, transition: 'background-color 0.3s' }}>
+                    <div 
+                        className="max-w-[600px] mx-auto rounded-xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.05)] transition-colors duration-300" 
+                        style={{ backgroundColor: contentBg, fontFamily }}
+                    >
+                        {blocks.length === 0 ? (
+                            <div className="p-24 text-center">
+                                <FileText className="w-12 h-12 text-slate-200 mx-auto mb-4" />
+                                <p className="text-slate-400 font-medium">Your canvas is empty. Add blocks from the sidebar to begin.</p>
+                            </div>
+                        ) : (
+                            <div className="p-8 pb-32">
+                                {blocks.map((block, index) => (
+                                    <div
+                                        key={block.id}
+                                        onClick={() => setSelectedBlockId(block.id)}
+                                        className={cn(
+                                            "relative cursor-pointer py-0.5 rounded-lg border-2 transition-all group mb-8",
+                                            selectedBlockId === block.id ? "border-primary" : "border-transparent hover:border-slate-200"
+                                        )}
+                                    >
+                                        <div className="pointer-events-none break-words">
+                                            {block.type === 'HEADING' && <h1 style={{ ...block.style, margin: 0, fontFamily }}>{block.content}</h1>}
+                                            {block.type === 'TEXT' && <div style={{ ...block.style, lineHeight: 1.6, fontFamily }} dangerouslySetInnerHTML={{ __html: block.content }} />}
+                                            {block.type === 'BUTTON' && (
+                                                <div style={{ textAlign: block.style?.textAlign as any, padding: block.style?.padding }}>
+                                                    <div style={{
+                                                        background: block.style?.backgroundColor,
+                                                        color: block.style?.color,
+                                                        padding: '12px 24px',
+                                                        borderRadius: block.style?.borderRadius,
+                                                        display: 'inline-block',
+                                                        fontWeight: 'bold',
+                                                        fontFamily
+                                                    }}>
+                                                        {block.content}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {block.type === 'IMAGE' && (
+                                                <div style={{ textAlign: block.style?.textAlign as any, padding: block.style?.padding }}>
+                                                    <img src={block.style?.imageUrl} style={{ maxWidth: '100%', borderRadius: 8 }} alt="Block" />
+                                                </div>
+                                            )}
+                                            {block.type === 'DIVIDER' && <div style={{ padding: block.style?.padding }}><hr style={{ border: 0, borderTop: '1px solid #e2e8f0' }} /></div>}
+                                            {block.type === 'SPACER' && <div style={{ height: block.style?.height }}></div>}
+                                        </div>
 
-                            <Divider style={{ borderColor: 'rgba(255,255,255,0.05)', margin: '24px 0' }} />
-                            <Title level={5} style={{ color: '#fff', marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, letterSpacing: 0.5 }}>
-                                <BgColorsOutlined style={{ fontSize: 14 }} /> GLOBAL DESIGN
-                            </Title>
+                                        {selectedBlockId === block.id && (
+                                            <div className="absolute right-0 -top-10 flex gap-1 z-20 bg-slate-900 p-1 rounded-t-lg shadow-lg">
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); moveBlock(index, 'up'); }} className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors" title="Move Up"><ArrowUp className="w-4 h-4" /></button>
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); moveBlock(index, 'down'); }} className="p-1 text-slate-300 hover:text-white hover:bg-slate-700 rounded transition-colors" title="Move Down"><ArrowDown className="w-4 h-4" /></button>
+                                                <div className="w-px h-4 bg-slate-700 mx-1 my-auto"></div>
+                                                <button type="button" onClick={(e) => { e.stopPropagation(); deleteBlock(block.id); }} className="p-1 text-red-400 hover:text-red-300 hover:bg-slate-700 rounded transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                </div>
 
-                            <Space direction="vertical" style={{ width: '100%' }} size="large">
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 13, color: '#94a3b8' }}>Canvas BG</Text>
-                                    <ColorPicker value={globalBg} onChange={(c) => setGlobalBg(c.toHexString())} />
-                                </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <Text style={{ fontSize: 13, color: '#94a3b8' }}>Content BG</Text>
-                                    <ColorPicker value={contentBg} onChange={(c) => setContentBg(c.toHexString())} />
-                                </div>
-                                <Form.Item label={<Text style={{ color: '#94a3b8', fontSize: 11 }}>TYPOGRAPHY</Text>} style={{ marginBottom: 0 }}>
-                                    <Select value={fontFamily} onChange={setFontFamily} className="premium-select">
-                                        <Select.Option value="Inter, system-ui, sans-serif">Inter (Modern)</Select.Option>
-                                        <Select.Option value="'Outfit', sans-serif">Outfit (Premium)</Select.Option>
-                                        <Select.Option value="'Roboto', sans-serif">Roboto (Clean)</Select.Option>
-                                        <Select.Option value="'Georgia', serif">Georgia (Classic)</Select.Option>
-                                    </Select>
-                                </Form.Item>
-                            </Space>
+                {/* Right: Global & Config */}
+                <div className="w-[300px] bg-white border-l border-slate-200 flex flex-col shrink-0 overflow-y-auto">
+                    <div className="p-5">
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <FileText className="w-4 h-4" /> Template Details
+                        </h3>
+                        <div className="space-y-4 mb-8">
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Template Name *</label>
+                                <input 
+                                    required 
+                                    value={templateName} onChange={e => setTemplateName(e.target.value)}
+                                    placeholder="e.g. Summer Promotion" 
+                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" 
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Email Subject *</label>
+                                <input 
+                                    required 
+                                    value={templateSubject} onChange={e => setTemplateSubject(e.target.value)}
+                                    placeholder="Don't miss out on our sale!" 
+                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" 
+                                />
+                            </div>
+                        </div>
 
-                            <div style={{ marginTop: 40, padding: 16, background: 'rgba(0,223,154,0.05)', borderRadius: 12, border: '1px solid rgba(0,223,154,0.1)' }}>
-                                <Badge status="processing" color="#00df9a" text={<Text style={{ color: '#00df9a', fontSize: 12, fontWeight: 700 }}>LIVE SYNC ENABLED</Text>} />
-                                <div style={{ marginTop: 8, fontSize: 11, color: '#475569' }}>
-                                    All changes are tracked in real-time. Hit save to push updates to your automation engine.
+                        <hr className="border-slate-200 my-6" />
+
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <Palette className="w-4 h-4" /> Global Design
+                        </h3>
+                        
+                        <div className="space-y-5">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-bold text-slate-600">Canvas BG</span>
+                                <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-white focus-within:ring-2 focus-within:ring-primary/20">
+                                    <input 
+                                        type="color" 
+                                        value={globalBg} onChange={e => setGlobalBg(e.target.value)}
+                                        className="w-6 h-6 rounded border border-slate-200 cursor-pointer"
+                                    />
                                 </div>
                             </div>
-                        </Card>
-                    </Col>
-                </Row>
-            </Form>
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-bold text-slate-600">Content BG</span>
+                                <div className="flex items-center gap-2 border border-slate-200 rounded-lg p-1 bg-white focus-within:ring-2 focus-within:ring-primary/20">
+                                    <input 
+                                        type="color" 
+                                        value={contentBg} onChange={e => setContentBg(e.target.value)}
+                                        className="w-6 h-6 rounded border border-slate-200 cursor-pointer"
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">Typography</label>
+                                <select 
+                                    value={fontFamily} onChange={e => setFontFamily(e.target.value)}
+                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none"
+                                >
+                                    <option value="Inter, system-ui, sans-serif">Inter (Modern)</option>
+                                    <option value="'Outfit', sans-serif">Outfit (Premium)</option>
+                                    <option value="'Roboto', sans-serif">Roboto (Clean)</option>
+                                    <option value="'Georgia', serif">Georgia (Classic)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div className="mt-10 p-4 bg-green-50 rounded-xl border border-green-100">
+                            <div className="flex items-center gap-2 mb-2">
+                                <span className="relative flex h-2 w-2">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                </span>
+                                <span className="text-[10px] font-bold text-green-600 uppercase tracking-wider">Live Sync Enabled</span>
+                            </div>
+                            <p className="text-xs text-slate-600">
+                                All changes are tracked in real-time. Hit save to push updates to your automation engine.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </form>
         </div>
     );
 };

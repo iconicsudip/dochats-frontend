@@ -19,30 +19,15 @@ const queryClient = new QueryClient({
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
-    <ConfigProvider
-      theme={{
-        algorithm: theme.darkAlgorithm,
-        token: {
-          colorPrimary: '#00df9a',
-          colorBgBase: '#09090b',
-          colorBgContainer: '#121214',
-          colorText: '#ffffff',
-          colorTextSecondary: '#a1a1aa',
-          borderRadius: 12,
-          fontFamily: 'Inter, -apple-system, sans-serif'
-        },
-      }}
-    >
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <ModuleProvider>
-            <AntApp>
-              <App />
-            </AntApp>
-          </ModuleProvider>
-        </AuthProvider>
-        <ReactQueryDevtools initialIsOpen={false} />
-      </QueryClientProvider>
-    </ConfigProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ModuleProvider>
+          <AntApp>
+            <App />
+          </AntApp>
+        </ModuleProvider>
+      </AuthProvider>
+
+    </QueryClientProvider>
   </BrowserRouter>,
 )

@@ -1,17 +1,22 @@
 import React from 'react';
-import { Card, Typography, Button, Row, Col, Tag, Form, Input, Select, Space, Tooltip, Divider, message } from 'antd';
 import { 
-    ArrowRightOutlined, ThunderboltOutlined, FormOutlined, BranchesOutlined, PlusOutlined 
-} from '@ant-design/icons';
+    ArrowLeft, Zap, FileText, GitMerge, Plus, Copy
+} from 'lucide-react';
 import { TRIGGER_META, FLOW_TEMPLATES, TriggerType } from '../../constants/automation';
 import AutomationNode from './AutomationNode';
 import { automationApi } from '../../api/automation';
+import { message } from 'antd';
+import { twMerge } from 'tailwind-merge';
+import clsx from 'clsx';
 
-const { Title, Text } = Typography;
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface AutomationBuilderProps {
     editingRuleId: string | null;
-    form: any;
+    ruleForm: { name: string; trigger: string; delay: number; config: any };
+    setRuleForm: React.Dispatch<React.SetStateAction<{ name: string; trigger: string; delay: number; config: any }>>;
     nodes: any[];
     forms: any[];
     waTemplates: any[];
@@ -20,7 +25,7 @@ interface AutomationBuilderProps {
     loadingEmail: boolean;
     hasWaConfig: boolean;
     exitBuilder: () => void;
-    handleAdd: (vals: any) => void;
+    handleAdd: (e?: React.FormEvent) => void;
     setNodes: (nodes: any[]) => void;
     addNode: () => void;
     removeNode: (id: string) => void;
@@ -29,11 +34,11 @@ interface AutomationBuilderProps {
 }
 
 const AutomationBuilder: React.FC<AutomationBuilderProps> = ({
-    editingRuleId, form, nodes, forms, waTemplates, emailTemplates, loadingWa, loadingEmail,
+    editingRuleId, ruleForm, setRuleForm, nodes, forms, waTemplates, emailTemplates, loadingWa, loadingEmail,
     hasWaConfig, exitBuilder, handleAdd, setNodes, addNode, removeNode, updateNode, applyTemplate
 }) => {
-    const selectedTrigger = Form.useWatch('trigger', form);
-    const selectedFormId = Form.useWatch(['config', 'formId'], form);
+    const selectedTrigger = ruleForm.trigger;
+    const selectedFormId = ruleForm.config?.formId;
 
     const [triggerMetadata, setTriggerMetadata] = React.useState<Record<string, { variables: string[] }>>({});
 
@@ -65,170 +70,179 @@ const AutomationBuilder: React.FC<AutomationBuilderProps> = ({
         return vars;
     }, [selectedTrigger, selectedFormId, forms, triggerMetadata]);
 
+    const handleTriggerChange = (val: string) => {
+        setRuleForm(prev => ({ ...prev, trigger: val, config: val !== TriggerType.FORM_SUBMITTED ? { ...prev.config, formId: undefined } : prev.config }));
+        
+        // Clear all variable mappings when trigger changes
+        const updatedNodes = nodes.map((n: any) => ({
+            ...n,
+            config: {
+                ...n.config,
+                variableMapping: {}
+            }
+        }));
+        setNodes(updatedNodes);
+    };
+
     return (
-        <div style={{ padding: '24px', maxWidth: 900, margin: '0 auto' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 32 }}>
-                <Button 
-                    icon={<ArrowRightOutlined style={{ transform: 'rotate(180deg)' }} />} 
+        <div className="max-w-4xl mx-auto pb-20 animate-in fade-in duration-500">
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-8">
+                <button 
                     onClick={exitBuilder} 
-                    className="premium-button-secondary"
-                />
+                    className="w-10 h-10 bg-white border border-slate-200 rounded-xl flex items-center justify-center text-slate-500 hover:text-slate-800 hover:bg-slate-50 transition-colors shadow-sm"
+                >
+                    <ArrowLeft className="w-5 h-5" />
+                </button>
                 <div>
-                    <Title level={3} style={{ margin: 0, color: '#fff' }}>
+                    <h1 className="text-2xl font-bold text-slate-900 m-0">
                         {editingRuleId ? 'Edit Neural Flow' : 'Create Neural Flow'}
-                    </Title>
-                    <Text type="secondary">Design an intelligent multi-path automation sequence.</Text>
+                    </h1>
+                    <p className="text-sm text-slate-500">Design an intelligent multi-path automation sequence.</p>
                 </div>
             </div>
 
-            {!editingRuleId && nodes.length <= 1 && !form.getFieldValue('name') && (
-                <div style={{ marginBottom: 40 }}>
-                    <Text type="secondary" style={{ fontSize: 12, display: 'block', marginBottom: 16, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1 }}>Or Start with an Industry Template</Text>
-                    <Row gutter={[16, 16]}>
+            {!editingRuleId && nodes.length <= 1 && !ruleForm.name && (
+                <div className="mb-10">
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-4">Or Start with an Industry Blueprint</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {FLOW_TEMPLATES.map(t => (
-                            <Col xs={24} sm={8} key={t.name}>
-                                <Card 
-                                    hoverable 
-                                    className="premium-card" 
-                                    style={{ height: '100%', border: '1px solid rgba(59, 130, 246, 0.1)' }}
-                                    onClick={() => applyTemplate(t)}
-                                >
-                                    <Tag color="blue" style={{ marginBottom: 12 }}>{t.industry}</Tag>
-                                    <Title level={5} style={{ color: '#fff', fontSize: 14, margin: '0 0 8px 0' }}>{t.name}</Title>
-                                    <Text type="secondary" style={{ fontSize: 12, lineHeight: 1.4 }}>{t.description}</Text>
-                                </Card>
-                            </Col>
+                            <div 
+                                key={t.name}
+                                onClick={() => applyTemplate(t)}
+                                className="bg-white border border-slate-200 rounded-2xl p-5 hover:border-primary/30 hover:shadow-lg transition-all cursor-pointer group"
+                            >
+                                <span className="inline-block px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-md uppercase tracking-wide mb-3">
+                                    {t.industry}
+                                </span>
+                                <h3 className="text-sm font-bold text-slate-900 mb-2 group-hover:text-primary transition-colors">{t.name}</h3>
+                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{t.description}</p>
+                            </div>
                         ))}
-                    </Row>
+                    </div>
                 </div>
             )}
 
-            <Form form={form} layout="vertical" onFinish={handleAdd}>
-                <Card className="premium-card" style={{ marginBottom: 24 }}>
-                    <Form.Item name="name" label="Rule Name" rules={[{ required: true }]}>
-                        <Input placeholder="e.g. New Lead → Welcome Sequence" className="premium-input" />
-                    </Form.Item>
+            <form onSubmit={handleAdd} className="space-y-6">
+                <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] space-y-6">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-700 mb-1.5">Rule Name *</label>
+                        <input 
+                            required
+                            type="text" 
+                            placeholder="e.g. New Lead → Welcome Sequence" 
+                            value={ruleForm.name}
+                            onChange={e => setRuleForm(prev => ({...prev, name: e.target.value}))}
+                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm" 
+                        />
+                    </div>
 
-                    <Row gutter={16}>
-                        <Col span={12}>
-                            <Form.Item name="trigger" label="When this happens..." rules={[{ required: true }]}>
-                                <Select 
-                                    placeholder="Select trigger" 
-                                    className="premium-select"
-                                    onChange={(val) => {
-                                        // Clear all variable mappings when trigger changes
-                                        const updatedNodes = nodes.map((n: any) => ({
-                                            ...n,
-                                            config: {
-                                                ...n.config,
-                                                variableMapping: {}
-                                            }
-                                        }));
-                                        setNodes(updatedNodes);
-                                        
-                                        // Clear form selection if not form_submitted
-                                        if (val !== TriggerType.FORM_SUBMITTED) {
-                                            form.setFieldValue(['config', 'formId'], undefined);
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1.5">When this happens... *</label>
+                            <select 
+                                required
+                                value={ruleForm.trigger}
+                                onChange={e => handleTriggerChange(e.target.value)}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm appearance-none"
+                            >
+                                <option value="" disabled>Select trigger</option>
+                                {Array.from(new Set(Object.values(TRIGGER_META).map(m => m.module))).map(module => (
+                                    <optgroup key={module} label={module.toUpperCase()}>
+                                        {Object.entries(TRIGGER_META)
+                                            .filter(([_, meta]) => meta.module === module)
+                                            .map(([key, meta]) => (
+                                                <option key={key} value={key}>{meta.label}</option>
+                                            ))
                                         }
-                                    }}
-                                >
-
-                                    {Array.from(new Set(Object.values(TRIGGER_META).map(m => m.module))).map(module => (
-                                        <Select.OptGroup key={module} label={module.toUpperCase()}>
-                                            {Object.entries(TRIGGER_META)
-                                                .filter(([_, meta]) => meta.module === module)
-                                                .map(([key, meta]) => (
-                                                    <Select.Option key={key} value={key}>
-                                                        <Space>
-                                                            <span style={{ color: meta.color }}>{meta.icon}</span>
-                                                            {meta.label}
-                                                        </Space>
-                                                    </Select.Option>
-                                                ))
-                                            }
-                                        </Select.OptGroup>
-                                    ))}
-                                </Select>
-                            </Form.Item>
-                        </Col>
-                        <Col span={12}>
-                            <Form.Item name="delay" label="Initial Delay (minutes)" initialValue={0}>
-                                <Select className="premium-select">
-                                    <Select.Option value={0}>Immediate</Select.Option>
-                                    <Select.Option value={5}>5 Minutes</Select.Option>
-                                    <Select.Option value={30}>30 Minutes</Select.Option>
-                                    <Select.Option value={60}>1 Hour</Select.Option>
-                                    <Select.Option value={1440}>24 Hours</Select.Option>
-                                </Select>
-                            </Form.Item>
-                        </Col>
-                    </Row>                    
+                                    </optgroup>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1.5">Initial Delay (minutes)</label>
+                            <select 
+                                value={ruleForm.delay}
+                                onChange={e => setRuleForm(prev => ({...prev, delay: Number(e.target.value)}))}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm appearance-none"
+                            >
+                                <option value={0}>Immediate</option>
+                                <option value={5}>5 Minutes</option>
+                                <option value={30}>30 Minutes</option>
+                                <option value={60}>1 Hour</option>
+                                <option value={1440}>24 Hours</option>
+                            </select>
+                        </div>
+                    </div>                    
                     
-                    <Form.Item noStyle>
-                        {() => {
-                            if (availableVariables.length === 0) return null;
-                            if (selectedTrigger === TriggerType.FORM_SUBMITTED && !selectedFormId) return null;
-                            
-                            return (
-                                <div style={{ padding: '12px 16px', background: 'rgba(59, 130, 246, 0.04)', borderRadius: 12, border: '1px solid rgba(59, 130, 246, 0.1)' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-                                        <ThunderboltOutlined style={{ color: '#3b82f6', fontSize: 12 }} />
-                                        <Text style={{ fontSize: 11, fontWeight: 700, color: '#fff', textTransform: 'uppercase', letterSpacing: 0.5 }}>Available Variables</Text>
-                                    </div>
-                                    <Space wrap size={[6, 6]}>
-                                        {availableVariables.map(v => (
-                                            <Tooltip title="Click to copy" key={v}>
-                                                <Tag 
-                                                    color="blue" 
-                                                    style={{ cursor: 'pointer', fontSize: 11, borderRadius: 6, border: '1px solid rgba(59, 130, 246, 0.2)', background: 'rgba(59, 130, 246, 0.1)', color: '#60a5fa' }}
-                                                    onClick={() => {
-                                                        navigator.clipboard.writeText(`{{${v}}}`);
-                                                        message.success(`Copied {{${v}}}`);
-                                                    }}
-                                                >
-                                                    {`{{${v}}}`}
-                                                </Tag>
-                                            </Tooltip>
-                                        ))}
-                                    </Space>
-                                </div>
-                            );
-                        }}
-                    </Form.Item>
-                </Card>
+                    {availableVariables.length > 0 && (selectedTrigger !== TriggerType.FORM_SUBMITTED || selectedFormId) && (
+                        <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Zap className="w-4 h-4 text-primary" />
+                                <span className="text-xs font-bold text-slate-800 uppercase tracking-wide">Available Variables</span>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {availableVariables.map(v => (
+                                    <button 
+                                        type="button"
+                                        key={v}
+                                        title="Click to copy"
+                                        className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-slate-200 text-slate-600 rounded-md text-[11px] font-bold hover:bg-slate-50 hover:text-primary hover:border-primary/30 transition-colors shadow-sm"
+                                        onClick={() => {
+                                            navigator.clipboard.writeText(`{{${v}}}`);
+                                            message.success(`Copied {{${v}}}`);
+                                        }}
+                                    >
+                                        <Copy className="w-3 h-3" />
+                                        {`{{${v}}}`}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* Trigger Context: Form Mapping */}
                 {selectedTrigger === TriggerType.FORM_SUBMITTED && (
-                    <div style={{ padding: '24px', background: 'rgba(59, 130, 246, 0.05)', borderRadius: 20, border: '1px solid rgba(59, 130, 246, 0.1)', marginBottom: 24 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 24 }}>
-                            <div style={{ width: 40, height: 40, borderRadius: 12, background: 'rgba(59, 130, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <FormOutlined style={{ color: '#3b82f6', fontSize: 20 }} />
+                    <div className="bg-primary/5 border border-primary/10 rounded-2xl p-6">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                                <FileText className="w-5 h-5 text-primary" />
                             </div>
                             <div>
-                                <Title level={5} style={{ margin: 0, color: '#fff' }}>Form Integration Context</Title>
-                                <Text type="secondary" style={{ fontSize: 12 }}>Map form fields to communication channels.</Text>
+                                <h3 className="text-sm font-bold text-slate-900 m-0">Form Integration Context</h3>
+                                <p className="text-xs text-slate-500">Map form fields to communication channels.</p>
                             </div>
                         </div>
                         
-                        <Form.Item name={['config', 'formId']} label="Source Form" rules={[{ required: true }]}>
-                            <Select 
-                                placeholder="Select the form that triggers this" 
-                                className="premium-select"
+                        <div>
+                            <label className="block text-xs font-bold text-slate-700 mb-1.5">Source Form *</label>
+                            <select 
+                                required
+                                value={ruleForm.config?.formId || ''}
+                                onChange={e => setRuleForm(prev => ({...prev, config: {...prev.config, formId: e.target.value}}))}
+                                className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-sm appearance-none"
                             >
+                                <option value="" disabled>Select the form that triggers this</option>
                                 {forms.map(f => (
-                                    <Select.Option key={f.id} value={f.id}>{f.title}</Select.Option>
+                                    <option key={f.id} value={f.id}>{f.title}</option>
                                 ))}
-                            </Select>
-                        </Form.Item>
+                            </select>
+                        </div>
                     </div>
                 )}
 
-                <Divider dashed orientation={"left" as any} style={{ borderColor: 'rgba(255,255,255,0.05)', marginBottom: 32 }}>
-                    <Space style={{ color: '#00df9a', fontWeight: 800, letterSpacing: 1 }}><BranchesOutlined /> NEURAL FLOW CANVAS</Space>
-                </Divider>
+                <div className="flex items-center gap-4 my-10">
+                    <div className="h-px bg-slate-200 flex-1" />
+                    <div className="flex items-center gap-2 text-primary">
+                        <GitMerge className="w-5 h-5" />
+                        <span className="text-xs font-bold uppercase tracking-widest">Neural Flow Canvas</span>
+                    </div>
+                    <div className="h-px bg-slate-200 flex-1" />
+                </div>
 
                 {/* Flow Nodes */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 32, marginBottom: 40, position: 'relative' }}>
+                <div className="flex flex-col gap-8 mb-10 relative">
                     {nodes.map((node, i) => {
                         return (
                             <AutomationNode 
@@ -247,31 +261,33 @@ const AutomationBuilder: React.FC<AutomationBuilderProps> = ({
                             />
                         );
                     })}
-                    <Button 
-                        block 
-                        type="dashed" 
-                        icon={<PlusOutlined />} 
+                    <button 
+                        type="button"
                         onClick={addNode} 
-                        style={{ height: 60, border: '2px dashed rgba(59, 130, 246, 0.3)', background: 'rgba(59, 130, 246, 0.02)', borderRadius: 16, fontSize: 16, fontWeight: 600, color: '#3b82f6' }}
+                        className="w-full h-16 border-2 border-dashed border-slate-200 hover:border-primary/40 bg-slate-50/50 hover:bg-primary/5 rounded-2xl flex items-center justify-center gap-2 text-slate-500 hover:text-primary transition-all font-bold shadow-sm"
                     >
+                        <Plus className="w-5 h-5" />
                         Append Next Step
-                    </Button>
+                    </button>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16, padding: '32px 0', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                    <Button size="large" onClick={exitBuilder} style={{ minWidth: 120 }}>Cancel</Button>
-                    <Button 
-                        size="large" 
-                        type="primary" 
-                        htmlType="submit" 
-                        className="premium-button" 
+                <div className="flex justify-end gap-4 pt-8 border-t border-slate-100">
+                    <button 
+                        type="button" 
+                        onClick={exitBuilder} 
+                        className="px-6 py-2.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        type="submit" 
                         disabled={nodes.length === 0}
-                        style={{ minWidth: 200 }}
+                        className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 transition-all disabled:opacity-50 min-w-[200px]"
                     >
                         {editingRuleId ? 'Update Neural Flow' : 'Activate Neural Flow'}
-                    </Button>
+                    </button>
                 </div>
-            </Form>
+            </form>
         </div>
     );
 };

@@ -64,7 +64,7 @@ const FeatureTour: React.FC = () => {
         },
         {
             target: '[data-tour="module-manager"]',
-            content: 'Grant or restrict access to specific AI BOS modules for each admin.',
+            content: 'Grant or restrict access to specific Business OS modules for each admin.',
             placement: 'right',
         },
     ];

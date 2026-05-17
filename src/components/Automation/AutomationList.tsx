@@ -1,15 +1,17 @@
-import { Card, Typography, Button, Row, Col, Tag, Switch, Space, Statistic, Empty, Modal, Table, message, Drawer, Spin } from 'antd';
+import React from 'react';
 import { 
-    PlusOutlined, ThunderboltOutlined, WhatsAppOutlined, DeleteOutlined, 
-    EditOutlined, FieldTimeOutlined, BranchesOutlined, EyeOutlined, PlayCircleOutlined,
-    HistoryOutlined
-} from '@ant-design/icons';
+    Plus, Zap, Trash2, Edit2, PlayCircle, Clock, Eye, History, X, Network
+} from 'lucide-react';
 import { TRIGGER_META, ACTION_META, TriggerType, ActionType, FLOW_TEMPLATES } from '../../constants/automation';
 import { AutomationRule } from '../../api/automation';
 import { Module } from '../../enums';
-import React from 'react';
+import { message } from 'antd';
+import { twMerge } from 'tailwind-merge';
+import clsx from 'clsx';
 
-const { Title, Text } = Typography;
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface AutomationListProps {
     rules: AutomationRule[];
@@ -32,221 +34,266 @@ const AutomationList: React.FC<AutomationListProps> = ({
     const stats = {
         total: rules.length,
         active: rules.filter(r => r.enabled).length,
-        totalRuns: rules.reduce((a, r) => a + r.runs, 0),
+        totalRuns: rules.reduce((a, r) => a + (r.runs || 0), 0),
     };
 
     return (
-        <div style={{ padding: '24px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 28, flexWrap: 'wrap', gap: 16 }}>
+        <div className="animate-in fade-in duration-500 pb-20">
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8">
                 <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-                        <ThunderboltOutlined style={{ color: '#f59e0b', fontSize: 28 }} />
-                        <Title level={2} style={{ margin: 0, fontWeight: 800, color: '#fff' }}>Automation Engine</Title>
+                    <div className="flex items-center gap-3 mb-2">
+                        <div className="w-10 h-10 rounded-xl bg-[#f59e0b]/10 flex items-center justify-center">
+                            <Zap className="w-6 h-6 text-[#f59e0b]" />
+                        </div>
+                        <h1 className="text-2xl font-bold text-slate-900 m-0">Automation Engine</h1>
                     </div>
-                    <Text type="secondary" style={{ fontSize: 14 }}>
+                    <p className="text-sm text-slate-500 max-w-lg">
                         Design intelligent flows to connect your channels and automate your business operations.
-                    </Text>
+                    </p>
                 </div>
-                <Space>
-                    <Button 
-                        icon={<BranchesOutlined />} 
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                    <button 
                         onClick={() => setShowTemplates(!showTemplates)}
-                        className={showTemplates ? "premium-button" : "premium-button-secondary"}
+                        className={cn(
+                            "flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all shadow-sm",
+                            showTemplates ? "bg-primary text-white hover:bg-primary/90 shadow-primary/20" : "bg-white border border-slate-200 text-slate-700 hover:bg-slate-50"
+                        )}
                     >
-                        {showTemplates ? "Hide Templates" : "Explore Blueprints"}
-                    </Button>
-                    <Button type="primary" icon={<PlusOutlined />} className="premium-button" onClick={() => enterBuilder()}>
+                        <Network className="w-4 h-4" />
+                        {showTemplates ? "Hide Blueprints" : "Explore Blueprints"}
+                    </button>
+                    <button 
+                        onClick={() => enterBuilder()}
+                        className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 transition-all"
+                    >
+                        <Plus className="w-4 h-4" />
                         Create Flow
-                    </Button>
-                </Space>
+                    </button>
+                </div>
             </div>
 
-            {/* Industry Templates Section (Conditional) */}
+            {/* Industry Templates Section */}
             {showTemplates && (
-                <div style={{ marginBottom: 48, padding: 24, background: 'rgba(59, 130, 246, 0.05)', borderRadius: 24, border: '1px solid rgba(59, 130, 246, 0.1)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-                        <BranchesOutlined style={{ color: '#3b82f6', fontSize: 18 }} />
-                        <Title level={4} style={{ margin: 0, color: '#fff', fontSize: 16 }}>Ready-to-Use Industry Blueprints</Title>
+                <div className="mb-10 p-6 bg-primary/5 rounded-2xl border border-primary/10 animate-in slide-in-from-top-4 duration-300">
+                    <div className="flex items-center gap-2 mb-5">
+                        <Network className="w-5 h-5 text-primary" />
+                        <h2 className="text-base font-bold text-slate-900 m-0">Ready-to-Use Industry Blueprints</h2>
                     </div>
-                    <Row gutter={[16, 16]}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         {FLOW_TEMPLATES.map(t => (
-                            <Col xs={24} sm={12} md={8} lg={4.8 as any} key={t.name}>
-                                <Card 
-                                    hoverable 
-                                    className="premium-card" 
-                                    style={{ height: '100%', border: '1px solid rgba(59, 130, 246, 0.1)', cursor: 'pointer' }}
-                                    bodyStyle={{ padding: 16 }}
-                                    onClick={() => enterBuilder(undefined, t)}
-                                >
-                                    <Tag color="blue" style={{ marginBottom: 12, fontSize: 10 }}>{t.industry}</Tag>
-                                    <Title level={5} style={{ color: '#fff', fontSize: 13, margin: '0 0 8px 0', lineHeight: 1.4 }}>{t.name}</Title>
-                                    <Text type="secondary" style={{ fontSize: 11, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                                        {t.description}
-                                    </Text>
-                                </Card>
-                            </Col>
+                            <div 
+                                key={t.name}
+                                onClick={() => enterBuilder(undefined, t)}
+                                className="bg-white border border-slate-200 rounded-2xl p-5 hover:border-primary/30 hover:shadow-lg transition-all cursor-pointer group flex flex-col h-full"
+                            >
+                                <div className="mb-auto">
+                                    <span className="inline-block px-2 py-1 bg-primary/10 text-primary text-[10px] font-bold rounded-md uppercase tracking-wide mb-3">
+                                        {t.industry}
+                                    </span>
+                                    <h3 className="text-sm font-bold text-slate-900 mb-2 group-hover:text-primary transition-colors leading-tight">{t.name}</h3>
+                                </div>
+                                <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed mt-2">{t.description}</p>
+                            </div>
                         ))}
-                    </Row>
+                    </div>
                 </div>
             )}
 
             {/* Stats */}
-            <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                 {[
-                    { label: 'Total Rules', value: stats.total, color: '#a855f7' },
-                    { label: 'Active Rules', value: stats.active, color: '#00df9a' },
-                    { label: 'Total Runs', value: stats.totalRuns, color: '#3b82f6' },
+                    { label: 'Total Rules', value: stats.total, color: 'text-purple-500' },
+                    { label: 'Active Rules', value: stats.active, color: 'text-emerald-500' },
+                    { label: 'Total Runs', value: stats.totalRuns, color: 'text-blue-500' },
                 ].map((s, i) => (
-                    <Col xs={24} sm={8} key={i}>
-                        <Card className="premium-card">
-                            <Statistic
-                                title={<Text style={{ color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 1, fontSize: 11, fontWeight: 700 }}>{s.label}</Text>}
-                                value={s.value}
-                                valueStyle={{ color: s.color, fontWeight: 800, fontSize: 32 }}
-                            />
-                        </Card>
-                    </Col>
+                    <div key={i} className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
+                        <span className="text-[11px] font-bold text-slate-400 uppercase tracking-widest block mb-2">{s.label}</span>
+                        <div className={cn("text-3xl font-black", s.color)}>{s.value}</div>
+                    </div>
                 ))}
-            </Row>
+            </div>
 
             {/* Rules List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="flex flex-col gap-4">
                 {rules.length === 0 ? (
-                    <Card className="premium-card" style={{ textAlign: 'center', padding: '60px 0' }}>
-                        <Empty description={<Text type="secondary">No automation rules yet. Start by creating your first rule!</Text>} />
-                    </Card>
+                    <div className="bg-white border border-slate-200 rounded-2xl p-16 text-center shadow-sm flex flex-col items-center">
+                        <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-4">
+                            <Network className="w-8 h-8 text-slate-300" />
+                        </div>
+                        <h3 className="text-lg font-bold text-slate-900 mb-2">No automation rules yet</h3>
+                        <p className="text-sm text-slate-500 max-w-md mx-auto mb-6">Start by creating your first automated flow to handle leads, send messages, and sync your business tools.</p>
+                        <button 
+                            onClick={() => enterBuilder()}
+                            className="text-primary text-sm font-bold hover:underline inline-flex items-center gap-1"
+                        >
+                            Create your first flow <Plus className="w-4 h-4" />
+                        </button>
+                    </div>
                 ) : (
                     rules.map(rule => {
                         const trig = TRIGGER_META[rule.trigger as TriggerType];
+                        // Extract border color or use default blue
+                        const borderColor = rule.enabled ? (trig?.color || '#3b82f6') : '#94a3b8';
+                        
                         return (
-                            <Card key={rule.id} className="premium-card" style={{ borderLeft: `4px solid ${rule.enabled ? trig?.color || '#3b82f6' : '#2d3748'}` }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 24 }}>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                                            <div style={{ width: 40, height: 40, borderRadius: 12, background: `${trig?.color || '#3b82f6'}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: trig?.color || '#3b82f6', fontSize: 20 }}>
-                                                {trig?.icon}
-                                            </div>
-                                            <div>
-                                                <Title level={5} style={{ margin: 0, color: '#fff' }}>{rule.name}</Title>
-                                                <Text type="secondary" style={{ fontSize: 12 }}>{trig?.module} • {trig?.label}</Text>
-                                            </div>
-                                        </div>                                        {(rule.delay ?? 0) > 0 && (
-                                            <div style={{ marginTop: 8 }}>
-                                                <Tag icon={<FieldTimeOutlined />} color="warning" style={{ fontSize: 10 }}>
-                                                    Delay: {
-                                                        rule.delay! >= 1440 ? `${Math.round(rule.delay! / 1440)} Day(s)` :
-                                                        rule.delay! >= 60 ? `${Math.round(rule.delay! / 60)} Hour(s)` :
-                                                        `${rule.delay} mins`
-                                                    }
-                                                </Tag>
-                                            </div>
+                            <div 
+                                key={rule.id} 
+                                className="bg-white rounded-2xl p-5 shadow-sm transition-all hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-6"
+                                style={{ borderLeft: `4px solid ${borderColor}`, borderTop: '1px solid #e2e8f0', borderRight: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}
+                            >
+                                <div className="flex items-start gap-4 flex-1">
+                                    <div 
+                                        className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 mt-1"
+                                        style={{ backgroundColor: `${trig?.color || '#3b82f6'}15`, color: trig?.color || '#3b82f6' }}
+                                    >
+                                        <Zap className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-base font-bold text-slate-900 m-0 mb-1">{rule.name}</h3>
+                                        <p className="text-xs text-slate-500 font-medium mb-3">
+                                            <span className="uppercase tracking-wide text-slate-400">{trig?.module}</span> • {trig?.label}
+                                        </p>
+                                        
+                                        {(rule.delay ?? 0) > 0 && (
+                                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-amber-50 text-amber-600 rounded-md text-[10px] font-bold border border-amber-200">
+                                                <Clock className="w-3 h-3" />
+                                                Delay: {
+                                                    rule.delay! >= 1440 ? `${Math.round(rule.delay! / 1440)} Day(s)` :
+                                                    rule.delay! >= 60 ? `${Math.round(rule.delay! / 60)} Hour(s)` :
+                                                    `${rule.delay} mins`
+                                                }
+                                            </span>
                                         )}
                                     </div>
+                                </div>
 
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                                        <div style={{ textAlign: 'right' }}>
-                                            <Text strong style={{ display: 'block', color: '#fff' }}>{rule.runs} Runs</Text>
-                                            <Text type="secondary" style={{ fontSize: 11 }}>Last: {rule.lastRunAt ? new Date(rule.lastRunAt).toLocaleString() : 'Never'}</Text>
+                                <div className="flex items-center justify-between md:justify-end gap-6 md:gap-8 w-full md:w-auto border-t md:border-t-0 border-slate-100 pt-4 md:pt-0">
+                                    <div className="text-left md:text-right">
+                                        <span className="block text-sm font-bold text-slate-900">{rule.runs || 0} Runs</span>
+                                        <span className="block text-[10px] font-medium text-slate-400 mt-0.5">
+                                            Last: {rule.lastRunAt ? new Date(rule.lastRunAt).toLocaleString() : 'Never'}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => toggleRule(rule.id)}
+                                            className={cn(
+                                                "relative inline-flex h-6 w-11 items-center rounded-full transition-colors mr-2 focus:outline-none focus:ring-2 focus:ring-primary/20",
+                                                rule.enabled ? 'bg-emerald-500' : 'bg-slate-300'
+                                            )}
+                                        >
+                                            <span className={cn("inline-block h-4 w-4 transform rounded-full bg-white transition-transform", rule.enabled ? 'translate-x-6' : 'translate-x-1')} />
+                                        </button>
+
+                                        <div className="flex gap-1">
+                                            <button 
+                                                onClick={() => setViewingLogs(rule)}
+                                                className="w-8 h-8 rounded-lg text-purple-500 hover:bg-purple-50 flex items-center justify-center transition-colors"
+                                                title="View Execution History"
+                                            >
+                                                <History className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => setManualRunRule(rule)}
+                                                className="w-8 h-8 rounded-lg text-emerald-500 hover:bg-emerald-50 flex items-center justify-center transition-colors"
+                                                title="Run Flow Manually"
+                                            >
+                                                <PlayCircle className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => setViewingFlow(rule)}
+                                                className="w-8 h-8 rounded-lg text-blue-500 hover:bg-blue-50 flex items-center justify-center transition-colors"
+                                                title="View Flow"
+                                            >
+                                                <Eye className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => enterBuilder(rule)}
+                                                className="w-8 h-8 rounded-lg text-slate-500 hover:bg-slate-100 flex items-center justify-center transition-colors"
+                                                title="Edit Flow"
+                                            >
+                                                <Edit2 className="w-4 h-4" />
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDeleteRule(rule.id)}
+                                                className="w-8 h-8 rounded-lg text-red-500 hover:bg-red-50 flex items-center justify-center transition-colors"
+                                                title="Delete Flow"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
                                         </div>
-                                        <Switch
-                                            checked={rule.enabled}
-                                            onChange={() => toggleRule(rule.id)}
-                                            style={{ background: rule.enabled ? '#00df9a' : undefined }}
-                                        />
-                                        <Button
-                                            type="text"
-                                            icon={<HistoryOutlined style={{ color: '#a855f7' }} />}
-                                            onClick={() => setViewingLogs(rule)}
-                                            title="View Execution History"
-                                        />
-                                        <Button
-                                            type="text"
-                                            icon={<PlayCircleOutlined style={{ color: '#00df9a' }} />}
-                                            onClick={() => setManualRunRule(rule)}
-                                            title="Run Flow Manually"
-                                        />
-
-                                        <Button
-                                            type="text"
-                                            icon={<EyeOutlined style={{ color: '#3b82f6' }} />}
-                                            onClick={() => setViewingFlow(rule)}
-                                        />
-                                        <Button
-                                            type="text"
-                                            icon={<EditOutlined style={{ color: '#3b82f6' }} />}
-                                            onClick={() => enterBuilder(rule)}
-                                        />
-                                        <Button
-                                            danger
-                                            type="text"
-                                            icon={<DeleteOutlined />}
-                                            onClick={() => handleDeleteRule(rule.id)}
-                                        />
                                     </div>
                                 </div>
-                            </Card>
+                            </div>
                         );
                     })
                 )}
             </div>
 
             {/* View Flow Modal */}
-            <Modal
-                title={<Title level={4} style={{ color: '#fff', margin: 0 }}>Automation Blueprint: {viewingFlow?.name}</Title>}
-                open={!!viewingFlow}
-                onCancel={() => setViewingFlow(null)}
-                footer={null}
-                className="premium-modal"
-                width={600}
-            >
-                {viewingFlow && (
-                    <div style={{ padding: '8px 0' }}>
-                        <div style={{ marginBottom: 24 }}>
-                            <Text type="secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 12 }}>Trigger Event</Text>
-                            <Card className="premium-card" style={{ background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
-                                <Space size="large">
-                                    <div style={{ width: 40, height: 40, borderRadius: 12, background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>
-                                        {TRIGGER_META[viewingFlow.trigger as TriggerType]?.icon}
+            {viewingFlow && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                        <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                            <h2 className="text-lg font-bold text-slate-900 truncate">Blueprint: {viewingFlow.name}</h2>
+                            <button onClick={() => setViewingFlow(null)} className="text-slate-400 hover:text-slate-600 p-1 rounded-md">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto custom-scrollbar">
+                            <div className="mb-8">
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Trigger Event</span>
+                                <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 flex items-center gap-4">
+                                    <div className="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center">
+                                        <Zap className="w-5 h-5" />
                                     </div>
                                     <div>
-                                        <Text style={{ color: '#fff', fontWeight: 600, fontSize: 16 }}>{TRIGGER_META[viewingFlow.trigger as TriggerType]?.label}</Text>
-                                        <Text type="secondary" style={{ display: 'block', fontSize: 12 }}>{TRIGGER_META[viewingFlow.trigger as TriggerType]?.module}</Text>
+                                        <span className="block font-bold text-slate-900">{TRIGGER_META[viewingFlow.trigger as TriggerType]?.label}</span>
+                                        <span className="block text-xs text-slate-500">{TRIGGER_META[viewingFlow.trigger as TriggerType]?.module}</span>
                                     </div>
-                                </Space>
-                            </Card>
-                        </div>
+                                </div>
+                            </div>
 
-                        <Text type="secondary" style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 1, display: 'block', marginBottom: 12 }}>Action Sequence</Text>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                            {viewingFlow.actions.map((action: string, idx: number) => {
-                                const am = ACTION_META[action as ActionType];
-                                return (
-                                    <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-                                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-                                            <div style={{ width: 24, height: 24, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>
-                                                {idx + 1}
+                            <div>
+                                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-widest block mb-3">Action Sequence</span>
+                                <div className="flex flex-col gap-3">
+                                    {viewingFlow.actions.map((action: string, idx: number) => {
+                                        const am = ACTION_META[action as ActionType];
+                                        return (
+                                            <div key={idx} className="flex gap-4">
+                                                <div className="flex flex-col items-center">
+                                                    <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[10px] font-bold shrink-0 z-10">
+                                                        {idx + 1}
+                                                    </div>
+                                                    {idx < viewingFlow.actions.length - 1 && (
+                                                        <div className="w-0.5 h-full bg-slate-100 my-1 min-h-[24px]"></div>
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 bg-white border border-slate-200 rounded-xl p-3 flex items-center gap-3 shadow-sm mb-1">
+                                                    <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${am?.color || '#3b82f6'}15`, color: am?.color || '#3b82f6' }}>
+                                                        <Zap className="w-4 h-4" />
+                                                    </div>
+                                                    <span className="font-bold text-sm text-slate-800">{am?.label || action}</span>
+                                                </div>
                                             </div>
-                                            {idx < viewingFlow.actions.length - 1 && <div style={{ width: 2, height: 20, background: 'rgba(255,255,255,0.05)' }} />}
-                                        </div>
-                                        <Card className="premium-card" style={{ flex: 1, border: '1px solid rgba(255,255,255,0.05)' }} bodyStyle={{ padding: '12px 16px' }}>
-                                            <Space>
-                                                <span style={{ color: am?.color || '#fff', fontSize: 16 }}>{am?.icon}</span>
-                                                <Text style={{ color: '#fff', fontWeight: 500 }}>{am?.label || action}</Text>
-                                            </Space>
-                                        </Card>
-                                    </div>
-                                );
-                            })}
+                                        );
+                                    })}
+                                </div>
+                            </div>
                         </div>
-                        
-                        <div style={{ marginTop: 32, display: 'flex', justifyContent: 'center' }}>
-                            <Button type="primary" className="premium-button" onClick={() => { enterBuilder(viewingFlow); setViewingFlow(null); }}>
+                        <div className="p-5 border-t border-slate-100 bg-white flex justify-end shrink-0">
+                            <button 
+                                onClick={() => { enterBuilder(viewingFlow); setViewingFlow(null); }}
+                                className="px-5 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 transition-all"
+                            >
                                 Edit Flow Journey
-                            </Button>
+                            </button>
                         </div>
                     </div>
-                )}
-            </Modal>
+                </div>
+            )}
 
             {/* Manual Run Modal */}
             <ManualRunModal
@@ -299,7 +346,6 @@ const ActivityLogDrawer: React.FC<ActivityLogDrawerProps> = ({ rule, onClose }) 
             setPage(data.page);
             setHasMore(data.page < data.totalPages);
         } catch (error) {
-            console.error("Failed to fetch logs:", error);
             message.error("Failed to load activity logs.");
         } finally {
             setLoading(false);
@@ -312,86 +358,91 @@ const ActivityLogDrawer: React.FC<ActivityLogDrawerProps> = ({ rule, onClose }) 
         }
     };
 
+    if (!rule) return null;
+
     return (
-        <Drawer
-            title={
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <HistoryOutlined style={{ color: '#a855f7' }} />
-                    <div>
-                        <Title level={4} style={{ color: '#fff', margin: 0 }}>Activity History</Title>
-                        <Text type="secondary" style={{ fontSize: 12 }}>{rule?.name}</Text>
+        <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-slate-50 w-full max-w-md h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300">
+                <div className="flex justify-between items-center p-5 border-b border-slate-200 bg-white shrink-0">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+                            <History className="w-5 h-5 text-purple-500" />
+                        </div>
+                        <div>
+                            <h2 className="text-base font-bold text-slate-900 m-0">Activity History</h2>
+                            <span className="text-xs text-slate-500 font-medium">{rule.name}</span>
+                        </div>
                     </div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-md">
+                        <X className="w-5 h-5" />
+                    </button>
                 </div>
-            }
-            placement="right"
-            onClose={onClose}
-            open={!!rule}
-            width={500}
-            className="premium-drawer"
-        >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                {logs.length === 0 && !loading ? (
-                    <Empty description={<Text type="secondary">No activity recorded for this rule yet.</Text>} />
-                ) : (
-                    <>
-                        {logs.map((log: any) => {
-                            const am = ACTION_META[log.action as ActionType];
-                            const target = log.details?.name || log.details?.Name || log.details?.email || log.details?.Email || log.details?.phone || 'Unknown Lead';
-                            return (
-                                <div key={log.id} style={{ 
-                                    padding: 16, 
-                                    background: 'rgba(255,255,255,0.02)', 
-                                    borderRadius: 16, 
-                                    border: '1px solid rgba(255,255,255,0.05)',
-                                    transition: 'transform 0.2s ease'
-                                }} className="hover-lift">
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 }}>
-                                        <Tag color={log.status === 'SUCCESS' ? 'success' : 'error'} style={{ margin: 0, borderRadius: 4, fontWeight: 700, fontSize: 10 }}>
-                                            {log.status}
-                                        </Tag>
-                                        <Text type="secondary" style={{ fontSize: 11 }}>
-                                            {new Date(log.executedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
-                                        </Text>
+
+                <div className="p-5 overflow-y-auto custom-scrollbar flex-1 flex flex-col gap-4">
+                    {logs.length === 0 && !loading ? (
+                        <div className="flex flex-col items-center justify-center py-20 text-center">
+                            <History className="w-10 h-10 text-slate-300 mb-3" />
+                            <p className="text-sm font-medium text-slate-500">No activity recorded for this rule yet.</p>
+                        </div>
+                    ) : (
+                        <>
+                            {logs.map((log: any) => {
+                                const am = ACTION_META[log.action as ActionType];
+                                const target = log.details?.name || log.details?.Name || log.details?.email || log.details?.Email || log.details?.phone || 'Unknown Lead';
+                                return (
+                                    <div key={log.id} className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <span className={cn(
+                                                "px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider",
+                                                log.status === 'SUCCESS' ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-700"
+                                            )}>
+                                                {log.status}
+                                            </span>
+                                            <span className="text-[11px] font-medium text-slate-400">
+                                                {new Date(log.executedAt).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${am?.color || '#3b82f6'}15`, color: am?.color || '#3b82f6' }}>
+                                                <Zap className="w-4 h-4" />
+                                            </div>
+                                            <div>
+                                                <span className="block font-bold text-sm text-slate-800">{am?.label || log.action}</span>
+                                                <span className="block text-xs text-slate-500">to <strong className="text-primary font-bold">{target}</strong></span>
+                                            </div>
+                                        </div>
+                                        {log.message && (
+                                            <div className={cn(
+                                                "mt-3 p-2.5 rounded-lg text-xs font-medium border-l-2",
+                                                log.status === 'SUCCESS' ? "bg-emerald-50 text-emerald-700 border-emerald-500" : "bg-red-50 text-red-700 border-red-500"
+                                            )}>
+                                                {log.message}
+                                            </div>
+                                        )}
                                     </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                        <div style={{ width: 32, height: 32, borderRadius: 10, background: `${am?.color || '#3b82f6'}15`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: am?.color || '#3b82f6' }}>
-                                            {am?.icon || <ThunderboltOutlined />}
-                                        </div>
-                                        <div style={{ flex: 1 }}>
-                                            <Text style={{ color: '#fff', fontWeight: 600, display: 'block' }}>{am?.label || log.action}</Text>
-                                            <Text type="secondary" style={{ fontSize: 12 }}>to <span style={{ color: '#3b82f6' }}>{target}</span></Text>
-                                        </div>
-                                    </div>
-                                    {log.message && (
-                                        <div style={{ marginTop: 12, padding: '8px 12px', background: 'rgba(255,255,255,0.02)', borderRadius: 8, fontSize: 12, color: '#94a3b8', borderLeft: `2px solid ${log.status === 'SUCCESS' ? '#00df9a' : '#ef4444'}` }}>
-                                            {log.message}
-                                        </div>
-                                    )}
+                                );
+                            })}
+                            
+                            {hasMore && (
+                                <button 
+                                    onClick={handleLoadMore} 
+                                    disabled={loading}
+                                    className="w-full py-2.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm disabled:opacity-50 mt-2"
+                                >
+                                    {loading ? 'Loading...' : 'Load Older Activity'}
+                                </button>
+                            )}
+                            
+                            {loading && logs.length === 0 && (
+                                <div className="flex justify-center py-10">
+                                    <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
                                 </div>
-                            );
-                        })}
-                        
-                        {hasMore && (
-                            <Button 
-                                onClick={handleLoadMore} 
-                                loading={loading} 
-                                block 
-                                className="premium-button-secondary"
-                                style={{ marginTop: 8 }}
-                            >
-                                Load Older Activity
-                            </Button>
-                        )}
-                        
-                        {loading && logs.length === 0 && (
-                            <div style={{ textAlign: 'center', padding: '40px 0' }}>
-                                <Spin size="large" />
-                            </div>
-                        )}
-                    </>
-                )}
+                            )}
+                        </>
+                    )}
+                </div>
             </div>
-        </Drawer>
+        </div>
     );
 };
 
@@ -404,7 +455,7 @@ interface ManualRunModalProps {
 const ManualRunModal: React.FC<ManualRunModalProps> = ({ rule, onClose, onRefresh }) => {
     const [loading, setLoading] = React.useState(false);
     const [dataItems, setDataItems] = React.useState<any[]>([]);
-    const [selectedKeys, setSelectedKeys] = React.useState<React.Key[]>([]);
+    const [selectedKeys, setSelectedKeys] = React.useState<string[]>([]);
     const [executing, setExecuting] = React.useState(false);
 
     React.useEffect(() => {
@@ -420,14 +471,12 @@ const ManualRunModal: React.FC<ManualRunModalProps> = ({ rule, onClose, onRefres
         if (!rule) return;
         setLoading(true);
         try {
-            // If it's a form trigger, we fetch responses
             if (rule.trigger === 'form_submitted' || rule.trigger === 'form_abandoned') {
                 const formId = (rule.config as any)?.formId;
                 if (formId) {
                     const { formsApi } = await import('../../api/forms');
                     const response = await formsApi.getResponses(formId);
                     const responses = response.data || [];
-                    // Map responses to flat objects
                     const items = responses.map((r: any) => ({
                         key: r.id,
                         ...r.data,
@@ -436,12 +485,9 @@ const ManualRunModal: React.FC<ManualRunModalProps> = ({ rule, onClose, onRefres
                     setDataItems(items);
                 }
             } else {
-                // For other triggers, maybe show a "Paste CSV" or similar?
-                // For now, let's just support form-based manual runs
                 message.info("Manual runs are currently optimized for Form-based triggers.");
             }
         } catch (error) {
-            console.error("Failed to fetch data for manual run:", error);
             message.error("Failed to load available lead data.");
         } finally {
             setLoading(false);
@@ -459,7 +505,6 @@ const ManualRunModal: React.FC<ManualRunModalProps> = ({ rule, onClose, onRefres
             onRefresh();
             onClose();
         } catch (error) {
-            console.error("Manual run failed:", error);
             message.error("Failed to execute manual run.");
         } finally {
             setExecuting(false);
@@ -471,49 +516,119 @@ const ManualRunModal: React.FC<ManualRunModalProps> = ({ rule, onClose, onRefres
         .map(k => ({
             title: k.charAt(0).toUpperCase() + k.slice(1),
             dataIndex: k,
-            key: k,
-            ellipsis: true,
+            key: k
         })) : [];
 
+    const toggleSelection = (key: string) => {
+        setSelectedKeys(prev => 
+            prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+        );
+    };
+
+    const toggleAll = () => {
+        if (selectedKeys.length === dataItems.length) {
+            setSelectedKeys([]);
+        } else {
+            setSelectedKeys(dataItems.map(d => d.key));
+        }
+    };
+
+    if (!rule) return null;
+
     return (
-        <Modal
-            title={<Title level={4} style={{ color: '#fff', margin: 0 }}>Manual Run: {rule?.name}</Title>}
-            open={!!rule}
-            onCancel={onClose}
-            width={800}
-            className="premium-modal"
-            footer={[
-                <Button key="cancel" onClick={onClose} className="premium-button-secondary">Cancel</Button>,
-                <Button 
-                    key="run" 
-                    type="primary" 
-                    icon={<PlayCircleOutlined />} 
-                    disabled={selectedKeys.length === 0} 
-                    loading={executing}
-                    onClick={handleRun}
-                    className="premium-button"
-                >
-                    Run Flow for {selectedKeys.length} Selected
-                </Button>
-            ]}
-        >
-            <div style={{ marginBottom: 16 }}>
-                <Text type="secondary">Select the lead data you want to push through this automation flow.</Text>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+                <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
+                    <div>
+                        <h2 className="text-lg font-bold text-slate-900 m-0">Manual Run: {rule.name}</h2>
+                        <p className="text-xs text-slate-500 mt-1">Select the lead data you want to push through this automation flow.</p>
+                    </div>
+                    <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1 rounded-md">
+                        <X className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="p-5 overflow-auto custom-scrollbar flex-1 bg-slate-50">
+                    {loading ? (
+                        <div className="flex justify-center py-20">
+                            <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
+                        </div>
+                    ) : dataItems.length === 0 ? (
+                        <div className="text-center py-20">
+                            <p className="text-sm text-slate-500 font-medium">No data available for manual execution.</p>
+                        </div>
+                    ) : (
+                        <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left border-collapse text-sm whitespace-nowrap">
+                                    <thead>
+                                        <tr className="bg-slate-50 border-b border-slate-200">
+                                            <th className="py-3 px-4 w-12 text-center">
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={selectedKeys.length === dataItems.length && dataItems.length > 0}
+                                                    onChange={toggleAll}
+                                                    className="rounded border-slate-300 text-primary focus:ring-primary/20 w-4 h-4 cursor-pointer"
+                                                />
+                                            </th>
+                                            {columns.map(col => (
+                                                <th key={col.key} className="py-3 px-4 font-bold text-slate-600 text-xs uppercase tracking-wider">
+                                                    {col.title}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {dataItems.map((item, i) => (
+                                            <tr 
+                                                key={item.key} 
+                                                className={cn(
+                                                    "border-b border-slate-100 last:border-b-0 hover:bg-slate-50 transition-colors cursor-pointer",
+                                                    selectedKeys.includes(item.key) ? "bg-primary/5 hover:bg-primary/10" : ""
+                                                )}
+                                                onClick={() => toggleSelection(item.key)}
+                                            >
+                                                <td className="py-3 px-4 text-center">
+                                                    <input 
+                                                        type="checkbox" 
+                                                        checked={selectedKeys.includes(item.key)}
+                                                        onChange={() => toggleSelection(item.key)}
+                                                        className="rounded border-slate-300 text-primary focus:ring-primary/20 w-4 h-4 cursor-pointer"
+                                                        onClick={e => e.stopPropagation()}
+                                                    />
+                                                </td>
+                                                {columns.map(col => (
+                                                    <td key={col.key} className="py-3 px-4 text-slate-700 font-medium">
+                                                        {item[col.dataIndex]?.toString() || '-'}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+                <div className="p-5 border-t border-slate-100 bg-white flex justify-end gap-3 shrink-0">
+                    <button 
+                        onClick={onClose}
+                        className="px-5 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-sm font-bold hover:bg-slate-50 transition-colors shadow-sm"
+                    >
+                        Cancel
+                    </button>
+                    <button 
+                        onClick={handleRun}
+                        disabled={selectedKeys.length === 0 || executing}
+                        className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary/90 text-white rounded-xl text-sm font-bold shadow-md shadow-primary/20 transition-all disabled:opacity-50"
+                    >
+                        {executing ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <PlayCircle className="w-4 h-4" />}
+                        Run Flow for {selectedKeys.length} Selected
+                    </button>
+                </div>
             </div>
-            <Table
-                size="small"
-                loading={loading}
-                dataSource={dataItems}
-                columns={columns}
-                rowSelection={{
-                    selectedRowKeys: selectedKeys,
-                    onChange: setSelectedKeys
-                }}
-                pagination={{ pageSize: 5 }}
-                className="premium-table"
-                scroll={{ x: 'max-content' }}
-            />
-        </Modal>
+        </div>
     );
 };
 

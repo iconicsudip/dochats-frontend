@@ -1,16 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { Layout, Input, Avatar, Spin, Button, Space, Modal } from 'antd';
-import { SendOutlined, SmileOutlined, UserOutlined, CheckOutlined, AudioOutlined, CloseOutlined, WhatsAppOutlined } from '@ant-design/icons';
 import { format } from 'date-fns';
 import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
 import apiClient from '../api/apiClient';
-import { socket } from '../socket';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { MessageType } from '../enums';
+import { 
+    Send, Smile, User, Check, CheckCheck, Mic, X, MessageCircle, Lock, Phone 
+} from 'lucide-react';
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-const { Content } = Layout;
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 const PublicChat: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
@@ -46,20 +50,16 @@ const PublicChat: React.FC = () => {
         phone: localStorage.getItem('visitor_phone') || ''
     }));
     const [showWAPopup, setShowWAPopup] = useState(false);
-    const [isAdminTyping, setIsAdminTyping] = useState(false);
-    const [isSocketConnected, setIsSocketConnected] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [showOnboardingForm, setShowOnboardingForm] = useState(false);
     const [showLeadCaptureForm, setShowLeadCaptureForm] = useState(false);
     const hasTriggeredOnboarding = useRef(false);
     const hasShownFormRef = useRef(false);
-    const typingTimeoutRef = useRef<any>(null);
     const pollIntervalRef = useRef<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const { isRecording, recordingTime, formatTime, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
 
-    // 1. Initial Visitor Discovery & Load Chat Infrastructure
     useEffect(() => {
         if (slug && visitorToken) {
             const storedName = localStorage.getItem('visitor_name') || undefined;
@@ -85,61 +85,18 @@ const PublicChat: React.FC = () => {
         }
     }, [slug, visitorToken]);
 
-    // 3. Socket & History Engine
     useEffect(() => {
         if (conversationId) {
-            // No changes needed here, keeping logic as is
             fetchMessages();
-            socket.connect();
-            socket.emit('join_conversation', conversationId);
-            const onConnect = () => setIsSocketConnected(true);
-            const onDisconnect = () => setIsSocketConnected(false);
-            socket.on('connect', onConnect);
-            socket.on('disconnect', onDisconnect);
-            const handleMessage = (msg: any) => {
-                setMessages(prev => {
-                    if (prev.some(m => m.id === msg.id)) return prev;
-                    if (msg.tempId && prev.some(m => m.id === msg.tempId)) return prev.map(m => m.id === msg.tempId ? msg : m);
-                    const dupeIndex = prev.findIndex(m => m.id.startsWith('temp-') && m.content === msg.content && m.isFromAdmin === msg.isFromAdmin);
-                    if (dupeIndex !== -1) { const next = [...prev]; next[dupeIndex] = msg; return next; }
-                    return [...prev, msg];
-                });
-                apiClient.post('/public/mark-read', { conversationId, isAdmin: false }).catch(() => { });
-            };
-            const handleRead = (data: { byAdmin: boolean }) => {
-                setMessages(prev => prev.map(m => {
-                    if (data?.byAdmin && !m.isFromAdmin) return { ...m, isRead: true };
-                    if (data?.byAdmin === false && m.isFromAdmin) return { ...m, isRead: true };
-                    return m;
-                }));
-            };
-            const handleTyping = (data: { isFromAdmin: boolean }) => { if (data.isFromAdmin) setIsAdminTyping(true); };
-            const handleStopTyping = (data: { isFromAdmin: boolean }) => { if (data.isFromAdmin) setIsAdminTyping(false); };
-            socket.on('receive_message', handleMessage);
-            socket.on('messages_read', handleRead);
-            socket.on('user_typing', handleTyping);
-            socket.on('user_stop_typing', handleStopTyping);
+            
+            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+            pollIntervalRef.current = setInterval(() => { fetchMessages(); }, 5000);
+            
             return () => {
-                socket.off('connect', onConnect);
-                socket.off('disconnect', onDisconnect);
-                socket.off('receive_message', handleMessage);
-                socket.off('messages_read', handleRead);
-                socket.off('user_typing', handleTyping);
-                socket.off('user_stop_typing', handleStopTyping);
-                socket.emit('leave_conversation', conversationId);
+                if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
             };
         }
     }, [conversationId]);
-
-    // Poll for messages when socket is disconnected (Fallback)
-    useEffect(() => {
-        if (!conversationId || isSocketConnected) {
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-            return;
-        }
-        pollIntervalRef.current = setInterval(() => { fetchMessages(); }, 5000);
-        return () => { if (pollIntervalRef.current) clearInterval(pollIntervalRef.current); };
-    }, [conversationId, isSocketConnected]);
 
     useEffect(() => {
         if (!chatInfo || !conversationId || isInitialLoading || hasTriggeredOnboarding.current) return;
@@ -149,14 +106,11 @@ const PublicChat: React.FC = () => {
                 const alreadySent = messages.some(m => m.isFromAdmin && m.content === chatInfo.welcomeMessage);
                 if (!alreadySent) {
                     await sendBotMessage(chatInfo.welcomeMessage);
-                    // Show form with a slight delay after the message is sent
                     setTimeout(() => setShowOnboardingForm(true), 1000);
                 } else {
-                    // Already exists, show form immediately
                     setShowOnboardingForm(true);
                 }
             } else {
-                // No welcome message, show form immediately
                 setShowOnboardingForm(true);
             }
         };
@@ -251,7 +205,6 @@ const PublicChat: React.FC = () => {
         setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 100);
         const customerMsgs = messages.filter(m => !m.isFromAdmin);
         
-        // Lead Capture Form Trigger
         const formThreshold = chatInfo?.leadCaptureDelay ?? 3;
         if (chatInfo?.leadCaptureFormId && customerMsgs.length === formThreshold && !hasShownFormRef.current) {
             const lastMsg = messages[messages.length - 1];
@@ -262,15 +215,13 @@ const PublicChat: React.FC = () => {
             }
         }
 
-        // WA Popup Trigger
         const waThreshold = chatInfo?.whatsappThreshold || 5;
         if (chatInfo?.whatsappLink && customerMsgs.length === waThreshold) {
             const lastMsg = messages[messages.length - 1];
             if (lastMsg && !lastMsg.isFromAdmin) { setShowWAPopup(true); }
         }
-    }, [messages.length]);
+    }, [messages.length, chatInfo]);
 
-    // Listen for form submission from iframe
     useEffect(() => {
         const handleMessage = (event: MessageEvent) => {
             if (event.data?.type === 'LEAD_CAPTURE_SUCCESS') {
@@ -281,14 +232,7 @@ const PublicChat: React.FC = () => {
         return () => window.removeEventListener('message', handleMessage);
     }, []);
 
-    const onEmojiClick = (emojiData: any) => { setInputText(prev => prev + emojiData.emoji); handleTypingIndicator(); };
-
-    const handleTypingIndicator = () => {
-        if (!conversationId) return;
-        socket.emit('typing', { conversationId, isFromAdmin: false });
-        if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-        typingTimeoutRef.current = setTimeout(() => { socket.emit('stop_typing', { conversationId, isFromAdmin: false }); }, 2000);
-    };
+    const onEmojiClick = (emojiData: any) => { setInputText(prev => prev + emojiData.emoji); };
 
     const groupMessagesByDate = (msgs: any[]) => {
         const groups: { [key: string]: any[] } = {};
@@ -301,7 +245,7 @@ const PublicChat: React.FC = () => {
         const urlRegex = /(https?:\/\/[^\s]+)/g;
         const parts = text.split(urlRegex);
         return parts.map((part, i) => {
-            if (part.match(urlRegex)) return <a key={i} href={part} target="_blank" rel="noopener noreferrer" style={{ color: '#53bdeb', textDecoration: 'underline' }}>{part}</a>;
+            if (part.match(urlRegex)) return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">{part}</a>;
             return <span key={i}>{part.split('\n').map((line, j) => <React.Fragment key={j}>{j > 0 && <br />}{line}</React.Fragment>)}</span>;
         });
     };
@@ -319,201 +263,250 @@ const PublicChat: React.FC = () => {
     const LinkPreview = ({ preview }: { preview: any }) => {
         if (!preview) return null;
         return (
-            <div style={{ background: 'rgba(0,0,0,0.1)', borderRadius: 4, marginBottom: 8, borderLeft: '4px solid #00df9a', display: 'flex', flexDirection: 'column' }}>
-                {preview.image && <img src={preview.image} alt="P" style={{ width: '100%', maxHeight: 150, objectFit: 'cover' }} />}
-                <div style={{ padding: '8px 12px' }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#00df9a', marginBottom: 2 }}>{preview.title}</div>
-                    <div style={{ fontSize: 12, opacity: 0.8 }}>{preview.description}</div>
+            <div className="bg-black/20 rounded-lg mb-2 border-l-4 border-emerald-500 overflow-hidden flex flex-col">
+                {preview.image && <img src={preview.image} alt="Preview" className="w-full max-h-36 object-cover" />}
+                <div className="p-3">
+                    <div className="font-bold text-xs text-emerald-400 mb-1">{preview.title}</div>
+                    <div className="text-[11px] opacity-80">{preview.description}</div>
                 </div>
             </div>
         );
     };
 
     return (
-        <Layout className="full-height-mobile" style={{ background: 'var(--wa-bg)', overflow: 'hidden', minHeight: '100vh' }}>
-            <Content style={{ display: 'flex', flexDirection: 'column', position: 'relative', overflow: 'hidden', flex: 1 }}>
-                <div className="whatsapp-bg"></div>
+        <div className="flex flex-col h-screen w-full bg-[#0b141a] font-sans overflow-hidden relative">
+            {/* Background Pattern Overlay */}
+            <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
 
-                {!chatInfo ? (
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
-                        <Spin size="large" tip="Connecting..." />
+            {!chatInfo ? (
+                <div className="flex-1 flex flex-col items-center justify-center gap-4 z-10">
+                    <div className="w-10 h-10 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
+                    <span className="text-xs font-bold text-slate-400 tracking-wide uppercase">Connecting...</span>
+                </div>
+            ) : (
+                <>
+                    {/* Header */}
+                    <div className="h-16 px-4 bg-[#202c33] flex items-center justify-between z-10 border-b border-[#111b21] shrink-0 shadow-md">
+                        <div className="flex items-center gap-3">
+                            {chatInfo.adminLogo ? (
+                                <img src={chatInfo.adminLogo} alt="Logo" className="w-10 h-10 rounded-full object-cover border border-[#374248]" />
+                            ) : (
+                                <div className="w-10 h-10 rounded-full bg-[#6a7175] text-white flex items-center justify-center font-bold text-sm shrink-0">
+                                    <User className="w-5 h-5" />
+                                </div>
+                            )}
+                            <div className="min-w-0">
+                                <h2 className="text-white text-base font-bold truncate m-0">{chatInfo.adminName}</h2>
+                                <span className="text-xs text-emerald-400 flex items-center gap-1 font-medium">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" /> Online
+                                </span>
+                            </div>
+                        </div>
                     </div>
-                ) : (
-                    <>
-                        {/* Header */}
-                        <div style={{ height: 60, padding: '10px 16px', background: 'var(--wa-panel)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', zIndex: 10, flexShrink: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                                <Avatar
-                                    size={40}
-                                    src={chatInfo.adminLogo}
-                                    icon={<UserOutlined />}
-                                    style={{ background: '#6a7175' }}
-                                />
-                                <div style={{ minWidth: 0 }}>
-                                    <div style={{ color: '#fff', fontSize: 16, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{chatInfo.adminName}</div>
-                                    <div style={{ color: 'var(--wa-secondary)', fontSize: 12 }}>online</div>
-                                </div>
+
+                    {/* Messages Area */}
+                    <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col z-10 custom-scrollbar space-y-4" ref={scrollRef}>
+                        <div className="flex justify-center mb-4">
+                            <div className="bg-[#182229] px-4 py-2 rounded-xl text-[#ffd279] text-[11px] flex items-center gap-2 shadow-sm max-w-sm text-center border border-[#233138]">
+                                <Lock className="w-3.5 h-3.5 shrink-0" /> Messages are end-to-end encrypted.
                             </div>
                         </div>
 
-                        {/* Messages Area */}
-                        <div style={{ flex: 1, overflowY: 'auto', padding: '15px 4% 20px 4%', display: 'flex', flexDirection: 'column', zIndex: 5 }} ref={scrollRef}>
-                            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 24 }}>
-                                <div style={{ background: '#182229', padding: '10px 16px', borderRadius: 12, color: '#ffd279', fontSize: 11, textAlign: 'center', maxWidth: '85%' }}>
-                                    <CheckOutlined style={{ marginRight: 8 }} /> Messages are end-to-end encrypted.
-                                </div>
-                            </div>
-
-                            {Object.entries(groupMessagesByDate(messages)).map(([date, dateMsgs]) => (
-                                <React.Fragment key={date}>
-                                    <div style={{ display: 'flex', justifyContent: 'center', margin: '16px 0' }}>
-                                        <div style={{ background: 'rgba(32,44,51,0.85)', padding: '6px 12px', borderRadius: 8, color: '#8696a0', fontSize: 11 }}>{getDateLabel(date)}</div>
-                                    </div>
-                                    {dateMsgs.map((msg: any) => (
-                                        <div key={msg.tempId || msg.id} className={`wa-bubble ${!msg.isFromAdmin ? 'wa-bubble-out' : 'wa-bubble-in'}`} style={{ marginBottom: 12 }}>
-                                            {msg.replyTo && (
-                                                <div style={{ background: 'rgba(0,0,0,0.1)', padding: '6px 10px', borderRadius: 4, marginBottom: 8, borderLeft: `4px solid ${!msg.replyTo.isFromAdmin ? '#53bdeb' : '#00df9a'}`, fontSize: 12, color: 'rgba(255,255,255,0.7)' }}>
-                                                    <div style={{ fontWeight: 600, color: !msg.replyTo.isFromAdmin ? '#53bdeb' : '#00df9a' }}>{!msg.replyTo.isFromAdmin ? 'You' : 'Agent'}</div>
-                                                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', WebkitLineClamp: 3, display: '-webkit-box', WebkitBoxOrient: 'vertical' }}>
-                                                        {msg.replyTo.type === MessageType.AUDIO ? '🎤 Voice Message' : msg.replyTo.content}
-                                                    </div>
-                                                </div>
-                                            )}
-                                            <LinkPreview preview={msg.linkPreview} />
-                                            <div style={{ paddingRight: !msg.isFromAdmin ? 45 : 35, whiteSpace: 'pre-wrap', wordBreak: 'break-word', minHeight: msg.type === MessageType.AUDIO ? 56 : undefined }}>
-                                                {msg.type === MessageType.AUDIO ? <AudioPlayer src={msg.content} isFromAdmin={msg.isFromAdmin} /> : formatMessageText(msg.content)}
-                                            </div>
-                                            <div className="wa-timestamp">
-                                                {format(new Date(msg.createdAt), 'HH:mm')}
-                                                {!msg.isFromAdmin && (
-                                                    <div style={{ display: 'inline-flex', marginLeft: 4 }}>
-                                                        <CheckOutlined style={{ color: msg.isRead ? '#53bdeb' : '#8696a0' }} />
-                                                        <CheckOutlined style={{ color: msg.isRead ? '#53bdeb' : '#8696a0', marginLeft: -9 }} />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </React.Fragment>
-                            ))}
-                            {(onboardingStep < 3 && chatInfo.leadCaptureEnabled && showOnboardingForm) && (
-                                <div className="wa-bubble wa-bubble-in" style={{ padding: '16px', maxWidth: '320px', width: '90%', marginBottom: 16, alignSelf: 'flex-start', animation: 'fadeIn 0.6s ease-out' }}>
-                                    <div style={{ marginBottom: 16, color: 'var(--wa-text)', fontSize: 13, fontWeight: 500 }}>
-                                        To help you better, please share your details:
-                                    </div>
-                                    <Space direction="vertical" style={{ width: '100%' }} size="middle">
-                                        <div>
-                                            <div style={{ color: 'var(--wa-secondary)', fontSize: 11, marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Full Name</div>
-                                            <Input 
-                                                placeholder="e.g. John Doe" 
-                                                value={visitorData.name} 
-                                                onChange={e => setVisitorData(prev => ({ ...prev, name: e.target.value }))}
-                                                style={{ background: '#2a3942', border: '1px solid #3b4a54', borderRadius: 8, color: '#fff', padding: '8px 12px' }}
-                                            />
-                                        </div>
-                                        <div>
-                                            <div style={{ color: 'var(--wa-secondary)', fontSize: 11, marginBottom: 4, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone Number (10 digits)</div>
-                                            <Input 
-                                                placeholder="e.g. 9876543210" 
-                                                value={visitorData.phone} 
-                                                maxLength={10}
-                                                onChange={e => {
-                                                    const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                                                    setVisitorData(prev => ({ ...prev, phone: val }));
-                                                }}
-                                                style={{ background: '#2a3942', border: '1px solid #3b4a54', borderRadius: 8, color: '#fff', padding: '8px 12px' }}
-                                            />
-                                        </div>
-                                        <Button 
-                                            type="primary" 
-                                            block 
-                                            style={{ background: 'var(--wa-green)', border: 'none', height: 44, fontWeight: 700, color: '#000', marginTop: 8, borderRadius: 8 }}
-                                            onClick={handleOnboardingSubmit}
-                                            disabled={!visitorData.name.trim() || visitorData.phone.length !== 10}
-                                        >
-                                            Start Chatting
-                                        </Button>
-                                    </Space>
-                                </div>
-                            )}
-
-                            {showLeadCaptureForm && (
-                                <div className="wa-bubble wa-bubble-in" style={{ padding: '0', maxWidth: '400px', width: '90%', marginBottom: 16, alignSelf: 'flex-start', animation: 'fadeIn 0.6s ease-out', overflow: 'hidden', borderRadius: 8 }}>
-                                    <div style={{ padding: '12px 16px', background: '#202c33', borderBottom: '1px solid #111b21', color: 'var(--wa-text)', fontSize: 13, fontWeight: 500 }}>
-                                        Please complete this form to continue:
-                                    </div>
-                                    <iframe 
-                                        src={`/f/${chatInfo?.leadCaptureFormId}?embed=true`} 
-                                        style={{ width: '100%', height: '500px', border: 'none', background: 'transparent' }}
-                                        title="Lead Capture"
-                                    />
-                                </div>
-                            )}
-
-                            {isAdminTyping && (
-                                <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 8, animation: 'fadeIn 0.3s' }}>
-                                    <div className="wa-bubble wa-bubble-in" style={{ padding: '8px 12px', minWidth: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                        <div className="typing-indicator">
-                                            <span></span>
-                                            <span></span>
-                                            <span></span>
-                                        </div>
+                        {Object.entries(groupMessagesByDate(messages)).map(([date, dateMsgs]) => (
+                            <React.Fragment key={date}>
+                                <div className="flex justify-center my-4">
+                                    <div className="bg-[#202c33]/90 backdrop-blur-xs px-3 py-1 rounded-lg text-[#8696a0] text-[10px] font-bold uppercase tracking-wider shadow-xs">
+                                        {getDateLabel(date)}
                                     </div>
                                 </div>
-                            )}
-                        </div>
 
-                        {/* Input Area - Only show when onboarding is complete and no lead capture is blocking */}
-                        {onboardingStep === 3 && !showLeadCaptureForm && (
-                            <div style={{ padding: '10px 12px', background: 'var(--wa-panel)', display: 'flex', alignItems: 'center', gap: 8, position: 'relative', zIndex: 10, flexShrink: 0 }}>
-                                <SmileOutlined style={{ fontSize: 24, color: 'var(--wa-secondary)', cursor: 'pointer' }} onClick={() => setShowEmoji(!showEmoji)} />
-                                {showEmoji && <div style={{ position: 'absolute', bottom: 70, left: 16 }}><EmojiPicker theme={EmojiTheme.DARK} onEmojiClick={onEmojiClick} /></div>}
-
-                                {isRecording ? (
-                                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                                        <div style={{ color: '#ef5350' }}>{formatTime(recordingTime)}</div>
-                                        <Space>
-                                            <Button type="text" onClick={cancelRecording} icon={<CloseOutlined style={{ color: '#8696a0' }} />} />
-                                            <Button type="text" onClick={sendVoiceMessage} icon={<SendOutlined style={{ color: 'var(--wa-green)' }} />} />
-                                        </Space>
-                                    </div>
-                                ) : (
-                                    <form onSubmit={handleSendMessage} style={{ flex: 1, display: 'flex', alignItems: 'flex-end', gap: 12 }}>
-                                        <Input.TextArea
-                                            autoSize={{ minRows: 1, maxRows: 5 }}
-                                            placeholder="Type a message"
-                                            value={inputText}
-                                            onChange={e => {
-                                                setInputText(e.target.value);
-                                                handleTypingIndicator();
-                                            }}
-                                            onKeyDown={handleKeyDown}
-                                            style={{ background: '#2a3942', border: 'none', borderRadius: 8, color: '#fff', padding: '9px 12px' }}
-                                        />
-                                        {inputText.trim() ? (
-                                            <Button type="text" htmlType="submit" icon={<SendOutlined style={{ fontSize: 22, color: 'var(--wa-secondary)' }} />} />
-                                        ) : (
-                                            <AudioOutlined onClick={startRecording} style={{ fontSize: 22, color: 'var(--wa-secondary)', cursor: 'pointer' }} />
+                                {dateMsgs.map((msg: any) => (
+                                    <div 
+                                        key={msg.tempId || msg.id} 
+                                        className={cn(
+                                            "max-w-[85%] sm:max-w-md rounded-2xl p-3 shadow-sm relative text-sm font-normal leading-snug",
+                                            !msg.isFromAdmin ? "bg-[#005c4b] text-white self-end rounded-tr-none" : "bg-[#202c33] text-[#e9edef] self-start rounded-tl-none"
                                         )}
-                                    </form>
-                                )}
+                                    >
+                                        {msg.replyTo && (
+                                            <div className="bg-black/20 p-2 rounded mb-2 border-l-4 border-emerald-500 text-xs text-white/80">
+                                                <div className="font-bold text-emerald-400 mb-0.5">
+                                                    {!msg.replyTo.isFromAdmin ? 'You' : 'Agent'}
+                                                </div>
+                                                <div className="line-clamp-2">
+                                                    {msg.replyTo.type === MessageType.AUDIO ? '🎤 Voice Message' : msg.replyTo.content}
+                                                </div>
+                                            </div>
+                                        )}
+                                        <LinkPreview preview={msg.linkPreview} />
+                                        <div className="pr-12 whitespace-pre-wrap break-words min-h-[1.5rem]">
+                                            {msg.type === MessageType.AUDIO ? <AudioPlayer src={msg.content} isFromAdmin={msg.isFromAdmin} /> : formatMessageText(msg.content)}
+                                        </div>
+                                        <div className="absolute right-2.5 bottom-1.5 flex items-center gap-1 text-[10px] text-[#8696a0]">
+                                            <span>{format(new Date(msg.createdAt), 'HH:mm')}</span>
+                                            {!msg.isFromAdmin && (
+                                                msg.isRead ? <CheckCheck className="w-3.5 h-3.5 text-[#53bdeb]" /> : <Check className="w-3.5 h-3.5 text-[#8696a0]" />
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </React.Fragment>
+                        ))}
+
+                        {/* Onboarding Form Bubble */}
+                        {onboardingStep < 3 && chatInfo.leadCaptureEnabled && showOnboardingForm && (
+                            <div className="bg-[#202c33] text-[#e9edef] p-5 rounded-2xl shadow-lg max-w-sm w-full self-start border border-[#2a3942] animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <h3 className="text-sm font-bold text-white mb-4 m-0">To help you better, please share your details:</h3>
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-1">Full Name</label>
+                                        <input 
+                                            type="text" 
+                                            placeholder="e.g. John Doe"
+                                            value={visitorData.name}
+                                            onChange={e => setVisitorData(prev => ({ ...prev, name: e.target.value }))}
+                                            className="w-full bg-[#2a3942] border border-[#3b4a54] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-1">Phone Number</label>
+                                        <input 
+                                            type="tel" 
+                                            maxLength={10}
+                                            placeholder="e.g. 9876543210"
+                                            value={visitorData.phone}
+                                            onChange={e => {
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                                setVisitorData(prev => ({ ...prev, phone: val }));
+                                            }}
+                                            className="w-full bg-[#2a3942] border border-[#3b4a54] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
+                                        />
+                                    </div>
+                                    <button 
+                                        disabled={!visitorData.name.trim() || visitorData.phone.length !== 10}
+                                        onClick={handleOnboardingSubmit}
+                                        className="w-full py-3 bg-[#00a884] hover:bg-[#00a884]/90 disabled:opacity-50 disabled:cursor-not-allowed text-black font-extrabold text-sm rounded-xl transition-all shadow-md"
+                                    >
+                                        Start Chatting
+                                    </button>
+                                </div>
                             </div>
                         )}
 
-                        {/* WA Popup */}
-                        <Modal open={showWAPopup} onCancel={() => setShowWAPopup(false)} footer={null} centered styles={{ body: { background: '#202c33', color: '#fff' } }} width={360}>
-                            <div style={{ textAlign: 'center', padding: 20 }}>
-                                <WhatsAppOutlined style={{ fontSize: 50, color: '#25D366', marginBottom: 20 }} />
-                                <h3 style={{ color: '#fff', fontSize: 18 }}>Continue on WhatsApp?</h3>
-                                <p style={{ color: '#8696a0', marginBottom: 24 }}>Move to WhatsApp for faster replies?</p>
-                                <Button block type="primary" style={{ background: '#25D366', border: 'none', marginBottom: 12, height: 44 }} icon={<WhatsAppOutlined />} onClick={() => { window.open(chatInfo?.whatsappLink, '_blank'); setShowWAPopup(false); }}>Open WhatsApp</Button>
-                                <Button block type="text" style={{ color: '#8696a0' }} onClick={() => setShowWAPopup(false)}>Not now</Button>
+                        {/* Iframe Lead Capture Bubble */}
+                        {showLeadCaptureForm && (
+                            <div className="bg-[#202c33] text-[#e9edef] rounded-2xl shadow-lg max-w-md w-full self-start border border-[#2a3942] overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="p-3 bg-[#2a3942]/60 border-b border-[#111b21] font-bold text-xs text-white">
+                                    Please complete this form to continue:
+                                </div>
+                                <iframe 
+                                    src={`/f/${chatInfo?.leadCaptureFormId}?embed=true`} 
+                                    className="w-full h-[500px] border-none bg-transparent"
+                                    title="Lead Capture"
+                                />
                             </div>
-                        </Modal>
-                    </>
-                )}
-            </Content>
-        </Layout>
+                        )}
+                    </div>
+
+                    {/* Input Area */}
+                    {onboardingStep === 3 && !showLeadCaptureForm && (
+                        <div className="p-3 bg-[#202c33] flex items-center gap-2 z-10 border-t border-[#111b21] shrink-0 relative">
+                            <button 
+                                type="button"
+                                onClick={() => setShowEmoji(!showEmoji)} 
+                                className="w-10 h-10 flex items-center justify-center text-[#8696a0] hover:text-white transition-colors rounded-xl hover:bg-[#2a3942] shrink-0"
+                            >
+                                <Smile className="w-6 h-6" />
+                            </button>
+
+                            {showEmoji && (
+                                <div className="absolute bottom-16 left-4 z-50 shadow-2xl">
+                                    <EmojiPicker theme={EmojiTheme.DARK} onEmojiClick={onEmojiClick} />
+                                </div>
+                            )}
+
+                            {isRecording ? (
+                                <div className="flex-1 bg-[#2a3942] rounded-2xl px-4 py-2 flex items-center justify-between">
+                                    <span className="text-red-400 font-mono text-sm font-bold flex items-center gap-2 animate-pulse">
+                                        <span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> {formatTime(recordingTime)}
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <button 
+                                            type="button" 
+                                            onClick={cancelRecording} 
+                                            className="w-8 h-8 flex items-center justify-center text-[#8696a0] hover:text-red-400 rounded-lg transition-colors"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            onClick={sendVoiceMessage} 
+                                            className="w-8 h-8 flex items-center justify-center bg-[#00a884] text-black rounded-lg hover:opacity-90 font-bold transition-opacity"
+                                        >
+                                            <Send className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <form onSubmit={handleSendMessage} className="flex-1 flex items-end gap-2">
+                                    <textarea
+                                        rows={1}
+                                        placeholder="Type a message..."
+                                        value={inputText}
+                                        onChange={e => setInputText(e.target.value)}
+                                        onKeyDown={handleKeyDown}
+                                        className="flex-1 bg-[#2a3942] border-none rounded-2xl px-4 py-2.5 text-sm text-white placeholder-[#8696a0] focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all resize-none max-h-32 custom-scrollbar leading-normal"
+                                    />
+                                    {inputText.trim() ? (
+                                        <button 
+                                            type="submit" 
+                                            className="w-10 h-10 bg-[#00a884] text-black hover:opacity-90 transition-opacity rounded-xl flex items-center justify-center font-bold shrink-0 shadow-sm"
+                                        >
+                                            <Send className="w-5 h-5" />
+                                        </button>
+                                    ) : (
+                                        <button 
+                                            type="button" 
+                                            onClick={startRecording}
+                                            className="w-10 h-10 text-[#8696a0] hover:text-white hover:bg-[#2a3942] transition-colors rounded-xl flex items-center justify-center shrink-0"
+                                        >
+                                            <Mic className="w-5 h-5" />
+                                        </button>
+                                    )}
+                                </form>
+                            )}
+                        </div>
+                    )}
+
+                    {/* WhatsApp Redirect Modal Dialog */}
+                    {showWAPopup && (
+                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+                            <div className="bg-[#202c33] rounded-3xl p-6 shadow-2xl max-w-xs w-full text-center border border-[#2a3942] animate-in zoom-in-95 duration-200">
+                                <div className="w-16 h-16 bg-[#25d366]/20 text-[#25d366] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#25d366]/30 shadow-lg">
+                                    <MessageCircle className="w-8 h-8" />
+                                </div>
+                                <h3 className="text-lg font-bold text-white mb-2 m-0">Continue on WhatsApp?</h3>
+                                <p className="text-xs text-[#8696a0] mb-6 leading-relaxed">
+                                    Move this conversation instantly to WhatsApp for faster and continuous updates directly to your mobile inbox.
+                                </p>
+                                <button
+                                    onClick={() => { window.open(chatInfo?.whatsappLink, '_blank'); setShowWAPopup(false); }}
+                                    className="w-full py-3 bg-[#25d366] hover:bg-[#25d366]/90 text-black font-extrabold rounded-xl text-sm transition-all shadow-lg shadow-[#25d366]/20 mb-3 flex items-center justify-center gap-2"
+                                >
+                                    <MessageCircle className="w-4 h-4" /> Open in WhatsApp
+                                </button>
+                                <button
+                                    onClick={() => setShowWAPopup(false)}
+                                    className="w-full py-2 bg-transparent text-[#8696a0] hover:text-white font-bold text-xs rounded-xl transition-colors"
+                                >
+                                    Not now
+                                </button>
+                            </div>
+                        </div>
+                    )}
+                </>
+            )}
+        </div>
     );
 };
 

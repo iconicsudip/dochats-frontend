@@ -1,24 +1,35 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Button, Table, Modal, Form, Input, Select, Spin, Tag, App, Space, Card, Image, Avatar, Progress, Grid } from 'antd';
-import { TeamOutlined, PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Users, Plus, Edit2, Trash2, X, Link as LinkIcon, Search, MoreHorizontal, CheckCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-const { Title, Text } = Typography;
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 const SubUsers: React.FC = () => {
     const { user } = useAuth();
-    const { modal, message: msg } = App.useApp();
     const [subUsers, setSubUsers] = useState<any[]>([]);
     const [links, setLinks] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
     const [editingUser, setEditingUser] = useState<any | null>(null);
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [form] = Form.useForm();
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+    
+    // Form State
+    const [formData, setFormData] = useState({ username: '', password: '', links: [] as string[] });
 
     const [page, setPage] = useState(1);
     const [total, setTotal] = useState(0);
+
+    // Custom Toast State
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
+    };
 
     useEffect(() => {
         fetchData(page);
@@ -29,293 +40,357 @@ const SubUsers: React.FC = () => {
         try {
             const [subRes, linksRes] = await Promise.all([
                 apiClient.get(`/auth/sub-users?page=${currentPage}&limit=12`),
-                apiClient.get('/links?limit=500') // Giving a large limit to fetch all available links
+                apiClient.get('/links?limit=500')
             ]);
             setSubUsers(subRes.data?.data || subRes.data);
             setTotal(subRes.data?.total || 0);
             setLinks(linksRes.data?.data || linksRes.data);
         } catch (e: any) {
-            msg.error('Failed to load sub users');
+            showToast('Failed to load sub users', 'error');
         } finally {
             setLoading(false);
         }
     };
 
-    const handleOpenCreateModal = () => {
+    const handleOpenCreateDrawer = () => {
         setEditingUser(null);
-        form.resetFields();
-        setIsModalOpen(true);
+        setFormData({ username: '', password: '', links: [] });
+        setIsDrawerOpen(true);
     };
 
-    const handleOpenEditModal = (user: any) => {
-        setEditingUser(user);
-        form.setFieldsValue({
-            username: user.username,
-            links: user.assignedLinks?.map((l: any) => l.id) || []
+    const handleOpenEditDrawer = (targetUser: any) => {
+        setEditingUser(targetUser);
+        setFormData({
+            username: targetUser.username,
+            password: '',
+            links: targetUser.assignedLinks?.map((l: any) => l.id) || []
         });
-        setIsModalOpen(true);
+        setIsDrawerOpen(true);
     };
 
-    const handleSubmit = async (values: any) => {
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
         setSubmitting(true);
         try {
             if (editingUser) {
                 await apiClient.put(`/auth/sub-users/${editingUser.id}`, {
-                    password: values.password || undefined,
-                    assignedLinkIds: values.links
+                    password: formData.password || undefined,
+                    assignedLinkIds: formData.links
                 });
-                msg.success('Sub-user updated successfully!');
+                showToast('Team member updated successfully!', 'success');
             } else {
                 await apiClient.post('/auth/sub-users', {
-                    username: values.username,
-                    password: values.password,
-                    assignedLinkIds: values.links
+                    username: formData.username,
+                    password: formData.password,
+                    assignedLinkIds: formData.links
                 });
-                msg.success('Sub-user created successfully!');
+                showToast('Team member created successfully!', 'success');
             }
-            setIsModalOpen(false);
-            form.resetFields();
-            fetchData();
+            setIsDrawerOpen(false);
+            setFormData({ username: '', password: '', links: [] });
+            fetchData(page);
         } catch (e: any) {
-            msg.error(e.response?.data?.error || 'Operation failed');
+            showToast(e.response?.data?.error || 'Operation failed', 'error');
         } finally {
             setSubmitting(false);
         }
     };
 
-    const handleDelete = async (id: string) => {
+    const handleDelete = async (id: string, username: string) => {
+        if (!window.confirm(`Are you sure you want to delete ${username}?`)) return;
         try {
             await apiClient.delete(`/auth/sub-users/${id}`);
-            msg.success('Sub-user deleted successfully');
-            fetchData();
+            showToast('Team member deleted successfully', 'success');
+            fetchData(page);
         } catch (e: any) {
-            msg.error('Failed to delete sub-user');
+            showToast('Failed to delete team member', 'error');
         }
     };
 
-    const columns = [
-        {
-            title: 'TEAM MEMBER',
-            key: 'user',
-            render: (_: any, record: any) => (
-                <Space>
-                    {record.logoUrl ? (
-                        <Image
-                            src={record.logoUrl}
-                            alt="logo"
-                            width={32}
-                            height={32}
-                            style={{ borderRadius: 6, objectFit: 'cover' }}
-                        />
-                    ) : (
-                        <Avatar size={32} icon={<TeamOutlined />} style={{ background: '#1a1b1e', border: '1px solid var(--divider)' }} />
-                    )}
-                    <div>
-                        <div style={{ color: '#fff', fontWeight: 600, fontSize: 13 }}>{record.name || record.username}</div>
-                        <div style={{ color: '#8696a0', fontSize: 11 }}>@{record.username}</div>
-                    </div>
-                </Space>
-            )
-        },
-        {
-            title: 'ASSIGNED LINKS',
-            key: 'assignedLinks',
-            responsive: ['md' as const],
-            render: (_: any, record: any) => (
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                    {record.assignedLinks?.map((l: any) => (
-                        <Tag
-                            key={l.id}
-                            style={{
-                                background: 'rgba(0, 223, 154, 0.1)',
-                                color: '#00df9a',
-                                border: '1px solid rgba(0, 223, 154, 0.2)',
-                                borderRadius: 4
-                            }}
-                        >
-                            {l.title}
-                        </Tag>
-                    ))}
-                    {(!record.assignedLinks || record.assignedLinks.length === 0) && <Text type="secondary" style={{ fontSize: 12 }}>No links assigned</Text>}
-                </div>
-            ),
-        },
-        {
-            title: 'ACTIONS',
-            key: 'actions',
-            align: 'right' as 'right',
-            render: (_: any, record: any) => (
-                <Space size="middle">
-                    <Button
-                        type="text"
-                        icon={<EditOutlined />}
-                        onClick={() => handleOpenEditModal(record)}
-                        style={{ color: '#00df9a' }}
-                    >
-                        Edit
-                    </Button>
-                    <Button
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        onClick={() => {
-                            modal.confirm({
-                                title: 'Delete Sub-user',
-                                content: `Are you sure you want to delete ${record.username}?`,
-                                onOk: () => handleDelete(record.id),
-                                okText: 'Yes, Delete',
-                                cancelText: 'Cancel',
-                                centered: true,
-                                okButtonProps: { danger: true, className: 'premium-button-danger' },
-                                cancelButtonProps: { type: 'text' }
-                            });
-                        }}
-                    >
-                        Delete
-                    </Button>
-                </Space>
-            )
-        }
-    ];
+    const toggleLinkSelection = (linkId: string) => {
+        setFormData(prev => ({
+            ...prev,
+            links: prev.links.includes(linkId)
+                ? prev.links.filter(id => id !== linkId)
+                : [...prev.links, linkId]
+        }));
+    };
 
-    const screens = Grid.useBreakpoint();
-    const isMobile = !screens.sm;
+    const limitPercent = Math.min(100, (total / (user?.subUsersLimit || 1)) * 100);
 
     return (
-        <div>
-            <div style={{
-                display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                justifyContent: 'space-between',
-                alignItems: isMobile ? 'flex-start' : 'flex-end',
-                marginBottom: isMobile ? 24 : 40,
-                gap: isMobile ? 20 : 0
-            }}>
-                <div>
-                    <Title level={3} style={{ margin: 0, fontWeight: 800, fontSize: isMobile ? 20 : 24 }}>Team Management</Title>
-                    <Text type="secondary" style={{ fontSize: 13 }}>Create and manage sub-users who can handle your chat links.</Text>
+        <div className="animate-in fade-in duration-500 pb-20 font-sans text-slate-800">
+            {/* Custom Toast Notification */}
+            {toast && (
+                <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-slate-900 text-white shadow-xl text-sm font-medium animate-in slide-in-from-bottom-4 duration-200">
+                    <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-400' : toast.type === 'error' ? 'bg-red-400' : 'bg-blue-400'}`} />
+                    <span>{toast.message}</span>
+                    <button onClick={() => setToast(null)} className="ml-2 text-slate-400 hover:text-white">
+                        <X className="w-4 h-4" />
+                    </button>
                 </div>
-                <Space direction="vertical" align={isMobile ? 'start' : 'end'} style={{ minWidth: isMobile ? '100%' : 200 }}>
-                    <div style={{ width: '100%' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <Text type="secondary" style={{ fontSize: 12 }}>Team: {total} / {user?.subUsersLimit || 0}</Text>
-                        </div>
-                        <Progress
-                            percent={Math.min(100, (total / (user?.subUsersLimit || 1)) * 100)}
-                            showInfo={false}
-                            strokeColor="#00df9a"
-                            trailColor="rgba(255,255,255,0.05)"
-                            size="small"
-                        />
-                    </div>
-                    <Button
-                        type="primary"
-                        icon={<PlusOutlined />}
-                        size="large"
-                        className="premium-button"
-                        onClick={handleOpenCreateModal}
-                        disabled={total >= (user?.subUsersLimit || 0)}
-                        style={{ width: isMobile ? '100%' : 'auto' }}
-                    >
-                        Add Team Member
-                    </Button>
-                </Space>
-            </div>
-
-            {loading ? (
-                <div style={{ textAlign: 'center', marginTop: 100 }}><Spin size="large" /></div>
-            ) : (
-                <Card className="premium-card" bodyStyle={{ padding: 0 }}>
-                    <Table
-                        dataSource={subUsers}
-                        columns={columns}
-                        rowKey="id"
-                        pagination={{
-                            current: page,
-                            pageSize: 12,
-                            total: total,
-                            onChange: (newPage) => setPage(newPage),
-                            position: ['bottomCenter']
-                        }}
-                        className="premium-table"
-                        scroll={{ x: 'max-content' }}
-                    />
-                </Card>
             )}
 
-            <Modal
-                title={editingUser ? "Edit Team Member" : "Create Team Member"}
-                open={isModalOpen}
-                onCancel={() => { setIsModalOpen(false); form.resetFields(); }}
-                footer={null}
-                centered
-                width={500}
-                mask={{ closable: false }}
-            >
-                <Form
-                    form={form}
-                    layout="vertical"
-                    onFinish={handleSubmit}
-                    style={{ marginTop: 24 }}
-                >
-                    <Form.Item label="Username" name="username" rules={[{ required: !editingUser }]}>
-                        <Input
-                            size="large"
-                            placeholder="e.g. agent_sarah"
-                            disabled={!!editingUser}
-                            variant="borderless"
-                            className="premium-input"
-                        />
-                    </Form.Item>
-                    <Form.Item
-                        label={editingUser ? "New Password (leave blank to keep current)" : "Initial Password"}
-                        name="password"
-                        rules={[{ required: !editingUser, min: 6 }]}
-                    >
-                        <Input.Password
-                            size="large"
-                            placeholder={editingUser ? "Leave blank to keep current" : "Minimum 6 characters"}
-                            variant="borderless"
-                            className="premium-input"
-                        />
-                    </Form.Item>
-                    <Form.Item label="Assign Chat Links" name="links">
-                        <Select
-                            mode="multiple"
-                            size="large"
-                            placeholder="Select links this agent can access"
-                            options={links.map(l => ({ value: l.id, label: l.title }))}
-                            variant="borderless"
-                            className="premium-input"
-                            dropdownStyle={{ background: '#111214', border: '1px solid var(--divider)', borderRadius: 12 }}
-                        />
-                    </Form.Item>
-
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 40, gap: 12 }}>
-                        <Button
-                            onClick={() => { setIsModalOpen(false); form.resetFields(); }}
-                            style={{
-                                height: 44,
-                                borderRadius: 10,
-                                background: 'rgba(255,255,255,0.05)',
-                                border: 'none',
-                                color: '#a1a1aa',
-                                fontWeight: 600
-                            }}
-                        >
-                            Cancel
-                        </Button>
-                        <Button
-                            type="primary"
-                            htmlType="submit"
-                            className="premium-button"
-                            loading={submitting}
-                        >
-                            {editingUser ? "Update Member" : "Create Member"}
-                        </Button>
+            {/* Header */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 mb-8 bg-white border border-slate-200/80 p-6 sm:p-8 rounded-2xl shadow-xs">
+                <div>
+                    <div className="flex items-center gap-2 mb-1">
+                        <Users className="w-6 h-6 text-primary" />
+                        <h1 className="text-xl font-bold text-slate-900 m-0 tracking-tight">Team Management</h1>
                     </div>
-                </Form>
-            </Modal>
+                    <p className="text-xs text-slate-500 m-0">Create and manage sub-users who can handle your chat links.</p>
+                </div>
+
+                <div className="flex flex-col md:items-end w-full md:w-auto gap-4">
+                    <div className="w-full md:w-48">
+                        <div className="flex justify-between text-[11px] font-bold text-slate-500 mb-1.5">
+                            <span>Team Limits</span>
+                            <span className="text-primary font-black">{total} / {user?.subUsersLimit || 0}</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
+                            <div 
+                                className={cn("h-full rounded-full transition-all duration-500", limitPercent > 90 ? "bg-red-500" : "bg-primary")} 
+                                style={{ width: `${limitPercent}%` }}
+                            />
+                        </div>
+                    </div>
+                    
+                    <button
+                        onClick={handleOpenCreateDrawer}
+                        disabled={total >= (user?.subUsersLimit || 0)}
+                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all disabled:opacity-50 disabled:cursor-not-allowed w-full md:w-auto cursor-pointer"
+                    >
+                        <Plus className="w-3.5 h-3.5" />
+                        <span>Add Team Member</span>
+                    </button>
+                </div>
+            </div>
+
+            {/* Table Container */}
+            <div className="bg-white border border-slate-200/80 rounded-2xl shadow-xs overflow-hidden">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <div className="relative w-full md:w-72">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                        <input
+                            type="text"
+                            placeholder="Search members..."
+                            className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-2xs"
+                        />
+                    </div>
+                    <button className="text-slate-400 hover:text-slate-600 p-2 cursor-pointer">
+                        <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse min-w-[800px]">
+                        <thead>
+                            <tr className="bg-slate-50 border-b border-slate-100">
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-1/3">Team Member</th>
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-1/2">Assigned Links</th>
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                            {loading ? (
+                                <tr>
+                                    <td colSpan={3} className="py-20 text-center">
+                                        <div className="inline-block w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
+                                        <p className="text-xs font-bold text-slate-400 mt-4">Loading team...</p>
+                                    </td>
+                                </tr>
+                            ) : subUsers.length === 0 ? (
+                                <tr>
+                                    <td colSpan={3} className="py-20 text-center">
+                                        <div className="w-16 h-16 rounded-2xl bg-slate-50 flex items-center justify-center mx-auto mb-4 border border-slate-200 shadow-2xs">
+                                            <Users className="w-8 h-8 text-slate-300" />
+                                        </div>
+                                        <h3 className="text-base font-bold text-slate-700 mb-1">No team members</h3>
+                                        <p className="text-xs text-slate-500 mb-4">You haven't added any sub-users yet.</p>
+                                        <button 
+                                            onClick={handleOpenCreateDrawer}
+                                            className="text-primary text-xs font-semibold hover:underline cursor-pointer"
+                                        >
+                                            Add your first member &rarr;
+                                        </button>
+                                    </td>
+                                </tr>
+                            ) : (
+                                subUsers.map(member => (
+                                    <tr key={member.id} className="hover:bg-slate-50/80 transition-colors">
+                                        <td className="py-4 px-6">
+                                            <div className="flex items-center gap-4">
+                                                {member.logoUrl ? (
+                                                    <img src={member.logoUrl} alt="avatar" className="w-10 h-10 rounded-xl object-cover border border-slate-200 shadow-2xs" />
+                                                ) : (
+                                                    <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm border border-primary/20 shadow-2xs">
+                                                        {member.username.charAt(0).toUpperCase()}
+                                                    </div>
+                                                )}
+                                                <div>
+                                                    <div className="text-xs font-semibold text-slate-900 leading-tight">{member.name || member.username}</div>
+                                                    <div className="text-[11px] font-normal text-slate-400 mt-0.5">@{member.username}</div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {member.assignedLinks?.length > 0 ? (
+                                                    member.assignedLinks.map((l: any) => (
+                                                        <span key={l.id} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                                                            <LinkIcon className="w-3 h-3" />
+                                                            {l.title}
+                                                        </span>
+                                                    ))
+                                                ) : (
+                                                    <span className="text-[11px] font-medium text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg border border-slate-200/60">No links assigned</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="py-4 px-6 text-right">
+                                            <div className="flex justify-end gap-1.5">
+                                                <button 
+                                                    onClick={() => handleOpenEditDrawer(member)}
+                                                    className="w-8 h-8 rounded-xl bg-blue-50 text-blue-600 border border-blue-100 flex items-center justify-center hover:bg-blue-100 transition-colors cursor-pointer shadow-2xs"
+                                                >
+                                                    <Edit2 className="w-3.5 h-3.5" />
+                                                </button>
+                                                <button 
+                                                    onClick={() => handleDelete(member.id, member.username)}
+                                                    className="w-8 h-8 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center hover:bg-rose-100 transition-colors cursor-pointer shadow-2xs"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5" />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                {/* Pagination */}
+                {total > 12 && (
+                    <div className="p-6 border-t border-slate-100 flex justify-between items-center bg-slate-50">
+                        <span className="text-xs font-semibold text-slate-500">
+                            Showing {((page - 1) * 12) + 1} to {Math.min(page * 12, total)} of {total} entries
+                        </span>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                disabled={page === 1}
+                                className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+                            >
+                                Previous
+                            </button>
+                            <button 
+                                onClick={() => setPage(p => p + 1)}
+                                disabled={page * 12 >= total}
+                                className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors shadow-2xs cursor-pointer"
+                            >
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            {/* Sliding Drawer Overlay (Replaced Modal) */}
+            {isDrawerOpen && (
+                <div className="fixed inset-0 z-50 flex justify-end bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200" onClick={() => setIsDrawerOpen(false)}>
+                    <div 
+                        className="w-full max-w-xl bg-white shadow-2xl h-full flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200 overflow-hidden"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center p-6 sm:p-8 border-b border-slate-100 bg-slate-50 shrink-0">
+                            <h2 className="text-lg font-bold text-slate-900 m-0 tracking-tight">
+                                {editingUser ? 'Edit Team Member' : 'Add Team Member'}
+                            </h2>
+                            <button onClick={() => setIsDrawerOpen(false)} className="w-9 h-9 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-50 transition-all shadow-2xs cursor-pointer">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+                        
+                        <form id="team-drawer-form" onSubmit={handleSubmit} className="flex-1 flex flex-col overflow-hidden text-xs">
+                            <div className="flex-1 overflow-y-auto p-6 sm:p-8 space-y-6">
+                                <div>
+                                    <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">Username *</label>
+                                    <input 
+                                        required={!editingUser}
+                                        disabled={!!editingUser}
+                                        value={formData.username}
+                                        onChange={e => setFormData({...formData, username: e.target.value})}
+                                        type="text" 
+                                        placeholder="agent_sarah" 
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:bg-slate-100 disabled:text-slate-400 transition-all" 
+                                    />
+                                    {!!editingUser && <p className="text-[11px] font-medium text-slate-400 mt-1.5">Username cannot be changed</p>}
+                                </div>
+                                
+                                <div>
+                                    <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                        {editingUser ? "New Password (optional)" : "Initial Password *"}
+                                    </label>
+                                    <input 
+                                        required={!editingUser}
+                                        value={formData.password}
+                                        onChange={e => setFormData({...formData, password: e.target.value})}
+                                        type="password" 
+                                        placeholder={editingUser ? "Leave blank to keep current" : "Minimum 6 characters"} 
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all" 
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">Assign Smart Links</label>
+                                    <div className="border border-slate-200/80 rounded-xl overflow-hidden bg-slate-50 shadow-2xs divide-y divide-slate-100">
+                                        {links.map(link => (
+                                            <div 
+                                                key={link.id} 
+                                                onClick={() => toggleLinkSelection(link.id)}
+                                                className="flex items-center gap-3.5 p-3.5 cursor-pointer hover:bg-white transition-colors"
+                                            >
+                                                <div className={cn(
+                                                    "w-5 h-5 rounded-lg border flex items-center justify-center transition-all shadow-2xs",
+                                                    formData.links.includes(link.id) ? "bg-primary border-primary text-white" : "border-slate-300 bg-white"
+                                                )}>
+                                                    {formData.links.includes(link.id) && <CheckCircle className="w-3.5 h-3.5" />}
+                                                </div>
+                                                <div className="flex flex-col">
+                                                    <span className="text-xs font-semibold text-slate-900 leading-tight">{link.title}</span>
+                                                    <span className="text-[11px] font-normal text-slate-400 mt-0.5">/{link.slug}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        {links.length === 0 && (
+                                            <div className="p-8 text-center text-xs font-medium text-slate-400">No links available to assign.</div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="p-6 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 shrink-0">
+                                <button 
+                                    type="button" 
+                                    onClick={() => setIsDrawerOpen(false)} 
+                                    className="px-5 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold transition-all cursor-pointer shadow-2xs"
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    type="submit" 
+                                    disabled={submitting}
+                                    className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all hover:-translate-y-0.5 disabled:opacity-50 flex items-center gap-2 cursor-pointer"
+                                >
+                                    {submitting && <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />}
+                                    <span>{editingUser ? "Update Member" : "Create Member"}</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

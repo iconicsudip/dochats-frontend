@@ -1,11 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Card, Form, Input, Button, Typography, Space, Select, DatePicker, message, Result, ConfigProvider, theme } from 'antd';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { formsApi } from '../api/forms';
-import { CheckCircleFilled, LoadingOutlined } from '@ant-design/icons';
+import { CheckCircle2, Loader2, AlertCircle, X } from 'lucide-react';
+import dayjs from 'dayjs';
+import clsx from 'clsx';
+import { twMerge } from 'tailwind-merge';
 
-const { Title, Text, Paragraph } = Typography;
-const { Option } = Select;
+function cn(...inputs: (string | undefined | null | false)[]) {
+  return twMerge(clsx(inputs));
+}
 
 const PublicForm: React.FC = () => {
     const { id } = useParams();
@@ -15,6 +18,16 @@ const PublicForm: React.FC = () => {
     const [submitting, setSubmitting] = useState(false);
     const [searchParams] = useSearchParams();
     const isEmbed = searchParams.get('embed') === 'true';
+
+    const [formData, setFormData] = useState<Record<string, any>>({});
+    const [errors, setErrors] = useState<Record<string, string>>({});
+
+    // Custom Toast State
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+    const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
+    };
 
     useEffect(() => {
         if (id) {
@@ -26,6 +39,13 @@ const PublicForm: React.FC = () => {
         try {
             const res = await formsApi.getForm(id!);
             setForm(res.data);
+            
+            // Initialize form data
+            const initialData: Record<string, any> = {};
+            res.data.fields.forEach((field: any) => {
+                initialData[field.label] = '';
+            });
+            setFormData(initialData);
         } catch (e: any) {
             console.error(e);
         } finally {
@@ -33,27 +53,67 @@ const PublicForm: React.FC = () => {
         }
     };
 
-    const onFinish = async (values: any) => {
+    const validateField = (field: any, value: any) => {
+        if (field.required && !value) {
+            return `${field.label} is required`;
+        }
+
+        if (value && field.validation) {
+            if (field.validation.min && value.length < field.validation.min) {
+                return `${field.label} must be at least ${field.validation.min} characters`;
+            }
+            if (field.validation.max && value.length > field.validation.max) {
+                return `${field.label} cannot exceed ${field.validation.max} characters`;
+            }
+            if (field.validation.pattern) {
+                const regex = new RegExp(field.validation.pattern);
+                if (!regex.test(value)) {
+                    return field.validation.patternMessage || `${field.label} is invalid`;
+                }
+            }
+        }
+
+        if (field.type === 'tel' && value && !field.validation?.pattern) {
+            if (!/^\d{10}$/.test(value)) {
+                return 'Please enter a valid 10-digit phone number';
+            }
+        }
+
+        return '';
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        
+        // Validate all
+        let hasErrors = false;
+        const newErrors: Record<string, string> = {};
+        
+        form.fields.forEach((field: any) => {
+            const error = validateField(field, formData[field.label]);
+            if (error) {
+                newErrors[field.label] = error;
+                hasErrors = true;
+            }
+        });
+
+        if (hasErrors) {
+            setErrors(newErrors);
+            return;
+        }
+
         setSubmitting(true);
         try {
-            // Convert dayjs dates to strings
-            const formattedValues = { ...values };
-            Object.keys(formattedValues).forEach(key => {
-                if (dayjs.isDayjs(formattedValues[key])) {
-                    formattedValues[key] = formattedValues[key].format('YYYY-MM-DD');
-                }
-            });
-
-            await formsApi.submitResponse(id!, formattedValues);
+            await formsApi.submitResponse(id!, formData);
             setSubmitted(true);
-            message.success('Form submitted successfully!');
+            showToast('Form submitted successfully!', 'success');
             
             // Notify parent window if embedded
             if (isEmbed) {
                 window.parent.postMessage({ type: 'LEAD_CAPTURE_SUCCESS' }, '*');
             }
         } catch (e) {
-            message.error('Failed to submit form. Please try again.');
+            showToast('Failed to submit form. Please try again.', 'error');
         } finally {
             setSubmitting(false);
         }
@@ -61,145 +121,220 @@ const PublicForm: React.FC = () => {
 
     if (loading) {
         return (
-            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0b0c0e' }}>
-                <LoadingOutlined style={{ fontSize: 40, color: '#00df9a' }} spin />
+            <div className={cn("flex items-center justify-center min-h-screen", isEmbed ? "bg-transparent" : "bg-slate-50")}>
+                <Loader2 className="w-10 h-10 text-primary animate-spin" />
             </div>
         );
     }
 
     if (!form) {
         return (
-            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0b0c0e' }}>
-                <Result
-                    status="404"
-                    title={<span style={{ color: '#fff' }}>Form Not Found</span>}
-                    subTitle={<span style={{ color: '#94a3b8' }}>The form you are looking for does not exist or has been removed.</span>}
-                />
+            <div className={cn("flex flex-col items-center justify-center min-h-screen text-center p-6", isEmbed ? "bg-transparent" : "bg-slate-50")}>
+                <AlertCircle className="w-16 h-16 text-slate-300 mb-4" />
+                <h2 className="text-2xl font-bold text-slate-900 mb-2">Form Not Found</h2>
+                <p className="text-slate-500 max-w-sm">The form you are looking for does not exist or has been removed.</p>
             </div>
         );
     }
 
     if (submitted) {
         return (
-            <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0b0c0e', padding: 20 }}>
-                <Card className="premium-card" style={{ maxWidth: 500, textAlign: 'center', padding: '40px 20px' }}>
-                    <CheckCircleFilled style={{ fontSize: 64, color: '#00df9a', marginBottom: 24 }} />
-                    <Title level={3} style={{ color: '#fff', marginBottom: 12 }}>Thank You!</Title>
-                    <Paragraph style={{ color: '#94a3b8', fontSize: 16 }}>
-                        Your response has been successfully submitted to <strong>{form.owner.name}</strong>.
-                    </Paragraph>
-                    <Button type="primary" onClick={() => setSubmitted(false)} className="premium-button" style={{ marginTop: 24 }}>
+            <div className={cn("flex items-center justify-center min-h-screen p-6", isEmbed ? "bg-transparent" : "bg-slate-50")}>
+                <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-10 max-w-md w-full text-center animate-in zoom-in-95 duration-500">
+                    <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
+                        <CheckCircle2 className="w-10 h-10 text-green-500" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-900 mb-3">Thank You!</h2>
+                    <p className="text-slate-500 mb-8">
+                        Your response has been successfully submitted to <strong className="text-slate-700">{form.owner.name}</strong>.
+                    </p>
+                    <button 
+                        onClick={() => {
+                            setSubmitted(false);
+                            setFormData({});
+                        }}
+                        className="w-full py-3 bg-primary hover:bg-primary/90 text-white rounded-xl font-bold shadow-md shadow-primary/20 transition-all"
+                    >
                         Submit Another Response
-                    </Button>
-                </Card>
+                    </button>
+                </div>
             </div>
         );
     }
 
-    return (
-        <ConfigProvider theme={{ algorithm: theme.darkAlgorithm, token: { colorPrimary: '#00df9a' } }}>
-            <div style={{ minHeight: '100vh', background: isEmbed ? 'transparent' : '#0b0c0e', padding: isEmbed ? '20px' : '60px 20px' }}>
-                <div style={{ maxWidth: 650, margin: '0 auto' }}>
-                    <div style={{ textAlign: 'center', marginBottom: isEmbed ? 24 : 40 }}>
-                        {form.owner.logoUrl && (
-                            <img src={form.owner.logoUrl} alt={form.owner.name} style={{ maxHeight: 60, marginBottom: 20, borderRadius: 8 }} />
-                        )}
-                        <Title level={2} style={{ color: '#fff', margin: 0, fontWeight: 800 }}>{form.title}</Title>
-                        {form.description && (
-                            <Paragraph style={{ color: '#94a3b8', fontSize: 16, marginTop: 12 }}>{form.description}</Paragraph>
-                        )}
+    // Dynamic styling based on form design settings
+    const primaryColor = form?.design?.primaryColor || '#2563eb';
+    const bgColor = form?.design?.backgroundColor || (isEmbed ? 'transparent' : '#f8fafc');
+    const textColor = form?.design?.textColor || '#0f172a';
+
+    const renderInput = (field: any) => {
+        const value = formData[field.label] || '';
+        const error = errors[field.label];
+        const hasError = !!error;
+
+        const baseInputClasses = cn(
+            "w-full rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 transition-all",
+            hasError 
+                ? "bg-red-50 border border-red-200 text-red-900 focus:ring-red-500/20" 
+                : "bg-white border border-slate-200 focus:ring-primary/20"
+        );
+
+        switch (field.type) {
+            case 'textarea':
+                return (
+                    <textarea 
+                        className={cn(baseInputClasses, "min-h-[100px] resize-y")}
+                        placeholder={`Enter ${field.label.toLowerCase()}...`}
+                        value={value}
+                        onChange={e => {
+                            setFormData({...formData, [field.label]: e.target.value});
+                            if (error) setErrors({...errors, [field.label]: ''});
+                        }}
+                        style={{ borderColor: !hasError ? undefined : '' }}
+                    />
+                );
+            case 'select':
+                return (
+                    <select 
+                        className={cn(baseInputClasses, "appearance-none")}
+                        value={value}
+                        onChange={e => {
+                            setFormData({...formData, [field.label]: e.target.value});
+                            if (error) setErrors({...errors, [field.label]: ''});
+                        }}
+                    >
+                        <option value="">Select {field.label.toLowerCase()}...</option>
+                        {field.options?.map((opt: string) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                    </select>
+                );
+            case 'tel':
+                return (
+                    <div className="flex">
+                        <span className="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-200 bg-slate-50 text-slate-500 text-sm font-medium">
+                            +91
+                        </span>
+                        <input 
+                            type="tel"
+                            maxLength={10}
+                            className={cn(baseInputClasses, "rounded-l-none")}
+                            placeholder="Enter 10 digit number"
+                            value={value}
+                            onChange={e => {
+                                setFormData({...formData, [field.label]: e.target.value.replace(/\D/g, '')});
+                                if (error) setErrors({...errors, [field.label]: ''});
+                            }}
+                        />
                     </div>
+                );
+            case 'date':
+                return (
+                    <input 
+                        type="date"
+                        className={baseInputClasses}
+                        value={value}
+                        onChange={e => {
+                            setFormData({...formData, [field.label]: e.target.value});
+                            if (error) setErrors({...errors, [field.label]: ''});
+                        }}
+                    />
+                );
+            default:
+                return (
+                    <input 
+                        type={field.type}
+                        className={baseInputClasses}
+                        placeholder={`Enter ${field.label.toLowerCase()}...`}
+                        value={value}
+                        onChange={e => {
+                            setFormData({...formData, [field.label]: e.target.value});
+                            if (error) setErrors({...errors, [field.label]: ''});
+                        }}
+                    />
+                );
+        }
+    };
 
-                    <Card className="premium-card" style={{ padding: isEmbed ? '0px 10px' : '10px 20px', background: isEmbed ? 'transparent' : undefined, border: isEmbed ? 'none' : undefined, boxShadow: isEmbed ? 'none' : undefined }}>
-                        <Form layout="vertical" onFinish={onFinish}>
-                            {form.fields.map((field: any) => {
-                                const rules: any[] = [
-                                    { required: field.required, message: `${field.label} is required` }
-                                ];
+    return (
+        <div 
+            className="min-h-screen" 
+            style={{ 
+                backgroundColor: bgColor,
+                padding: isEmbed ? '1rem' : '3rem 1rem'
+            }}
+        >
+            <div className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans">
+                {/* Custom Toast Notification */}
+                {toast && (
+                    <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-slate-900 text-white shadow-xl text-sm font-medium animate-in slide-in-from-bottom-4 duration-200">
+                        <div className={`w-2 h-2 rounded-full ${toast.type === 'success' ? 'bg-emerald-400' : toast.type === 'error' ? 'bg-red-400' : 'bg-blue-400'}`} />
+                        <span>{toast.message}</span>
+                        <button onClick={() => setToast(null)} className="ml-2 text-slate-400 hover:text-white">
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                )}
 
-                                // Add custom validation
-                                if (field.validation) {
-                                    if (field.validation.min) {
-                                        rules.push({ min: field.validation.min, message: `${field.label} must be at least ${field.validation.min}` });
-                                    }
-                                    if (field.validation.max) {
-                                        rules.push({ max: field.validation.max, message: `${field.label} cannot exceed ${field.validation.max}` });
-                                    }
-                                    if (field.validation.pattern) {
-                                        rules.push({ 
-                                            pattern: new RegExp(field.validation.pattern), 
-                                            message: field.validation.patternMessage || `${field.label} is invalid` 
-                                        });
-                                    }
-                                }
-
-                                // Special handling for phone numbers if no custom pattern exists
-                                if (field.type === 'tel' && !field.validation?.pattern) {
-                                    rules.push({ pattern: /^\d{10}$/, message: 'Please enter a valid 10-digit phone number' });
-                                }
-
-                                return (
-                                    <Form.Item
-                                        key={field.id}
-                                        name={field.label}
-                                        label={<span style={{ color: '#cbd5e1', fontWeight: 600 }}>{field.label}</span>}
-                                        rules={rules}
-                                    >
-                                        {field.type === 'textarea' ? (
-                                            <Input.TextArea className="premium-input" autoSize={{ minRows: 3 }} placeholder={`Enter ${field.label.toLowerCase()}...`} />
-                                        ) : field.type === 'select' ? (
-                                            <Select className="premium-select" placeholder={`Select ${field.label.toLowerCase()}...`}>
-                                                {field.options?.map((opt: string) => (
-                                                    <Option key={opt} value={opt}>{opt}</Option>
-                                                ))}
-                                            </Select>
-                                        ) : field.type === 'date' ? (
-                                            <DatePicker style={{ width: '100%' }} className="premium-input" />
-                                        ) : field.type === 'tel' ? (
-                                            <Input 
-                                                type="tel" 
-                                                addonBefore="+91" 
-                                                maxLength={10} 
-                                                className="premium-input" 
-                                                placeholder="Enter 10 digit number" 
-                                            />
-                                        ) : (
-                                            <Input type={field.type} className="premium-input" placeholder={`Enter ${field.label.toLowerCase()}...`} />
-                                        )}
-                                    </Form.Item>
-                                );
-                            })}
-
-                            <Form.Item style={{ marginTop: 32, marginBottom: 0 }}>
-                                <Button
-                                    type="primary"
-                                    htmlType="submit"
-                                    block
-                                    size="large"
-                                    loading={submitting}
-                                    className="premium-button"
-                                    style={{ height: 50, fontSize: 16, fontWeight: 700 }}
-                                >
-                                    Submit Form
-                                </Button>
-                            </Form.Item>
-                        </Form>
-                    </Card>
-
-                    {!isEmbed && (
-                        <div style={{ textAlign: 'center', marginTop: 40 }}>
-                            <Text style={{ color: '#475569', fontSize: 12 }}>
-                                Powered by <strong style={{ color: '#00df9a' }}>MadMarketer AI BOS</strong>
-                            </Text>
-                        </div>
+                <div className={cn("text-center mb-8", isEmbed ? "mb-6" : "mb-10")}>
+                    {form.owner?.logoUrl && (
+                        <img src={form.owner.logoUrl} alt={form.owner.name} className="h-16 mx-auto mb-5 rounded-lg shadow-sm" />
+                    )}
+                    <h1 className="text-2xl font-bold tracking-tight mb-3" style={{ color: textColor }}>
+                        {form.title}
+                    </h1>
+                    {form.description && (
+                        <p className="text-sm opacity-80" style={{ color: textColor }}>
+                            {form.description}
+                        </p>
                     )}
                 </div>
+
+                <div 
+                    className={cn(
+                        "bg-white rounded-3xl", 
+                        isEmbed ? "shadow-none border-none bg-transparent" : "shadow-xl border border-slate-100 p-8 md:p-10"
+                    )}
+                >
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        {form.fields.map((field: any) => (
+                            <div key={field.id} className="space-y-2">
+                                <label className="flex items-center text-xs font-semibold" style={{ color: textColor }}>
+                                    {field.label}
+                                    {field.required && <span className="text-red-500 ml-1">*</span>}
+                                </label>
+                                
+                                {renderInput(field)}
+                                
+                                {errors[field.label] && (
+                                    <p className="text-xs font-bold text-red-500 mt-1.5 animate-in slide-in-from-top-1">
+                                        {errors[field.label]}
+                                    </p>
+                                )}
+                            </div>
+                        ))}
+
+                        <div className="pt-6 mt-8 border-t border-slate-100">
+                            <button
+                                type="submit"
+                                disabled={submitting}
+                                className="w-full flex items-center justify-center py-3.5 rounded-xl text-white font-semibold text-sm shadow-lg transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed hover:-translate-y-0.5 cursor-pointer"
+                                style={{ backgroundColor: primaryColor, boxShadow: `0 10px 25px -5px ${primaryColor}40` }}
+                            >
+                                {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit Response'}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                {!isEmbed && (
+                    <div className="text-center mt-12 text-sm text-slate-500">
+                        Powered by <strong className="text-slate-800 tracking-tight">DoConnect Business OS</strong>
+                    </div>
+                )}
             </div>
-        </ConfigProvider>
+        </div>
     );
 };
-
-// Mocking dayjs since it might not be available globally in this file context without import
-import dayjs from 'dayjs';
 
 export default PublicForm;

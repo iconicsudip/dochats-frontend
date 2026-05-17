@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Form, message } from 'antd';
+import { message } from 'antd';
 import { automationApi, AutomationRule } from '../../api/automation';
 import { emailApi, EmailTemplate } from '../../api/email';
 import { formsApi } from '../../api/forms';
@@ -35,14 +35,22 @@ const Automation: React.FC = () => {
     const [savingSettings, setSavingSettings] = useState(false);
     const [loadingWa, setLoadingWa] = useState(false);
     const [loadingEmail, setLoadingEmail] = useState(false);
-    const [form] = Form.useForm();
+    
+    // Form State (Replacing Antd Form)
+    const [ruleForm, setRuleForm] = useState<{name: string; trigger: string; delay: number; config: any}>({
+        name: '',
+        trigger: '',
+        delay: 0,
+        config: {}
+    });
+
     const location = useLocation();
     const sessionInfoRef = React.useRef<{ waba_id?: string, phone_number_id?: string, business_id?: string }>({});
 
     useEffect(() => {
         const params = new URLSearchParams(location.search);
         if (params.get('tab') === 'logs') {
-            // Logic to show logs if needed, for now just a placeholder or state change
+            // Logic to show logs if needed
         }
     }, [location.search]);
 
@@ -84,31 +92,21 @@ const Automation: React.FC = () => {
     useEffect(() => {
         const handleFBMessage = (event: MessageEvent) => {
             if (!event.origin.endsWith('facebook.com')) return;
-            
             try {
                 let rawData = typeof event.data === 'string' ? JSON.parse(event.data) : event.data;
-                
-                // Handle array structure if present
                 const data = Array.isArray(rawData) ? rawData[0] : rawData;
 
                 if (data.type === 'WA_EMBEDDED_SIGNUP') {
                     if (data.event === 'FINISH') {
                         const { phone_number_id, waba_id, business_id } = data.data;
                         sessionInfoRef.current = { waba_id, phone_number_id, business_id };
-                        console.log('WhatsApp Embedded Signup Session Info:', data.data);
                     } else if (data.event === 'CANCEL') {
-                        const currentStep = data.data?.current_step;
-                        console.warn('Signup abandoned at step:', currentStep);
-                        message.warning(`Signup abandoned at ${currentStep || 'unknown step'}`);
+                        message.warning(`Signup abandoned`);
                     } else if (data.event === 'ERROR') {
-                        const { error_message, error_code } = data.data || {};
-                        console.error('Signup error:', { error_message, error_code });
-                        message.error(`Signup error: ${error_message || 'Unknown error'}`);
+                        message.error(`Signup error: ${data.data?.error_message || 'Unknown error'}`);
                     }
                 }
-            } catch (e) {
-                // Ignore non-JSON or unrelated messages
-            }
+            } catch (e) { }
         };
 
         window.addEventListener('message', handleFBMessage);
@@ -144,12 +142,7 @@ const Automation: React.FC = () => {
             config_id: configId,
             response_type: 'code',
             override_default_response_type: true,
-            extras: {
-                feature: 'whatsapp_embedded_signup',
-                sessionInfoVersion: '3',
-                version: 'v4',
-                setup: {}
-            }
+            extras: { feature: 'whatsapp_embedded_signup', sessionInfoVersion: '3', version: 'v4', setup: {} }
         });
     };
 
@@ -195,7 +188,7 @@ const Automation: React.FC = () => {
             const data = await automationApi.getWaTemplates();
             setWaTemplates(data);
             if (data.length === 1) {
-                form.setFieldValue(['config', 'whatsappTemplate'], data[0].name);
+                setRuleForm(prev => ({ ...prev, config: { ...prev.config, whatsappTemplate: data[0].name } }));
             }
         } catch (error) {
             console.error('Fetch templates error:', error);
@@ -210,7 +203,7 @@ const Automation: React.FC = () => {
             const data = await emailApi.getTemplates(true);
             setEmailTemplates(data);
             if (data.length === 1) {
-                form.setFieldValue(['config', 'emailTemplateId'], data[0].id);
+                setRuleForm(prev => ({ ...prev, config: { ...prev.config, emailTemplateId: data[0].id } }));
             }
         } catch (error) {
             console.error('Fetch email templates error:', error);
@@ -222,11 +215,11 @@ const Automation: React.FC = () => {
     const enterBuilder = (rule?: AutomationRule, template?: any) => {
         if (rule) {
             setEditingRuleId(rule.id);
-            form.setFieldsValue({
+            setRuleForm({
                 name: rule.name,
                 trigger: rule.trigger,
-                delay: rule.delay,
-                config: rule.config
+                delay: rule.delay || 0,
+                config: rule.config || {}
             });
             if (rule.flow && (rule.flow as any).nodes) {
                 const flowNodes = (rule.flow as any).nodes;
@@ -254,15 +247,16 @@ const Automation: React.FC = () => {
             }
         } else if (template) {
             setEditingRuleId(null);
-            form.setFieldsValue({
+            setRuleForm({
                 name: template.name,
-                trigger: template.trigger
+                trigger: template.trigger,
+                delay: 0,
+                config: {}
             });
-            // Filter out triggers from templates too
             setNodes(template.nodes.filter((n: any) => n.type !== 'TRIGGER').map((n: any) => ({ ...n, id: `node_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` })));
         } else {
             setEditingRuleId(null);
-            form.resetFields();
+            setRuleForm({ name: '', trigger: '', delay: 0, config: {} });
             setNodes([{ id: `node_${Date.now()}`, type: 'ACTION', action: '', config: {}, failover: null }]);
         }
         setView('BUILDER');
@@ -272,7 +266,7 @@ const Automation: React.FC = () => {
         setView('LIST');
         setEditingRuleId(null);
         setNodes([]);
-        form.resetFields();
+        setRuleForm({ name: '', trigger: '', delay: 0, config: {} });
     };
 
     const addNode = () => {
@@ -288,12 +282,19 @@ const Automation: React.FC = () => {
     };
 
     const applyTemplate = (template: any) => {
-        form.setFieldsValue({ name: template.name, trigger: template.trigger });
+        setRuleForm(prev => ({ ...prev, name: template.name, trigger: template.trigger }));
         setNodes(template.nodes.map((n: any) => ({ ...n, id: `${n.id}_${Date.now()}` })));
         message.success(`${template.industry} template applied!`);
     };
 
-    const handleAdd = async (vals: any) => {
+    const handleAdd = async (e?: React.FormEvent) => {
+        if (e) e.preventDefault();
+        
+        if (!ruleForm.name || !ruleForm.trigger) {
+            message.error("Rule Name and Trigger are required");
+            return;
+        }
+
         try {
             const flowNodes: any = {};
             const startNodeId = nodes.length > 0 ? nodes[0].id : null;
@@ -310,12 +311,10 @@ const Automation: React.FC = () => {
             });
 
             const payload = {
-                ...vals,
+                ...ruleForm,
                 flow: startNodeId ? { startNodeId, nodes: flowNodes } : null,
                 actions: nodes.map(n => n.action).filter(a => !!a)
             };
-
-            console.log('[Automation] Saving Flow Payload:', payload);
 
             if (editingRuleId) {
                 await automationApi.updateRule(editingRuleId, payload);
@@ -328,7 +327,6 @@ const Automation: React.FC = () => {
             exitBuilder();
             fetchRules();
         } catch (error: any) {
-            console.error('[Automation] Save Error:', error);
             message.error(`Failed to save rule: ${error.response?.data?.error || error.message}`);
         }
     };
@@ -358,6 +356,7 @@ const Automation: React.FC = () => {
     };
 
     const handleDeleteRule = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this rule?")) return;
         try {
             await automationApi.deleteRule(id);
             message.success('Rule deleted');
@@ -371,7 +370,8 @@ const Automation: React.FC = () => {
         return (
             <AutomationBuilder
                 editingRuleId={editingRuleId}
-                form={form}
+                ruleForm={ruleForm}
+                setRuleForm={setRuleForm}
                 nodes={nodes}
                 forms={forms}
                 waTemplates={waTemplates}
