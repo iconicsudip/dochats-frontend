@@ -359,7 +359,7 @@ const Companies: React.FC = () => {
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden flex items-center justify-between">
                     <div className="space-y-1">
                         <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider m-0">Pipeline Value</p>
-                        <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono m-0">₹{summary.totalPipeline.toLocaleString('en-IN')}</h3>
+                        <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono m-0">₹{(summary.totalPipeline ?? 0).toLocaleString('en-IN')}</h3>
                     </div>
                     <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-2xs">
                         <DollarSign className="w-6 h-6" />
@@ -369,7 +369,7 @@ const Companies: React.FC = () => {
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs relative overflow-hidden flex items-center justify-between">
                     <div className="space-y-1">
                         <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider m-0">Avg. Account Value</p>
-                        <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono m-0">₹{summary.avgAccountValue.toLocaleString('en-IN')}</h3>
+                        <h3 className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono m-0">₹{(summary.avgAccountValue ?? 0).toLocaleString('en-IN')}</h3>
                     </div>
                     <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-purple-600 shadow-2xs">
                         <TrendingUp className="w-6 h-6" />
@@ -465,7 +465,7 @@ const Companies: React.FC = () => {
                                                     </div>
                                                 </td>
                                                 <td className="py-3.5 px-6 font-bold text-emerald-600 text-xs font-mono">
-                                                    ₹{c.totalValue.toLocaleString('en-IN')}
+                                                    ₹{(c.totalValue ?? 0).toLocaleString('en-IN')}
                                                 </td>
                                                 <td className="py-3.5 px-6 text-right">
                                                     <div className="flex items-center justify-end gap-2">
@@ -535,7 +535,7 @@ const Companies: React.FC = () => {
                                     </div>
                                     <div className="pt-4 border-t border-slate-100 flex items-center justify-between mt-auto">
                                         <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">Pipeline Value</span>
-                                        <span className="text-base font-bold text-emerald-600">₹{c.totalValue.toLocaleString('en-IN')}</span>
+                                        <span className="text-base font-bold text-emerald-600">₹{(c.totalValue ?? 0).toLocaleString('en-IN')}</span>
                                     </div>
                                 </div>
                             ))}

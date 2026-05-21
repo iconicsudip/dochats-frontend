@@ -1140,10 +1140,10 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
             }}
         >
             <div 
-                className="min-h-screen" 
+                className="min-h-screen flex" 
                 style={{ 
                     backgroundColor: bgColor,
-                    padding: isEmbed ? '1rem 1rem 3rem 1rem' : '3rem 1rem'
+                    padding: isEmbed ? '1rem 1rem 3rem 1rem' : '3rem 1rem',
                 }}
             >
                 {previewData && onClosePreview && (
@@ -1158,7 +1158,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                         </button>
                     </div>
                 )}
-                <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans">
+                <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans flex flex-col justify-center">
                     {/* Custom Toast Notification */}
                     {toast && (
                         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-slate-900 text-white shadow-xl text-xs font-semibold animate-in slide-in-from-bottom-4 duration-200">
