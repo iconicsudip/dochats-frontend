@@ -609,8 +609,93 @@ const ContactDetail: React.FC = () => {
                                     <span className="text-sm font-semibold text-slate-800">{new Date(lead.createdAt || Date.now()).toLocaleDateString('en-GB')}</span>
                                 </div>
                             </div>
+
+                            {/* Form Submission Data — shown when added via Dynamic Form */}
+                            {lead.source === 'Dynamic Form' && (() => {
+                                // Parse form data from notes field
+                                let formTitle = '';
+                                let formFields: Record<string, any> = {};
+                                try {
+                                    const notes = lead.notes || '';
+                                    const titleMatch = notes.match(/Automatically added from form:\s*(.+?)\.\s*Response ID:/);
+                                    if (titleMatch) formTitle = titleMatch[1].trim();
+                                    const jsonMatch = notes.match(/FormData:\s*(\{[\s\S]+\})/);
+                                    if (jsonMatch) formFields = JSON.parse(jsonMatch[1]);
+                                } catch {}
+
+                                const entries = Object.entries(formFields).filter(([k]) =>
+                                    !['name', 'full_name', 'first_name', 'phone', 'phone_number', 'whatsapp_number', 'email', 'email_address'].includes(k)
+                                );
+
+                                if (entries.length === 0) return null;
+
+                                const toLabel = (key: string) =>
+                                    key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+
+                                const renderValue = (val: any) => {
+                                    if (val === null || val === undefined || val === '') return <span className="text-slate-400 font-mono">—</span>;
+                                    if (Array.isArray(val)) {
+                                        if (val.length === 0) return <span className="text-slate-400 font-mono">—</span>;
+                                        // Check if it's file/image array
+                                        if (val[0]?.key || val[0]?.url) {
+                                            return (
+                                                <div className="flex flex-wrap gap-2">
+                                                    {val.map((f: any, i: number) => (
+                                                        <a key={i} href={f.url || f.key} target="_blank" rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-primary hover:underline">
+                                                            <Paperclip className="w-3 h-3" /> {f.name || `File ${i + 1}`}
+                                                        </a>
+                                                    ))}
+                                                </div>
+                                            );
+                                        }
+                                        return (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {val.map((v: any, i: number) => (
+                                                    <span key={i} className="px-2.5 py-1 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-bold">{String(v)}</span>
+                                                ))}
+                                            </div>
+                                        );
+                                    }
+                                    if (typeof val === 'object') {
+                                        return <pre className="text-xs font-mono text-slate-600 bg-slate-50 border border-slate-200 rounded-lg p-2 overflow-x-auto whitespace-pre-wrap">{JSON.stringify(val, null, 2)}</pre>;
+                                    }
+                                    // Check if it looks like a date string
+                                    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}/.test(val)) {
+                                        try {
+                                            return <span className="text-sm font-semibold text-slate-800">{new Date(val).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</span>;
+                                        } catch {}
+                                    }
+                                    return <span className="text-sm font-semibold text-slate-800">{String(val)}</span>;
+                                };
+
+                                return (
+                                    <div className="border-t border-slate-100 pt-5 space-y-4">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                                            <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider m-0">
+                                                Form Submission Data
+                                            </h4>
+                                            {formTitle && (
+                                                <span className="ml-auto px-2.5 py-1 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold flex items-center gap-1">
+                                                    <FileText className="w-3 h-3" /> {formTitle}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            {entries.map(([key, val]) => (
+                                                <div key={key} className="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-1.5">
+                                                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">{toLabel(key)}</span>
+                                                    {renderValue(val)}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
                     )}
+
 
                     {/* TAB CONTENT: Activities Timeline */}
                     {activeTab === 'activities' && (
