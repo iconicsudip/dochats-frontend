@@ -211,6 +211,89 @@ export const FORM_TEMPLATES = [
         ]
     },
     {
+        id: 'rental-horizontal-search',
+        title: 'Horizontal Rental Search',
+        description: 'Single-row horizontal booking search form containing location, pickup/return dates, and times.',
+        industry: 'Rental Booking',
+        design: {
+            isMultistep: false,
+            layout: 'horizontal',
+            primaryColor: '#f38d68',
+            thankYouPage: {
+                template: 'custom',
+                blocks: [
+                    { id: 'icon', type: 'icon', value: 'check-circle', color: '#f38d68', visible: true },
+                    { id: 'title', type: 'title', value: 'Search Submitted!', visible: true },
+                    { id: 'msg', type: 'message', value: 'Your rental search request has been submitted. We are searching for available options.', visible: true },
+                    { id: 'summary', type: 'booking_summary', value: 'Show search details', visible: true },
+                    { id: 'btn', type: 'button', label: 'Done', url: '', visible: true }
+                ]
+            }
+        },
+        fields: [
+            { id: 'rh1', label: 'Select City', type: 'select', required: true, options: ['All Location', 'New York', 'Los Angeles', 'Miami', 'London', 'Tokyo'], colSpan: 2 },
+            { id: 'rh2', label: 'Pickup Date', type: 'date', required: true, colSpan: 2 },
+            { id: 'rh3', label: 'Pickup Time', type: 'select', required: true, options: ['05:30 AM', '09:00 AM', '10:30 AM', '12:00 PM', '02:30 PM', '05:30 PM', '08:00 PM'], colSpan: 2 },
+            { id: 'rh4', label: 'Return Date', type: 'date', required: true, colSpan: 2 },
+            { id: 'rh5', label: 'Return Time', type: 'select', required: true, options: ['05:30 AM', '09:00 AM', '10:30 AM', '12:00 PM', '02:30 PM', '05:30 PM', '08:00 PM'], colSpan: 2 }
+        ]
+    },
+    {
+        id: 'hotel-villa-multistep',
+        title: 'Hotel & Villa stay Booking (Multi-Step)',
+        description: 'Premium multi-step stay booking wizard for selecting hotel or villa, check-in & check-out dates, room configurations, villa types, and guest details.',
+        industry: 'Rental Booking',
+        design: {
+            isMultistep: true,
+            layout: 'custom',
+            primaryColor: '#7c3aed',
+            stepsSidebarTitle: 'Stay Booking Steps',
+            steps: [
+                { id: 'step-stay-type', title: 'Stay Type', description: 'Select Hotel or Villa' },
+                { id: 'step-dates', title: 'Stay Dates', description: 'Select check-in & check-out' },
+                { id: 'step-selection', title: 'Accommodation', description: 'Choose type & configuration' },
+                { id: 'step-guests', title: 'Guest Details', description: 'Enter guest info & pax' },
+                { id: 'step-summary', title: 'Summary & Notes', description: 'Verify booking details' }
+            ],
+            thankYouPage: {
+                template: 'custom',
+                blocks: [
+                    { id: 'icon', type: 'icon', value: 'check-circle', color: '#7c3aed', visible: true },
+                    { id: 'title', type: 'title', value: 'Stay Booking Requested!', visible: true },
+                    { id: 'msg', type: 'message', value: 'Thank you for your stay booking request. We are checking availability and will message you shortly.', visible: true },
+                    { id: 'summary', type: 'booking_summary', value: 'Show stay details', visible: true },
+                    { id: 'btn_whatsapp', type: 'connect_whatsapp', label: 'Message Front Desk on WhatsApp', url: 'https://wa.me/', visible: true },
+                    { id: 'btn_livechat', type: 'connect_livechat', label: 'Chat Live with Host', slug: '', visible: true },
+                    { id: 'btn', type: 'button', label: 'Done', url: '', visible: true }
+                ]
+            }
+        },
+        fields: [
+            { id: 'hvs1', label: 'Hotel ya Villa', type: 'select', required: true, options: ['Hotel', 'Villa'], stepId: 'step-stay-type' },
+            { id: 'hvs2', label: 'Check in and check out', type: 'date_time_calendar', required: true, options: ['range=true'], stepId: 'step-dates' },
+            { id: 'hvs3', label: 'Villa types', type: 'select', required: false, dependsOnFieldId: 'hvs1', options: [
+                'Luxury Pool Villa | Villa',
+                'Beachfront Villa | Villa',
+                'Garden Oasis Villa | Villa'
+            ], stepId: 'step-selection' },
+            { id: 'hvs4', label: 'Villa - 1-4bhk', type: 'select', required: false, dependsOnFieldId: 'hvs1', options: [
+                '1 BHK | Villa',
+                '2 BHK | Villa',
+                '3 BHK | Villa',
+                '4 BHK | Villa'
+            ], stepId: 'step-selection' },
+            { id: 'hvs5', label: 'Hotel Room Type', type: 'select', required: false, dependsOnFieldId: 'hvs1', options: [
+                'Executive Deluxe Room | Hotel',
+                'Premium Suite | Hotel',
+                'Presidential Suite | Hotel'
+            ], stepId: 'step-selection' },
+            { id: 'hvs6', label: 'Number of pax', type: 'number', required: true, stepId: 'step-guests' },
+            { id: 'hvs7', label: 'Guest Full Name', type: 'text', required: true, stepId: 'step-guests' },
+            { id: 'hvs8', label: 'WhatsApp / Phone Number', type: 'tel', required: true, stepId: 'step-guests' },
+            { id: 'hvs9', label: 'Special Requests / Notes', type: 'textarea', required: false, stepId: 'step-summary' }
+        ]
+    },
+    {
         id: 'real-estate-lead',
         title: 'Real Estate Lead Capture',
         description: 'Qualify property buyers and sellers with specific requirements.',

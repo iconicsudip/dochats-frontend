@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { formsApi } from '../api/forms';
-import { CheckCircle2, Loader2, AlertCircle, X, Heart, Star, Calendar as CalendarIcon, Home, Smile, ArrowRight, ArrowLeft, Upload, Trash2, Check, FileText } from 'lucide-react';
+import { CheckCircle2, Loader2, AlertCircle, X, Heart, Star, Calendar as CalendarIcon, Home, Smile, ArrowRight, ArrowLeft, Upload, Trash2, Check, FileText, ChevronDown, Search } from 'lucide-react';
 import { Calendar, DatePicker, ConfigProvider } from 'antd';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+
+type StepDef = { id: string; title: string; description: string; dependsOnFieldId?: string; showWhenValue?: string };
 
 const { RangePicker } = DatePicker;
 
@@ -15,6 +17,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 
 const getColSpanClass = (span?: number) => {
     switch (span) {
+        case 2: return 'col-span-12 md:col-span-2';
         case 3: return 'col-span-12 md:col-span-3';
         case 4: return 'col-span-12 md:col-span-4';
         case 6: return 'col-span-12 md:col-span-6';
@@ -153,21 +156,47 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
 
     const handleNext = () => {
         if (isMultistep) {
-            const currentStep = steps[currentStepIndex];
+            const allSteps = form?.design?.steps || [];
+            const currentStep = allSteps[currentStepIndex];
             const isValid = validateStepFields(currentStep.id);
             if (!isValid) {
                 showToast('Please fill out all required fields correctly.', 'error');
                 return;
             }
-            if (currentStepIndex < steps.length - 1) {
-                setCurrentStepIndex(prev => prev + 1);
+            // Find next visible step index
+            let nextIdx = currentStepIndex + 1;
+            while (nextIdx < allSteps.length) {
+                const nextStep = allSteps[nextIdx];
+                const depField = nextStep.dependsOnFieldId
+                    ? form.fields.find((f: any) => f.id === nextStep.dependsOnFieldId)
+                    : null;
+                const isVisible = !depField || !nextStep.showWhenValue ||
+                    formData[depField.label] === nextStep.showWhenValue;
+                if (isVisible) break;
+                nextIdx++;
+            }
+            if (nextIdx < allSteps.length) {
+                setCurrentStepIndex(nextIdx);
             }
         }
     };
 
     const handleBack = () => {
-        if (currentStepIndex > 0) {
-            setCurrentStepIndex(prev => prev - 1);
+        const allSteps = form?.design?.steps || [];
+        // Find previous visible step index
+        let prevIdx = currentStepIndex - 1;
+        while (prevIdx >= 0) {
+            const prevStep = allSteps[prevIdx];
+            const depField = prevStep.dependsOnFieldId
+                ? form.fields.find((f: any) => f.id === prevStep.dependsOnFieldId)
+                : null;
+            const isVisible = !depField || !prevStep.showWhenValue ||
+                formData[depField.label] === prevStep.showWhenValue;
+            if (isVisible) break;
+            prevIdx--;
+        }
+        if (prevIdx >= 0) {
+            setCurrentStepIndex(prevIdx);
         }
     };
 
@@ -265,9 +294,19 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
     const steps = form?.design?.steps || [];
     const isMultistep = form?.design?.isMultistep && steps.length > 0;
     const layout = form?.design?.layout || 'default';
+    const submitButtonText = form?.design?.submitButtonText || (isMultistep ? 'Book Appointment' : 'Submit Response');
     const currentStep = isMultistep ? steps[currentStepIndex] : null;
 
     // Filter fields to render based on multi-step or single-step
+    const isStepVisible = (step: any): boolean => {
+        if (!step.dependsOnFieldId || !step.showWhenValue) return true;
+        const depField = form.fields.find((f: any) => f.id === step.dependsOnFieldId);
+        if (!depField) return true;
+        return formData[depField.label] === step.showWhenValue;
+    };
+
+    const visibleSteps = isMultistep ? steps.filter(isStepVisible) : [];
+
     const renderedFields = isMultistep
         ? form.fields.filter((field: any) => {
             const fStepId = field.stepId || (steps[0] ? steps[0].id : '');
@@ -529,6 +568,9 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
         const parentValue = parentField ? (formData[parentField.label] || '') : '';
         const isDisabled = !!parentField && !parentValue;
 
+        const isHorizontal = layout === 'horizontal';
+        const isBlueBorderField = isHorizontal && field.label.toLowerCase() !== 'select city';
+
         const baseInputClasses = cn(
             "w-full rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 transition-all font-semibold shadow-2xs",
             isDisabled
@@ -540,7 +582,9 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                     ? "bg-red-500/10 border border-red-500/50 text-red-700 focus:ring-red-500/20" 
                     : (isEmbed 
                         ? "bg-[#2a3942] border border-[#3b4a54] text-white placeholder-[#8696a0] focus:ring-[#00a884]/40" 
-                        : "bg-slate-50 border border-slate-200/80 text-slate-800 placeholder-slate-400 focus:ring-primary/20 focus:bg-white"
+                        : isBlueBorderField
+                            ? "bg-white border-2 border-[#1e88e5] text-slate-800 placeholder-slate-400 focus:ring-[#1e88e5]/20 focus:border-[#1e88e5]"
+                            : "bg-slate-50 border border-slate-200/80 text-slate-800 placeholder-slate-400 focus:ring-primary/20 focus:bg-white"
                       )
                   )
         );
@@ -570,41 +614,46 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                 }
 
                 return (
-                    <select 
-                        className={cn(baseInputClasses, "appearance-none cursor-pointer bg-no-repeat bg-[right_16px_center]")}
-                        value={value || ''}
-                        disabled={isDisabled}
-                        onChange={e => {
-                            const newValue = e.target.value;
-                            const updatedFormData: Record<string, any> = { ...formData, [field.label]: newValue };
-                            
-                            // Recursively reset all child fields that depend on this field
-                            const resetDependents = (fieldId: string) => {
-                                form.fields.forEach((f: any) => {
-                                    if (f.dependsOnFieldId === fieldId) {
-                                        updatedFormData[f.label] = '';
-                                        resetDependents(f.id);
-                                    }
-                                });
-                            };
-                            resetDependents(field.id);
+                    <div className="relative w-full">
+                        <select 
+                            className={cn(baseInputClasses, "appearance-none cursor-pointer pr-10")}
+                            value={value || ''}
+                            disabled={isDisabled}
+                            onChange={e => {
+                                const newValue = e.target.value;
+                                const updatedFormData: Record<string, any> = { ...formData, [field.label]: newValue };
+                                
+                                // Recursively reset all child fields that depend on this field
+                                const resetDependents = (fieldId: string) => {
+                                    form.fields.forEach((f: any) => {
+                                        if (f.dependsOnFieldId === fieldId) {
+                                            updatedFormData[f.label] = '';
+                                            resetDependents(f.id);
+                                        }
+                                    });
+                                };
+                                resetDependents(field.id);
 
-                            setFormData(updatedFormData);
-                            if (error) setErrors({...errors, [field.label]: ''});
-                        }}
-                    >
-                        <option value="">
-                            {isDisabled 
-                                ? `Select ${parentField?.label || 'parent field'} first...` 
-                                : `Select ${field.label.toLowerCase()}...`
-                            }
-                        </option>
-                        {filteredOptions.map((opt: string) => {
-                            const parts = opt.split('|');
-                            const val = parts[0].trim();
-                            return <option key={opt} value={val}>{val}</option>;
-                        })}
-                    </select>
+                                setFormData(updatedFormData);
+                                if (error) setErrors({...errors, [field.label]: ''});
+                            }}
+                        >
+                            <option value="">
+                                {isDisabled 
+                                    ? `Select ${parentField?.label || 'parent field'} first...` 
+                                    : `Select ${field.label.toLowerCase()}...`
+                                }
+                            </option>
+                            {filteredOptions.map((opt: string) => {
+                                const parts = opt.split('|');
+                                const val = parts[0].trim();
+                                return <option key={opt} value={val}>{val}</option>;
+                            })}
+                        </select>
+                        <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                            <ChevronDown className="w-4 h-4" />
+                        </span>
+                    </div>
                 );
             case 'tel':
                 return (
@@ -630,14 +679,19 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                 );
             case 'date':
                 return (
-                    <input 
-                        type="date"
-                        className={baseInputClasses}
-                        value={value || ''}
-                        onChange={e => {
-                            setFormData({...formData, [field.label]: e.target.value});
+                    <DatePicker
+                        format="DD-MM-YYYY"
+                        value={value ? dayjs(value, 'YYYY-MM-DD') : null}
+                        onChange={(date) => {
+                            setFormData({...formData, [field.label]: date ? date.format('YYYY-MM-DD') : ''});
                             if (error) setErrors({...errors, [field.label]: ''});
                         }}
+                        placeholder={`Select ${field.label.toLowerCase()}`}
+                        style={{ width: '100%' }}
+                        className={cn(hasError ? 'border-red-400' : isBlueBorderField ? 'border-[#1e88e5]' : '')}
+                        size="large"
+                        disabled={isDisabled}
+                        status={hasError ? 'error' : undefined}
                     />
                 );
             case 'date_time_calendar':
@@ -824,13 +878,15 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
             );
         }
 
+        const isHorizontal = layout === 'horizontal';
+
         return (
-            <div className="grid grid-cols-12 gap-x-5 gap-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className={cn("grid grid-cols-12 gap-x-5 gap-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300", isHorizontal ? "items-end" : "")}>
                 {renderedFields.map((field: any) => {
                     const colSpan = field.colSpan || 12;
                     return (
                         <div key={field.id} className={cn(getColSpanClass(colSpan), "space-y-2")}>
-                            <label className="flex items-center text-[10px] font-bold uppercase tracking-wider font-sans mb-1" style={{ color: isEmbed ? '#8696a0' : textColor }}>
+                            <label className="flex items-center text-[10px] font-bold uppercase tracking-wider font-sans mb-1" style={{ color: isEmbed ? '#8696a0' : (isHorizontal ? '#1e293b' : textColor) }}>
                                 {field.label}
                                 {field.required && <span className="text-red-500 ml-1">*</span>}
                             </label>
@@ -845,6 +901,25 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                         </div>
                     );
                 })}
+                {isHorizontal && (
+                    <div className="col-span-12 md:col-span-2 space-y-2">
+                        <button
+                            type="submit"
+                            disabled={submitting}
+                            className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-bold text-xs transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer uppercase tracking-wider font-sans shadow-md text-white"
+                            style={{ backgroundColor: primaryColor, height: '42px', boxShadow: `0 4px 12px ${primaryColor}40` }}
+                        >
+                            {submitting ? (
+                                <Loader2 className="w-4 h-4 animate-spin text-current" />
+                            ) : (
+                                <>
+                                    <Search className="w-4 h-4 shrink-0" />
+                                    <span>Search</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                )}
             </div>
         );
     };
@@ -862,13 +937,15 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                         )}
                         style={!isEmbed ? { backgroundColor: primaryColor, boxShadow: `0 10px 25px -5px ${primaryColor}40` } : undefined}
                     >
-                        {submitting ? <Loader2 className="w-5 h-5 animate-spin text-current" /> : 'Submit Response'}
+                        {submitting ? <Loader2 className="w-5 h-5 animate-spin text-current" /> : submitButtonText}
                     </button>
                 </div>
             );
         }
 
-        const isLastStep = currentStepIndex === steps.length - 1;
+        // isLastStep: no more visible steps after current index
+        const allSteps = form?.design?.steps || [];
+        const isLastStep = !allSteps.slice(currentStepIndex + 1).some((s: any) => isStepVisible(s));
 
         return (
             <div className="pt-6 mt-8 border-t border-slate-100 flex gap-4">
@@ -891,7 +968,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                     >
                         {submitting ? <Loader2 className="w-4 h-4 animate-spin text-current" /> : (
                             <>
-                                <span>Book Appointment</span>
+                                <span>{submitButtonText}</span>
                                 <Check className="w-3.5 h-3.5" />
                             </>
                         )}
@@ -903,7 +980,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                         className="flex-1 flex items-center justify-center gap-1.5 py-3 text-white font-bold rounded-xl text-xs transition-all hover:opacity-90 cursor-pointer uppercase tracking-wider shadow-md"
                         style={{ backgroundColor: primaryColor, boxShadow: `0 10px 25px -5px ${primaryColor}40` }}
                     >
-                        <span>Next: {steps[currentStepIndex + 1]?.title || 'Continue'}</span>
+                        <span>Next: {allSteps.slice(currentStepIndex + 1).find((s: any) => isStepVisible(s))?.title || 'Continue'}</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                 )}
@@ -920,13 +997,16 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                     {/* Left Steps Sidebar */}
                     <div className="md:col-span-4 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-md space-y-4">
                         <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
-                            <span className="font-extrabold text-slate-800 text-[13px] uppercase tracking-wider">Booking Steps</span>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Step {currentStepIndex + 1} of {steps.length}</span>
+                            <span className="font-extrabold text-slate-800 text-[13px] uppercase tracking-wider">{form?.design?.stepsSidebarTitle || 'Booking Steps'}</span>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Step {visibleSteps.findIndex((s: StepDef) => s.id === currentStep?.id) + 1} of {visibleSteps.length}</span>
                         </div>
                         <div className="flex flex-col gap-4 font-semibold text-xs">
-                            {steps.map((step: any, idx: number) => {
-                                const isActive = currentStepIndex === idx;
-                                const isCompleted = currentStepIndex > idx;
+                            {visibleSteps.map((step: any, idx: number) => {
+                                const isActive = currentStep?.id === step.id;
+                                const visibleIdx = visibleSteps.findIndex((s: StepDef) => s.id === step.id);
+                                const isCompleted = visibleSteps.slice(0, visibleIdx).some((s: StepDef) => s.id === currentStep?.id)
+                                    ? false
+                                    : visibleIdx < visibleSteps.findIndex((s: StepDef) => s.id === currentStep?.id);
 
                                 return (
                                     <div key={step.id} className="flex gap-3.5 items-start">
@@ -996,40 +1076,40 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                         <div className="border-b border-slate-100 pb-5 mb-6 text-xs font-semibold">
                             {/* Horizontal Progress Stepper */}
                             <div className="flex items-center justify-between gap-2 mb-4">
-                                {steps.map((step: any, idx: number) => (
+                                {visibleSteps.map((step: any, idx: number) => (
                                     <React.Fragment key={step.id}>
                                         <div className="flex items-center gap-2">
                                             <div 
                                                 className={cn(
                                                     "w-5 h-5 rounded-full flex items-center justify-center font-bold text-[9px] border shadow-3xs",
-                                                    currentStepIndex === idx 
+                                                    currentStep?.id === step.id
                                                         ? "text-white border-primary" 
-                                                        : currentStepIndex > idx 
+                                                        : visibleSteps.findIndex((s: StepDef) => s.id === currentStep?.id) > idx
                                                             ? "bg-emerald-50 border-emerald-200 text-emerald-600" 
                                                             : "bg-slate-50 border-slate-200 text-slate-400"
                                                 )}
-                                                style={currentStepIndex === idx ? { backgroundColor: primaryColor, borderColor: primaryColor } : undefined}
+                                                style={currentStep?.id === step.id ? { backgroundColor: primaryColor, borderColor: primaryColor } : undefined}
                                             >
-                                                {currentStepIndex > idx ? <Check className="w-2.5 h-2.5" /> : idx + 1}
+                                                {visibleSteps.findIndex((s: StepDef) => s.id === currentStep?.id) > idx ? <Check className="w-2.5 h-2.5" /> : idx + 1}
                                             </div>
                                             <span className={cn(
                                                 "hidden sm:inline font-bold",
-                                                currentStepIndex === idx ? "text-slate-800" : "text-slate-400"
+                                                currentStep?.id === step.id ? "text-slate-800" : "text-slate-400"
                                             )}>
                                                 {step.title}
                                             </span>
                                         </div>
-                                        {idx < steps.length - 1 && (
+                                        {idx < visibleSteps.length - 1 && (
                                             <div className={cn(
                                                 "h-[2px] flex-1 rounded",
-                                                currentStepIndex > idx ? "bg-emerald-200" : "bg-slate-100"
+                                                visibleSteps.findIndex((s: StepDef) => s.id === currentStep?.id) > idx ? "bg-emerald-200" : "bg-slate-100"
                                             )} />
                                         )}
                                     </React.Fragment>
                                 ))}
                             </div>
                             <div className="text-center font-bold uppercase tracking-wider text-[9px] text-slate-400">
-                                {currentStep?.title} &middot; Step {currentStepIndex + 1} of {steps.length}
+                                {currentStep?.title} &middot; Step {visibleSteps.findIndex((s: StepDef) => s.id === currentStep?.id) + 1} of {visibleSteps.length}
                             </div>
                         </div>
                     )}
@@ -1047,7 +1127,15 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                 token: {
                     colorPrimary: primaryColor,
                     borderRadius: 12,
+                    borderRadiusLG: 12,
                     fontFamily: 'Inter, sans-serif',
+                    fontSize: 12,
+                    controlHeight: 42,
+                    colorBgContainer: isEmbed ? '#2a3942' : '#f8fafc',
+                    colorText: isEmbed ? '#ffffff' : '#0f172a',
+                    colorTextPlaceholder: isEmbed ? '#8696a0' : '#94a3b8',
+                    colorBorder: isEmbed ? '#3b4a54' : '#e2e8f0',
+                    colorBorderSecondary: isEmbed ? '#3b4a54' : '#e2e8f0',
                 },
             }}
         >

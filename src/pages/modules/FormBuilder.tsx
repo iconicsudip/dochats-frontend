@@ -35,6 +35,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 
 const getColSpanClass = (span?: number) => {
     switch (span) {
+        case 2: return 'col-span-12 md:col-span-2';
         case 3: return 'col-span-12 md:col-span-3';
         case 4: return 'col-span-12 md:col-span-4';
         case 6: return 'col-span-12 md:col-span-6';
@@ -67,7 +68,7 @@ interface SortableItemProps {
     removeField: (id: string) => void;
     updateField: (id: string, updates: Partial<FormField>) => void;
     isMultistep?: boolean;
-    steps?: { id: string; title: string; description: string; }[];
+    steps?: { id: string; title: string; description: string; dependsOnFieldId?: string; showWhenValue?: string; }[];
     fields: FormField[];
 }
 
@@ -111,8 +112,7 @@ const SortableField: React.FC<SortableItemProps> = ({ field, index, removeField,
 
     return (
         <div ref={setNodeRef} style={style} className={cn(
-            "bg-white border rounded-2xl p-5 sm:p-6 mb-0 relative transition-all shadow-xs",
-            getColSpanClass(field.colSpan || 12),
+            "col-span-12 bg-white border rounded-2xl p-5 sm:p-6 mb-0 relative transition-all shadow-xs",
             isDragging ? "border-primary shadow-xl scale-[1.02] opacity-95 ring-2 ring-primary/20" : "border-slate-200/80 hover:border-slate-300 hover:shadow-md"
         )}>
             <div className="flex justify-between items-center mb-5">
@@ -176,6 +176,7 @@ const SortableField: React.FC<SortableItemProps> = ({ field, index, removeField,
                     <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">Field Width</label>
                     <div className="flex bg-slate-100 p-0.5 rounded-xl border border-slate-200/60 w-full h-[38px] items-center">
                         {[
+                            { label: '16.6%', value: 2 },
                             { label: '25%', value: 3 },
                             { label: '33%', value: 4 },
                             { label: '50%', value: 6 },
@@ -806,8 +807,10 @@ const FormBuilder: React.FC = () => {
 
     // Multi-Step / Layout / Thank You states
     const [isMultistep, setIsMultistep] = useState(false);
-    const [layout, setLayout] = useState<'default' | 'custom'>('default');
-    const [steps, setSteps] = useState<{ id: string; title: string; description: string }[]>([]);
+    const [layout, setLayout] = useState<'default' | 'custom' | 'horizontal'>('default');
+    const [steps, setSteps] = useState<{ id: string; title: string; description: string; dependsOnFieldId?: string; showWhenValue?: string }[]>([]);
+    const [stepsSidebarTitle, setStepsSidebarTitle] = useState('Booking Steps');
+    const [submitButtonText, setSubmitButtonText] = useState('Submit Response');
     const [thankYouBlocks, setThankYouBlocks] = useState<any[]>([
         { id: 'icon', type: 'icon', value: 'check-circle', color: '#10b981', visible: true },
         { id: 'title', type: 'title', value: 'Booking Requested!', visible: true },
@@ -878,6 +881,8 @@ const FormBuilder: React.FC = () => {
             setIsMultistep(isMs);
             setLayout(lay);
             setSteps(stps);
+            setStepsSidebarTitle(template.design?.stepsSidebarTitle || 'Booking Steps');
+            setSubmitButtonText(template.design?.submitButtonText || (isMs ? 'Book Appointment' : 'Submit Response'));
             if (stps.length > 0) {
                 setActiveStepTab(stps[0].id);
             }
@@ -938,6 +943,8 @@ const FormBuilder: React.FC = () => {
             setIsMultistep(isMs);
             setLayout(lay);
             setSteps(stps);
+            setStepsSidebarTitle(data.design?.stepsSidebarTitle || 'Booking Steps');
+            setSubmitButtonText(data.design?.submitButtonText || (isMs ? 'Book Appointment' : 'Submit Response'));
             if (stps.length > 0) {
                 setActiveStepTab(stps[0].id);
             }
@@ -969,7 +976,7 @@ const FormBuilder: React.FC = () => {
         setActiveStepTab(newStepId);
     };
 
-    const updateStep = (stepId: string, updates: Partial<{ title: string; description: string }>) => {
+    const updateStep = (stepId: string, updates: Partial<{ title: string; description: string; dependsOnFieldId?: string; showWhenValue?: string }>) => {
         setSteps(steps.map(s => s.id === stepId ? { ...s, ...updates } : s));
     };
 
@@ -1152,6 +1159,8 @@ const FormBuilder: React.FC = () => {
                     isMultistep,
                     layout,
                     steps,
+                    stepsSidebarTitle,
+                    submitButtonText,
                     thankYouPage: {
                         template: 'custom',
                         blocks: thankYouBlocks
@@ -1291,7 +1300,7 @@ const FormBuilder: React.FC = () => {
                                     <select
                                         value={layout}
                                         onChange={e => {
-                                            const val = e.target.value as 'default' | 'custom';
+                                            const val = e.target.value as 'default' | 'custom' | 'horizontal';
                                             setLayout(val);
                                             if (val === 'custom' && !isMultistep) {
                                                 setIsMultistep(true);
@@ -1303,6 +1312,32 @@ const FormBuilder: React.FC = () => {
                                         <option value="default">Default Form Layout</option>
                                         <option value="custom">Custom Form Design (Premium Sidebar)</option>
                                     </select>
+                                </div>
+
+                                {layout === 'custom' && isMultistep && (
+                                    <div className="pt-5 border-t border-slate-100 space-y-2">
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider">Steps Sidebar Title</label>
+                                        <p className="text-slate-500 font-semibold m-0 text-[11px]">Customize the heading shown above the steps list (e.g. "Booking Steps", "Stay Booking Steps")</p>
+                                        <input
+                                            type="text"
+                                            value={stepsSidebarTitle}
+                                            onChange={e => setStepsSidebarTitle(e.target.value)}
+                                            placeholder="e.g. Booking Steps"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all focus:bg-white"
+                                        />
+                                    </div>
+                                )}
+
+                                <div className="pt-5 border-t border-slate-100 space-y-2">
+                                    <label className="block font-bold text-slate-700 uppercase tracking-wider">Submit Button Text</label>
+                                    <p className="text-slate-500 font-semibold m-0 text-[11px]">Text shown on the final submit button (e.g. "Submit Response", "Book Now", "Confirm Booking")</p>
+                                    <input
+                                        type="text"
+                                        value={submitButtonText}
+                                        onChange={e => setSubmitButtonText(e.target.value)}
+                                        placeholder="e.g. Submit Response"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all focus:bg-white"
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -1451,6 +1486,11 @@ const FormBuilder: React.FC = () => {
                                                         )}
                                                     >
                                                         <span>{step.title || `Step ${idx + 1}`}</span>
+                                                        {step.dependsOnFieldId && step.showWhenValue && (
+                                                            <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-violet-100 text-violet-600 font-bold border border-violet-200">
+                                                                conditional
+                                                            </span>
+                                                        )}
                                                         {steps.length > 1 && (
                                                             <span 
                                                                 onClick={(e) => {
@@ -1481,7 +1521,7 @@ const FormBuilder: React.FC = () => {
                                                         <label className="block font-bold text-slate-700 mb-1">Step Description</label>
                                                         <input
                                                             type="text"
-                                                            value={steps.find(s => s.id === activeStepTab)?.description || ''}
+                                            value={steps.find(s => s.id === activeStepTab)?.description || ''}
                                                             onChange={e => updateStep(activeStepTab, { description: e.target.value })}
                                                             className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 font-semibold focus:outline-none focus:ring-1 focus:ring-primary"
                                                         />
@@ -1503,6 +1543,59 @@ const FormBuilder: React.FC = () => {
                                                         >
                                                             <ChevronDown className="w-3 h-3" /> Move Down
                                                         </button>
+                                                    </div>
+
+                                                    {/* Conditional Step Visibility */}
+                                                    <div className="md:col-span-2 pt-3 border-t border-slate-200/40 space-y-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                                                            <span className="font-bold text-slate-700 uppercase tracking-wider text-[10px]">Conditional Visibility</span>
+                                                        </div>
+                                                        <p className="text-[10px] text-slate-400 font-semibold m-0">Show this step only when a specific field has a certain value. Leave empty to always show.</p>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                            <div>
+                                                                <label className="block font-bold text-slate-600 mb-1 text-[10px] uppercase tracking-wider">Show When Field</label>
+                                                                <select
+                                                                    value={steps.find(s => s.id === activeStepTab)?.dependsOnFieldId || ''}
+                                                                    onChange={e => updateStep(activeStepTab, { dependsOnFieldId: e.target.value || undefined, showWhenValue: undefined })}
+                                                                    className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 font-semibold focus:outline-none focus:ring-1 focus:ring-primary text-[11px] cursor-pointer"
+                                                                >
+                                                                    <option value="">— Always Show (No Condition) —</option>
+                                                                    {fields
+                                                                        .filter(f => f.type === 'select')
+                                                                        .map(f => (
+                                                                            <option key={f.id} value={f.id}>{f.label || `Field #${fields.indexOf(f) + 1}`}</option>
+                                                                        ))
+                                                                    }
+                                                                </select>
+                                                            </div>
+                                                            {steps.find(s => s.id === activeStepTab)?.dependsOnFieldId && (() => {
+                                                                const depField = fields.find(f => f.id === steps.find(s => s.id === activeStepTab)?.dependsOnFieldId);
+                                                                const depOptions = (depField?.options || []).map((o: string) => o.split('|')[0].trim());
+                                                                return (
+                                                                    <div>
+                                                                        <label className="block font-bold text-slate-600 mb-1 text-[10px] uppercase tracking-wider">Equals Value</label>
+                                                                        <select
+                                                                            value={steps.find(s => s.id === activeStepTab)?.showWhenValue || ''}
+                                                                            onChange={e => updateStep(activeStepTab, { showWhenValue: e.target.value || undefined })}
+                                                                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 font-semibold focus:outline-none focus:ring-1 focus:ring-primary text-[11px] cursor-pointer"
+                                                                        >
+                                                                            <option value="">— Select a value —</option>
+                                                                            {depOptions.map((opt: string) => (
+                                                                                <option key={opt} value={opt}>{opt}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </div>
+                                                        {steps.find(s => s.id === activeStepTab)?.dependsOnFieldId && steps.find(s => s.id === activeStepTab)?.showWhenValue && (
+                                                            <div className="flex items-center gap-2 px-3 py-2 bg-violet-50 border border-violet-100 rounded-lg">
+                                                                <span className="text-[10px] font-bold text-violet-700">
+                                                                    ✓ This step shows only when "{fields.find(f => f.id === steps.find(s => s.id === activeStepTab)?.dependsOnFieldId)?.label}" = "{steps.find(s => s.id === activeStepTab)?.showWhenValue}"
+                                                                </span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )}
@@ -1737,6 +1830,8 @@ const FormBuilder: React.FC = () => {
                                         isMultistep,
                                         layout,
                                         steps,
+                                        stepsSidebarTitle,
+                                        submitButtonText,
                                         thankYouPage: {
                                             template: 'custom',
                                             blocks: thankYouBlocks
