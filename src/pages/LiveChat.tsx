@@ -7,8 +7,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { MessageType } from '../enums';
-import { 
-    Send, Smile, Paperclip, MoreVertical, Search, MessageSquare, 
+import {
+    Send, Smile, Paperclip, MoreVertical, Search, MessageSquare,
     Check, CheckCheck, Mic, Filter, X, ArrowLeft,
     User, Copy, ExternalLink, Phone, Calendar, Tag, Clock
 } from 'lucide-react';
@@ -16,7 +16,7 @@ import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
-  return twMerge(clsx(inputs));
+    return twMerge(clsx(inputs));
 }
 
 const parseVisitorName = (fullName: string) => {
@@ -394,7 +394,7 @@ const LiveChat: React.FC = () => {
     return (
         <div className={cn(
             "flex overflow-hidden bg-white border-slate-200",
-            isMobile ? "h-[calc(100vh-85px)] -m-5" : "h-[calc(100vh-120px)] border rounded-2xl shadow-sm"
+            isMobile ? "h-[calc(100vh-85px)] !-m-5 !mt-[-40px]" : "h-[calc(100vh-82px)] border rounded-2xl shadow-sm !m-[-40px]"
         )}>
             {/* Sidebar List */}
             {(!isMobile || !selectedId) && (
@@ -453,8 +453,8 @@ const LiveChat: React.FC = () => {
                                         onClick={() => setSelectedId(conv.id)}
                                         className={cn(
                                             "flex items-center gap-3 p-4 cursor-pointer transition-all border-l-4",
-                                            selectedId === conv.id 
-                                                ? "bg-white border-primary shadow-xs" 
+                                            selectedId === conv.id
+                                                ? "bg-white border-primary shadow-xs"
                                                 : "bg-transparent border-transparent hover:bg-slate-100"
                                         )}
                                     >
@@ -466,7 +466,7 @@ const LiveChat: React.FC = () => {
                                                 </div>
                                             )}
                                         </div>
-                                        
+
                                         <div className="flex-1 min-w-0 overflow-hidden">
                                             <div className="flex justify-between items-center mb-1">
                                                 <div className={cn("text-xs truncate mr-2 flex flex-col gap-0.5", conv.unreadCount > 0 ? "font-extrabold text-slate-900" : "font-bold text-slate-700")}>
@@ -499,7 +499,7 @@ const LiveChat: React.FC = () => {
                                 ))}
 
                                 {hasMoreConvs && (
-                                    <button 
+                                    <button
                                         onClick={() => setConvPage(prev => prev + 1)}
                                         className="m-4 py-2.5 px-4 text-xs font-semibold text-primary bg-primary/10 hover:bg-primary/20 rounded-xl transition-colors cursor-pointer shadow-2xs"
                                     >
@@ -520,243 +520,243 @@ const LiveChat: React.FC = () => {
                         {/* Background Pattern */}
                         <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, #000 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 
-                    {selectedId ? (
-                        <>
-                            {/* Chat Header */}
-                            <div className="h-[72px] px-4 md:px-6 flex items-center justify-between border-b border-slate-200 bg-white/80 backdrop-blur-md z-10 shrink-0 shadow-xs">
-                                <div className="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
-                                    {isMobile && (
-                                        <button onClick={() => setSelectedId(null)} className="p-2 -ml-2 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer">
-                                            <ArrowLeft className="w-5 h-5" />
-                                        </button>
-                                    )}
-                                    <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${selectedConv?.visitorToken}`} className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-slate-100 border border-slate-200 shrink-0 shadow-2xs" alt="visitor" />
-                                    <div className="min-w-0 flex-1">
-                                        <div className="text-xs font-bold text-slate-900 truncate flex items-center gap-2">
-                                            <span>{selectedConv?.visitorName ? parseVisitorName(selectedConv.visitorName).cleanName : `User ${selectedConv?.visitorToken.substring(0, 8)}`}</span>
-                                            {selectedConv?.visitorName && parseVisitorName(selectedConv.visitorName).tag && (
-                                                <span className="shrink-0 bg-primary/10 text-primary text-[9px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider animate-pulse">
-                                                    {parseVisitorName(selectedConv.visitorName).tag}
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="text-[11px] font-semibold text-green-500 flex items-center gap-1">
-                                            <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0"></span>
-                                            <span>Online</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3 text-slate-400 shrink-0">
-                                    {!isMobile && <Search className="w-5 h-5 cursor-pointer hover:text-primary transition-colors" />}
-                                    {!isMobile && (
-                                        <button 
-                                            onClick={() => setShowContactCard(prev => !prev)}
-                                            className={cn(
-                                                "p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold border",
-                                                showContactCard ? "border-primary bg-primary/5 text-primary hover:text-primary hover:bg-primary/10" : "border-slate-200 bg-white"
-                                            )}
-                                            title="Toggle Contact Card"
-                                        >
-                                            <User className="w-3.5 h-3.5" />
-                                            <span>Contact Info</span>
-                                        </button>
-                                    )}
-                                    <MoreVertical className="w-5 h-5 cursor-pointer hover:text-slate-700 transition-colors" />
-                                </div>
-                            </div>
-
-                            {/* Messages Container */}
-                            <div
-                                ref={scrollRef}
-                                onScroll={(e) => {
-                                    if (e.currentTarget.scrollTop === 0) loadMoreMessages();
-                                }}
-                                className="flex-1 overflow-y-auto px-4 md:px-8 py-6 flex flex-col z-0 relative scroll-smooth custom-scrollbar"
-                            >
-                                {loadingMessages ? (
-                                    <div className="flex justify-center mt-10">
-                                        <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {loadingMore && <div className="flex justify-center py-2"><div className="w-5 h-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div></div>}
-                                        {Object.entries(groupMessagesByDate(messages)).map(([date, dateMsgs]) => (
-                                            <React.Fragment key={date}>
-                                                <div className="flex justify-center my-6 sticky top-2 z-10">
-                                                    <span className="px-3.5 py-1.5 bg-white/90 backdrop-blur-xs border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-500 uppercase tracking-wider shadow-2xs">
-                                                        {getDateLabel(date)}
-                                                    </span>
-                                                </div>
-                                                {dateMsgs.map((msg: any) => (
-                                                    <div
-                                                        key={msg.tempId || msg.id}
-                                                        className={cn(
-                                                            "max-w-[85%] md:max-w-[70%] mb-4 flex flex-col relative group animate-in fade-in slide-in-from-bottom-2 duration-300",
-                                                            msg.isFromAdmin ? "self-end items-end" : "self-start items-start"
-                                                        )}
-                                                        onDoubleClick={() => setReplyingTo(msg)}
-                                                    >
-                                                        <div className={cn(
-                                                            "p-4 shadow-xs relative",
-                                                            msg.isFromAdmin 
-                                                                ? "bg-primary text-white rounded-2xl rounded-tr-xs" 
-                                                                : "bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-tl-xs"
-                                                        )}>
-                                                            {msg.replyTo && (
-                                                                <div className={cn(
-                                                                    "mb-2.5 p-2.5 rounded-xl text-xs font-semibold border-l-4 cursor-pointer",
-                                                                    msg.isFromAdmin 
-                                                                        ? "bg-white/20 border-white text-white/90" 
-                                                                        : "bg-slate-50 border-primary text-slate-600"
-                                                                )}>
-                                                                    <div className="font-bold mb-0.5">{msg.replyTo.isFromAdmin ? 'Admin' : 'Visitor'}</div>
-                                                                    <div className="line-clamp-2 opacity-90">
-                                                                        {msg.replyTo.type === MessageType.AUDIO ? '🎤 Voice Message' : msg.replyTo.content}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-                                                            
-                                                            <LinkPreview preview={msg.linkPreview} />
-                                                            
-                                                            <div className="text-xs font-semibold leading-relaxed whitespace-pre-wrap break-words">
-                                                                {msg.type === MessageType.AUDIO ? (
-                                                                    <AudioPlayer src={msg.content} isFromAdmin={msg.isFromAdmin} />
-                                                                ) : (
-                                                                    formatMessageText(msg.content)
-                                                                )}
-                                                            </div>
-                                                            
-                                                            <div className={cn(
-                                                                "flex items-center justify-end gap-1 mt-1.5 text-[11px] font-semibold",
-                                                                msg.isFromAdmin ? "text-white/70" : "text-slate-400"
-                                                            )}>
-                                                                <span>{format(new Date(msg.createdAt), 'h:mm a')}</span>
-                                                                {msg.isFromAdmin && (
-                                                                    <CheckCheck className={cn("w-3.5 h-3.5 shrink-0", msg.isRead ? (msg.isFromAdmin ? "text-white" : "text-blue-500") : "opacity-50")} />
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                        
-                                                        {/* Hover Reply Button */}
-                                                        <button 
-                                                            onClick={() => setReplyingTo(msg)}
-                                                            className={cn(
-                                                                "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-xl bg-white border border-slate-200 shadow-2xs text-slate-400 hover:text-primary cursor-pointer",
-                                                                msg.isFromAdmin ? "-left-10" : "-right-10"
-                                                            )}
-                                                        >
-                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
-                                                        </button>
-                                                    </div>
-                                                ))}
-                                            </React.Fragment>
-                                        ))}
-                                    </>
-                                )}
-                            </div>
-
-                            {/* Chat Input */}
-                            <div className="bg-white border-t border-slate-200 z-20 shrink-0">
-                                {/* Reply / Preview Bar */}
-                                {(replyingTo || linkPreview) && (
-                                    <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex items-start gap-3">
-                                        <div className="flex-1 min-w-0 border-l-4 border-primary pl-3.5">
-                                            {replyingTo && (
-                                                <>
-                                                    <div className="text-xs font-bold text-primary mb-0.5">Replying to {replyingTo.isFromAdmin ? 'Admin' : 'Visitor'}</div>
-                                                    <div className="text-xs font-semibold text-slate-500 truncate">{replyingTo.type === MessageType.AUDIO ? '🎤 Voice Message' : replyingTo.content}</div>
-                                                </>
-                                            )}
-                                            {linkPreview && (
-                                                <>
-                                                    <div className="text-xs font-bold text-primary mb-0.5">{linkPreview.title}</div>
-                                                    <div className="text-xs font-semibold text-slate-500 truncate">{linkPreview.description}</div>
-                                                </>
-                                            )}
-                                        </div>
-                                        <button onClick={() => { setReplyingTo(null); setLinkPreview(null); }} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer">
-                                            <X className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                )}
-
-                                <div className="px-4 py-3 md:px-6 md:py-4 flex items-end gap-3 md:gap-4">
-                                    <div className="flex gap-2 pb-2 text-slate-400 shrink-0">
-                                        <button onClick={() => setShowEmoji(!showEmoji)} className={cn("hover:text-primary transition-colors cursor-pointer", showEmoji && "text-primary")}>
-                                            <Smile className="w-5 h-5" />
-                                        </button>
-                                        {!isMobile && (
-                                            <button className="hover:text-primary transition-colors cursor-pointer">
-                                                <Paperclip className="w-5 h-5" />
+                        {selectedId ? (
+                            <>
+                                {/* Chat Header */}
+                                <div className="h-[72px] px-4 md:px-6 flex items-center justify-between border-b border-slate-200 bg-white/80 backdrop-blur-md z-10 shrink-0 shadow-xs">
+                                    <div className="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
+                                        {isMobile && (
+                                            <button onClick={() => setSelectedId(null)} className="p-2 -ml-2 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer">
+                                                <ArrowLeft className="w-5 h-5" />
                                             </button>
                                         )}
-                                    </div>
-
-                                    {showEmoji && (
-                                        <div className="absolute bottom-20 left-4 z-50 shadow-2xl rounded-2xl overflow-hidden border border-slate-200">
-                                            <EmojiPicker theme={EmojiTheme.LIGHT} onEmojiClick={onEmojiClick} />
+                                        <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${selectedConv?.visitorToken}`} className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-slate-100 border border-slate-200 shrink-0 shadow-2xs" alt="visitor" />
+                                        <div className="min-w-0 flex-1">
+                                            <div className="text-xs font-bold text-slate-900 truncate flex items-center gap-2">
+                                                <span>{selectedConv?.visitorName ? parseVisitorName(selectedConv.visitorName).cleanName : `User ${selectedConv?.visitorToken.substring(0, 8)}`}</span>
+                                                {selectedConv?.visitorName && parseVisitorName(selectedConv.visitorName).tag && (
+                                                    <span className="shrink-0 bg-primary/10 text-primary text-[9px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider animate-pulse">
+                                                        {parseVisitorName(selectedConv.visitorName).tag}
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-[11px] font-semibold text-green-500 flex items-center gap-1">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0"></span>
+                                                <span>Online</span>
+                                            </div>
                                         </div>
-                                    )}
+                                    </div>
+                                    <div className="flex items-center gap-3 text-slate-400 shrink-0">
+                                        {!isMobile && <Search className="w-5 h-5 cursor-pointer hover:text-primary transition-colors" />}
+                                        {!isMobile && (
+                                            <button
+                                                onClick={() => setShowContactCard(prev => !prev)}
+                                                className={cn(
+                                                    "p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold border",
+                                                    showContactCard ? "border-primary bg-primary/5 text-primary hover:text-primary hover:bg-primary/10" : "border-slate-200 bg-white"
+                                                )}
+                                                title="Toggle Contact Card"
+                                            >
+                                                <User className="w-3.5 h-3.5" />
+                                                <span>Contact Info</span>
+                                            </button>
+                                        )}
+                                        <MoreVertical className="w-5 h-5 cursor-pointer hover:text-slate-700 transition-colors" />
+                                    </div>
+                                </div>
 
-                                    {isRecording ? (
-                                        <div className="flex-1 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex items-center justify-between">
-                                            <div className="flex items-center gap-2 text-red-500 font-bold text-xs">
-                                                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0"></span>
-                                                <span>Recording: {formatTime(recordingTime)}</span>
-                                            </div>
-                                            <div className="flex items-center gap-3">
-                                                <button onClick={cancelRecording} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-full transition-all cursor-pointer shadow-2xs">
-                                                    <X className="w-4 h-4" />
-                                                </button>
-                                                <button onClick={sendVoiceMessage} className="p-2 text-white bg-primary hover:bg-primary-hover rounded-full transition-all shadow-xs cursor-pointer">
-                                                    <Send className="w-4 h-4" />
-                                                </button>
-                                            </div>
+                                {/* Messages Container */}
+                                <div
+                                    ref={scrollRef}
+                                    onScroll={(e) => {
+                                        if (e.currentTarget.scrollTop === 0) loadMoreMessages();
+                                    }}
+                                    className="flex-1 overflow-y-auto px-4 md:px-8 py-6 flex flex-col z-0 relative scroll-smooth custom-scrollbar"
+                                >
+                                    {loadingMessages ? (
+                                        <div className="flex justify-center mt-10">
+                                            <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></div>
                                         </div>
                                     ) : (
-                                        <form onSubmit={handleSend} className="flex-1 flex items-end gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-white transition-all shadow-2xs">
-                                            <textarea
-                                                className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 resize-none text-xs font-semibold text-slate-700 py-2.5 px-3.5 custom-scrollbar max-h-32"
-                                                rows={1}
-                                                placeholder="Type your message..."
-                                                value={inputText}
-                                                onChange={e => {
-                                                    setInputText(e.target.value);
-                                                    e.target.style.height = 'auto';
-                                                    e.target.style.height = e.target.scrollHeight + 'px';
-                                                }}
-                                                onFocus={() => setShowEmoji(false)}
-                                                onKeyDown={handleKeyDown}
-                                            />
-                                            {inputText.trim() ? (
-                                                <button type="submit" className="w-10 h-10 shrink-0 bg-primary hover:bg-primary-hover text-white rounded-xl flex items-center justify-center transition-all shadow-2xs mb-0.5 mr-0.5 cursor-pointer">
-                                                    <Send className="w-4 h-4 ml-0.5" />
-                                                </button>
-                                            ) : (
-                                                <button type="button" onClick={startRecording} className="w-10 h-10 shrink-0 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center transition-all mb-0.5 mr-0.5 cursor-pointer shadow-2xs">
-                                                    <Mic className="w-4 h-4" />
-                                                </button>
-                                            )}
-                                        </form>
+                                        <>
+                                            {loadingMore && <div className="flex justify-center py-2"><div className="w-5 h-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div></div>}
+                                            {Object.entries(groupMessagesByDate(messages)).map(([date, dateMsgs]) => (
+                                                <React.Fragment key={date}>
+                                                    <div className="flex justify-center my-6 sticky top-2 z-10">
+                                                        <span className="px-3.5 py-1.5 bg-white/90 backdrop-blur-xs border border-slate-200 rounded-xl text-[11px] font-semibold text-slate-500 uppercase tracking-wider shadow-2xs">
+                                                            {getDateLabel(date)}
+                                                        </span>
+                                                    </div>
+                                                    {dateMsgs.map((msg: any) => (
+                                                        <div
+                                                            key={msg.tempId || msg.id}
+                                                            className={cn(
+                                                                "max-w-[85%] md:max-w-[70%] mb-4 flex flex-col relative group animate-in fade-in slide-in-from-bottom-2 duration-300",
+                                                                msg.isFromAdmin ? "self-end items-end" : "self-start items-start"
+                                                            )}
+                                                            onDoubleClick={() => setReplyingTo(msg)}
+                                                        >
+                                                            <div className={cn(
+                                                                "p-4 shadow-xs relative",
+                                                                msg.isFromAdmin
+                                                                    ? "bg-primary text-white rounded-2xl rounded-tr-xs"
+                                                                    : "bg-white border border-slate-200 text-slate-800 rounded-2xl rounded-tl-xs"
+                                                            )}>
+                                                                {msg.replyTo && (
+                                                                    <div className={cn(
+                                                                        "mb-2.5 p-2.5 rounded-xl text-xs font-semibold border-l-4 cursor-pointer",
+                                                                        msg.isFromAdmin
+                                                                            ? "bg-white/20 border-white text-white/90"
+                                                                            : "bg-slate-50 border-primary text-slate-600"
+                                                                    )}>
+                                                                        <div className="font-bold mb-0.5">{msg.replyTo.isFromAdmin ? 'Admin' : 'Visitor'}</div>
+                                                                        <div className="line-clamp-2 opacity-90">
+                                                                            {msg.replyTo.type === MessageType.AUDIO ? '🎤 Voice Message' : msg.replyTo.content}
+                                                                        </div>
+                                                                    </div>
+                                                                )}
+
+                                                                <LinkPreview preview={msg.linkPreview} />
+
+                                                                <div className="text-xs font-semibold leading-relaxed whitespace-pre-wrap break-words">
+                                                                    {msg.type === MessageType.AUDIO ? (
+                                                                        <AudioPlayer src={msg.content} isFromAdmin={msg.isFromAdmin} />
+                                                                    ) : (
+                                                                        formatMessageText(msg.content)
+                                                                    )}
+                                                                </div>
+
+                                                                <div className={cn(
+                                                                    "flex items-center justify-end gap-1 mt-1.5 text-[11px] font-semibold",
+                                                                    msg.isFromAdmin ? "text-white/70" : "text-slate-400"
+                                                                )}>
+                                                                    <span>{format(new Date(msg.createdAt), 'h:mm a')}</span>
+                                                                    {msg.isFromAdmin && (
+                                                                        <CheckCheck className={cn("w-3.5 h-3.5 shrink-0", msg.isRead ? (msg.isFromAdmin ? "text-white" : "text-blue-500") : "opacity-50")} />
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Hover Reply Button */}
+                                                            <button
+                                                                onClick={() => setReplyingTo(msg)}
+                                                                className={cn(
+                                                                    "absolute top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 rounded-xl bg-white border border-slate-200 shadow-2xs text-slate-400 hover:text-primary cursor-pointer",
+                                                                    msg.isFromAdmin ? "-left-10" : "-right-10"
+                                                                )}
+                                                            >
+                                                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </React.Fragment>
+                                            ))}
+                                        </>
                                     )}
                                 </div>
+
+                                {/* Chat Input */}
+                                <div className="bg-white border-t border-slate-200 z-20 shrink-0">
+                                    {/* Reply / Preview Bar */}
+                                    {(replyingTo || linkPreview) && (
+                                        <div className="px-6 py-3 bg-slate-50 border-b border-slate-100 flex items-start gap-3">
+                                            <div className="flex-1 min-w-0 border-l-4 border-primary pl-3.5">
+                                                {replyingTo && (
+                                                    <>
+                                                        <div className="text-xs font-bold text-primary mb-0.5">Replying to {replyingTo.isFromAdmin ? 'Admin' : 'Visitor'}</div>
+                                                        <div className="text-xs font-semibold text-slate-500 truncate">{replyingTo.type === MessageType.AUDIO ? '🎤 Voice Message' : replyingTo.content}</div>
+                                                    </>
+                                                )}
+                                                {linkPreview && (
+                                                    <>
+                                                        <div className="text-xs font-bold text-primary mb-0.5">{linkPreview.title}</div>
+                                                        <div className="text-xs font-semibold text-slate-500 truncate">{linkPreview.description}</div>
+                                                    </>
+                                                )}
+                                            </div>
+                                            <button onClick={() => { setReplyingTo(null); setLinkPreview(null); }} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-200 transition-colors cursor-pointer">
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className="px-4 py-3 md:px-6 md:py-4 flex items-end gap-3 md:gap-4">
+                                        <div className="flex gap-2 pb-2 text-slate-400 shrink-0">
+                                            <button onClick={() => setShowEmoji(!showEmoji)} className={cn("hover:text-primary transition-colors cursor-pointer", showEmoji && "text-primary")}>
+                                                <Smile className="w-5 h-5" />
+                                            </button>
+                                            {!isMobile && (
+                                                <button className="hover:text-primary transition-colors cursor-pointer">
+                                                    <Paperclip className="w-5 h-5" />
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {showEmoji && (
+                                            <div className="absolute bottom-20 left-4 z-50 shadow-2xl rounded-2xl overflow-hidden border border-slate-200">
+                                                <EmojiPicker theme={EmojiTheme.LIGHT} onEmojiClick={onEmojiClick} />
+                                            </div>
+                                        )}
+
+                                        {isRecording ? (
+                                            <div className="flex-1 bg-red-50 border border-red-100 rounded-2xl px-4 py-3 flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-red-500 font-bold text-xs">
+                                                    <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shrink-0"></span>
+                                                    <span>Recording: {formatTime(recordingTime)}</span>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <button onClick={cancelRecording} className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-full transition-all cursor-pointer shadow-2xs">
+                                                        <X className="w-4 h-4" />
+                                                    </button>
+                                                    <button onClick={sendVoiceMessage} className="p-2 text-white bg-primary hover:bg-primary-hover rounded-full transition-all shadow-xs cursor-pointer">
+                                                        <Send className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <form onSubmit={handleSend} className="flex-1 flex items-end gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-white transition-all shadow-2xs">
+                                                <textarea
+                                                    className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 resize-none text-xs font-semibold text-slate-700 py-2.5 px-3.5 custom-scrollbar max-h-32"
+                                                    rows={1}
+                                                    placeholder="Type your message..."
+                                                    value={inputText}
+                                                    onChange={e => {
+                                                        setInputText(e.target.value);
+                                                        e.target.style.height = 'auto';
+                                                        e.target.style.height = e.target.scrollHeight + 'px';
+                                                    }}
+                                                    onFocus={() => setShowEmoji(false)}
+                                                    onKeyDown={handleKeyDown}
+                                                />
+                                                {inputText.trim() ? (
+                                                    <button type="submit" className="w-10 h-10 shrink-0 bg-primary hover:bg-primary-hover text-white rounded-xl flex items-center justify-center transition-all shadow-2xs mb-0.5 mr-0.5 cursor-pointer">
+                                                        <Send className="w-4 h-4 ml-0.5" />
+                                                    </button>
+                                                ) : (
+                                                    <button type="button" onClick={startRecording} className="w-10 h-10 shrink-0 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center transition-all mb-0.5 mr-0.5 cursor-pointer shadow-2xs">
+                                                        <Mic className="w-4 h-4" />
+                                                    </button>
+                                                )}
+                                            </form>
+                                        )}
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
+                            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#f8fafc] z-10">
+                                <div className="w-20 h-20 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center mx-auto mb-6">
+                                    <MessageSquare className="w-8 h-8 text-primary" />
+                                </div>
+                                <h2 className="text-xl font-bold text-slate-900 mb-2 m-0 tracking-tight">Select a Conversation</h2>
+                                <p className="text-xs font-semibold text-slate-500 max-w-sm mb-8 m-0 leading-relaxed">
+                                    Choose a chat from the sidebar to start responding to leads, sending messages, or recording voice notes.
+                                </p>
+                                <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 shadow-2xs">
+                                    <CheckCheck className="w-3.5 h-3.5 shrink-0" />
+                                    <span>Real-time syncing enabled</span>
+                                </div>
                             </div>
-                        </>
-                    ) : (
-                        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-[#f8fafc] z-10">
-                            <div className="w-20 h-20 rounded-2xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center mx-auto mb-6">
-                                <MessageSquare className="w-8 h-8 text-primary" />
-                            </div>
-                            <h2 className="text-xl font-bold text-slate-900 mb-2 m-0 tracking-tight">Select a Conversation</h2>
-                            <p className="text-xs font-semibold text-slate-500 max-w-sm mb-8 m-0 leading-relaxed">
-                                Choose a chat from the sidebar to start responding to leads, sending messages, or recording voice notes.
-                            </p>
-                            <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 shadow-2xs">
-                                <CheckCheck className="w-3.5 h-3.5 shrink-0" />
-                                <span>Real-time syncing enabled</span>
-                            </div>
-                        </div>
-                    )}
+                        )}
                     </div>
 
                     {/* Right-side Contact Card Panel */}
@@ -765,7 +765,7 @@ const LiveChat: React.FC = () => {
                             {/* Panel Header */}
                             <div className="h-[72px] px-6 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
                                 <h3 className="text-sm font-bold text-slate-800 m-0">Contact Details</h3>
-                                <button 
+                                <button
                                     onClick={() => setShowContactCard(false)}
                                     className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
                                 >
@@ -778,10 +778,10 @@ const LiveChat: React.FC = () => {
                                 {/* Avatar and Name */}
                                 <div className="flex flex-col items-center text-center pb-4 border-b border-slate-100">
                                     <div className="relative mb-3 group">
-                                        <img 
-                                            src={`https://api.dicebear.com/7.x/bottts/svg?seed=${selectedConv.visitorToken}`} 
-                                            className="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-200 shadow-sm p-1.5 transition-transform duration-300 group-hover:scale-105" 
-                                            alt="Visitor avatar" 
+                                        <img
+                                            src={`https://api.dicebear.com/7.x/bottts/svg?seed=${selectedConv.visitorToken}`}
+                                            className="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-200 shadow-sm p-1.5 transition-transform duration-300 group-hover:scale-105"
+                                            alt="Visitor avatar"
                                         />
                                         <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white animate-pulse" />
                                     </div>
@@ -818,7 +818,7 @@ const LiveChat: React.FC = () => {
                                                 <span className="text-xs font-bold text-slate-700">{selectedConv.visitorPhone || 'N/A'}</span>
                                             </div>
                                             {selectedConv.visitorPhone && selectedConv.visitorPhone !== 'N/A' && (
-                                                <button 
+                                                <button
                                                     onClick={() => copyToClipboard(selectedConv.visitorPhone)}
                                                     className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-md transition-colors cursor-pointer relative"
                                                     title="Copy phone number"
@@ -834,19 +834,19 @@ const LiveChat: React.FC = () => {
 
                                         {selectedConv.visitorPhone && selectedConv.visitorPhone !== 'N/A' && (
                                             <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-slate-200">
-                                                <a 
+                                                <a
                                                     href={`tel:${selectedConv.visitorPhone}`}
                                                     className="py-2 px-3 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs text-center"
                                                 >
                                                     <Phone className="w-3.5 h-3.5 text-primary" /> Call Client
                                                 </a>
-                                                <a 
+                                                <a
                                                     href={`https://wa.me/${selectedConv.visitorPhone.replace(/\D/g, '')}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="py-2 px-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs text-center"
                                                 >
-                                                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.859 0c3.166.001 6.141 1.233 8.375 3.469 2.235 2.237 3.465 5.212 3.462 8.377-.003 6.535-5.328 11.86-11.859 11.86-2.004-.001-3.973-.51-5.716-1.48L0 24zm6.59-4.846c1.6.95 3.1 1.45 4.6 1.452 5.4 0 9.8-4.4 9.803-9.8.002-2.6-1.01-5.07-2.85-6.91-1.85-1.83-4.3-2.84-6.91-2.84-5.4 0-9.8 4.4-9.8 9.8-.001 1.7.46 3.3 1.35 4.74l-.99 3.6 3.7-.97zm10.4-3.5c-.3-.15-1.7-.85-2.0-.95-.3-.1-.5-.15-.7.15-.2.3-.75.95-.9.1-.15-.15-.3-.45-.3-.45 0-1.7-.6-3.2-1.95-1.16-1-1.95-2.3-2.2-2.7-.2-.3-.02-.45.13-.6.13-.13.3-.35.45-.5.15-.15.2-.25.3-.45.1-.2.05-.4-.02-.55-.07-.15-.7-1.7-.95-2.3-.3-.6-.6-.5-.8-.5-.2 0-.4 0-.6 0-.2 0-.6.1-.9.4-.3.3-1.1 1.1-1.1 2.7 0 1.6 1.2 3.1 1.35 3.3.15.2 2.35 3.6 5.7 5.03.8.34 1.43.55 1.9.7.8.25 1.5.2 2.1.1.65-.1 1.7-.7 2.0-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3z"/></svg> WhatsApp
+                                                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.859 0c3.166.001 6.141 1.233 8.375 3.469 2.235 2.237 3.465 5.212 3.462 8.377-.003 6.535-5.328 11.86-11.859 11.86-2.004-.001-3.973-.51-5.716-1.48L0 24zm6.59-4.846c1.6.95 3.1 1.45 4.6 1.452 5.4 0 9.8-4.4 9.803-9.8.002-2.6-1.01-5.07-2.85-6.91-1.85-1.83-4.3-2.84-6.91-2.84-5.4 0-9.8 4.4-9.8 9.8-.001 1.7.46 3.3 1.35 4.74l-.99 3.6 3.7-.97zm10.4-3.5c-.3-.15-1.7-.85-2.0-.95-.3-.1-.5-.15-.7.15-.2.3-.75.95-.9.1-.15-.15-.3-.45-.3-.45 0-1.7-.6-3.2-1.95-1.16-1-1.95-2.3-2.2-2.7-.2-.3-.02-.45.13-.6.13-.13.3-.35.45-.5.15-.15.2-.25.3-.45.1-.2.05-.4-.02-.55-.07-.15-.7-1.7-.95-2.3-.3-.6-.6-.5-.8-.5-.2 0-.4 0-.6 0-.2 0-.6.1-.9.4-.3.3-1.1 1.1-1.1 2.7 0 1.6 1.2 3.1 1.35 3.3.15.2 2.35 3.6 5.7 5.03.8.34 1.43.55 1.9.7.8.25 1.5.2 2.1.1.65-.1 1.7-.7 2.0-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3z" /></svg> WhatsApp
                                                 </a>
                                             </div>
                                         )}
@@ -871,9 +871,9 @@ const LiveChat: React.FC = () => {
                                         </div>
                                         <div className="py-2.5 flex items-center justify-between gap-4">
                                             <span className="text-slate-500 font-semibold flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Link Route</span>
-                                            <a 
-                                                href={`/chat/${selectedConv.linkSlug}`} 
-                                                target="_blank" 
+                                            <a
+                                                href={`/chat/${selectedConv.linkSlug}`}
+                                                target="_blank"
                                                 rel="noreferrer"
                                                 className="font-bold text-primary hover:underline flex items-center gap-1.5 shrink-0"
                                             >
