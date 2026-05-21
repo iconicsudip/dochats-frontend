@@ -39,16 +39,34 @@ const PublicChat: React.FC = () => {
     const [messages, setMessages] = useState<any[]>([]);
     const [linkPreview, setLinkPreview] = useState<any>(null);
     const [replyingTo, setReplyingTo] = useState<any>(null);
+    const [visitorData, setVisitorData] = useState(() => {
+        const params = new URLSearchParams(window.location.search);
+        const nameParam = params.get('name');
+        const phoneParam = params.get('phone');
+        const sourceParam = params.get('source');
+
+        if (nameParam && phoneParam) {
+            const taggedName = sourceParam ? `${nameParam} [Form: ${sourceParam}]` : nameParam;
+            localStorage.setItem('visitor_name', taggedName);
+            localStorage.setItem('visitor_phone', phoneParam);
+            return { name: taggedName, phone: phoneParam };
+        }
+
+        return {
+            name: localStorage.getItem('visitor_name') || '',
+            phone: localStorage.getItem('visitor_phone') || ''
+        };
+    });
     const [onboardingStep, setOnboardingStep] = useState<0 | 1 | 2 | 3>(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('name') && params.get('phone')) {
+            return 3;
+        }
         const name = localStorage.getItem('visitor_name');
         const phone = localStorage.getItem('visitor_phone');
         if (name && phone) return 3;
         return 1; 
     });
-    const [visitorData, setVisitorData] = useState(() => ({
-        name: localStorage.getItem('visitor_name') || '',
-        phone: localStorage.getItem('visitor_phone') || ''
-    }));
     const [showWAPopup, setShowWAPopup] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [showOnboardingForm, setShowOnboardingForm] = useState(false);

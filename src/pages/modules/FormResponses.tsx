@@ -4,12 +4,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { formsApi } from '../../api/forms';
 import dayjs from 'dayjs';
 
+const toSnakeCase = (str: string) => 
+    str.toLowerCase().trim().replace(/\s+/g, '_').replace(/[^\w]/g, '');
+
 const FormResponses: React.FC = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [responses, setResponses] = useState<any[]>([]);
     const [form, setForm] = useState<any>(null);
     const [loading, setLoading] = useState(false);
+    const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     // Custom Toast State
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -47,7 +51,16 @@ const FormResponses: React.FC = () => {
         const rows = responses.map(r => {
             return [
                 dayjs(r.createdAt).format('YYYY-MM-DD HH:mm:ss'),
-                ...form.fields.map((f: any) => `"${(r.data[f.label] || '').toString().replace(/"/g, '""')}"`)
+                ...form.fields.map((f: any) => {
+                    const valKey = toSnakeCase(f.label);
+                    const val = r.data[valKey];
+                    if (f.type === 'image') {
+                        const fileList = Array.isArray(val) ? val : (val ? [val] : []);
+                        const keysStr = fileList.map((file: any) => file.key).join('; ');
+                        return `"${keysStr.replace(/"/g, '""')}"`;
+                    }
+                    return `"${(val || '').toString().replace(/"/g, '""')}"`;
+                })
             ];
         });
 
@@ -64,6 +77,42 @@ const FormResponses: React.FC = () => {
     };
 
     const todayResponses = responses.filter(r => dayjs(r.createdAt).isSame(dayjs(), 'day')).length;
+
+    const renderCellData = (field: any, rowData: any) => {
+        const valKey = toSnakeCase(field.label);
+        const val = rowData.data[valKey];
+
+        if (field.type === 'image') {
+            const fileList = Array.isArray(val) ? val : (val ? [val] : []);
+            if (fileList.length === 0) return <span className="text-slate-300 font-normal">-</span>;
+
+            return (
+                <div className="flex gap-1.5 flex-wrap">
+                    {fileList.map((file: any, idx: number) => {
+                        const fileKey = file.key;
+                        if (!fileKey) return null;
+
+                        const imageUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/forms/responses/file?key=${encodeURIComponent(fileKey)}&token=${localStorage.getItem('token')}`;
+                        return (
+                            <img 
+                                key={idx}
+                                src={imageUrl} 
+                                alt={file.name || 'preview'} 
+                                className="w-10 h-10 object-cover rounded-lg border border-slate-200 cursor-pointer hover:border-primary/50 transition-all hover:scale-105 shadow-3xs"
+                                onClick={() => setSelectedImage(imageUrl)}
+                            />
+                        );
+                    })}
+                </div>
+            );
+        }
+
+        if (!val) {
+            return <span className="text-slate-300 font-normal">-</span>;
+        }
+
+        return <span className="text-slate-800 font-semibold">{val.toString()}</span>;
+    };
 
     return (
         <div className="pb-20 animate-in fade-in duration-500 font-sans text-slate-800">
@@ -153,8 +202,8 @@ const FormResponses: React.FC = () => {
                                                 {dayjs(r.createdAt).format('MMM D, YYYY HH:mm')}
                                             </td>
                                             {(form?.fields || []).map((f: any) => (
-                                                <td key={f.label} className="py-4 px-6 text-slate-800 font-semibold">
-                                                    {r.data[f.label] || <span className="text-slate-300 font-normal">-</span>}
+                                                <td key={f.label} className="py-4 px-6">
+                                                    {renderCellData(f, r)}
                                                 </td>
                                             ))}
                                         </tr>
@@ -165,6 +214,29 @@ const FormResponses: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {/* Secure Image Preview Modal */}
+            {selectedImage && (
+                <div 
+                    className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-xs p-4 animate-in fade-in duration-200 cursor-pointer" 
+                    onClick={() => setSelectedImage(null)}
+                >
+                    <div 
+                        className="bg-white rounded-2xl max-w-3xl w-full p-4 relative shadow-2xl animate-in zoom-in-95 duration-200 cursor-default" 
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button 
+                            onClick={() => setSelectedImage(null)} 
+                            className="absolute top-4 right-4 w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-900 flex items-center justify-center transition-all cursor-pointer shadow-3xs border border-slate-200/40"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                        <div className="mt-8 flex justify-center max-h-[80vh] overflow-hidden rounded-xl border border-slate-100 bg-slate-50">
+                            <img src={selectedImage} alt="Full preview" className="object-contain max-h-[70vh] w-full" />
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

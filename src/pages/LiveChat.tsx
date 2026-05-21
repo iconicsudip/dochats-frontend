@@ -9,7 +9,8 @@ import { AudioPlayer } from '../components/AudioPlayer';
 import { MessageType } from '../enums';
 import { 
     Send, Smile, Paperclip, MoreVertical, Search, MessageSquare, 
-    Check, CheckCheck, Mic, Filter, X, ArrowLeft 
+    Check, CheckCheck, Mic, Filter, X, ArrowLeft,
+    User, Copy, ExternalLink, Phone, Calendar, Tag, Clock
 } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -17,6 +18,18 @@ import { twMerge } from 'tailwind-merge';
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
+
+const parseVisitorName = (fullName: string) => {
+    if (!fullName) return { cleanName: 'Anonymous', tag: null };
+    const match = fullName.match(/^(.*?)\s*\[Form:\s*(.*?)\]$/i) || fullName.match(/^(.*?)\s*\[(.*?)\]$/);
+    if (match) {
+        return {
+            cleanName: match[1].trim() || 'Anonymous',
+            tag: match[2].trim()
+        };
+    }
+    return { cleanName: fullName, tag: null };
+};
 
 const LiveChat: React.FC = () => {
     const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -40,6 +53,14 @@ const LiveChat: React.FC = () => {
     const { isRecording, recordingTime, formatTime, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
 
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    const [showContactCard, setShowContactCard] = useState(true);
+    const [copiedPhone, setCopiedPhone] = useState(false);
+
+    const copyToClipboard = (text: string) => {
+        navigator.clipboard.writeText(text);
+        setCopiedPhone(true);
+        setTimeout(() => setCopiedPhone(false), 2000);
+    };
 
     useEffect(() => {
         const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -448,8 +469,16 @@ const LiveChat: React.FC = () => {
                                         
                                         <div className="flex-1 min-w-0 overflow-hidden">
                                             <div className="flex justify-between items-center mb-1">
-                                                <div className={cn("text-xs truncate mr-2", conv.unreadCount > 0 ? "font-extrabold text-slate-900" : "font-bold text-slate-700")}>
-                                                    {conv.visitorName ? conv.visitorName : `User ${conv.visitorToken.substring(0, 8)}`}
+                                                <div className={cn("text-xs truncate mr-2 flex flex-col gap-0.5", conv.unreadCount > 0 ? "font-extrabold text-slate-900" : "font-bold text-slate-700")}>
+                                                    <span className="truncate">
+                                                        {conv.visitorName ? parseVisitorName(conv.visitorName).cleanName : `User ${conv.visitorToken.substring(0, 8)}`}
+                                                    </span>
+                                                    {conv.visitorName && parseVisitorName(conv.visitorName).tag && (
+                                                        <span className="self-start inline-flex items-center gap-0.5 bg-primary/10 text-primary text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider scale-95 origin-left shrink-0">
+                                                            <Tag className="w-2.5 h-2.5" strokeWidth={3} />
+                                                            <span>{parseVisitorName(conv.visitorName).tag}</span>
+                                                        </span>
+                                                    )}
                                                 </div>
                                                 <div className={cn("text-[11px]", conv.unreadCount > 0 ? "font-bold text-primary" : "font-semibold text-slate-400")}>
                                                     {format(new Date(conv.lastMessageAt), 'h:mm a')}
@@ -485,9 +514,11 @@ const LiveChat: React.FC = () => {
 
             {/* Chat Area */}
             {(!isMobile || selectedId) && (
-                <div className="flex-1 flex flex-col relative bg-[#f8fafc] font-sans text-slate-800">
-                    {/* Background Pattern */}
-                    <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, #000 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
+                <div className="flex-1 flex md:flex-row flex-col relative bg-[#f8fafc] font-sans text-slate-800 overflow-hidden">
+                    {/* Main Chat Pane */}
+                    <div className="flex-1 flex flex-col min-w-0 relative h-full">
+                        {/* Background Pattern */}
+                        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, #000 1px, transparent 1px)', backgroundSize: '24px 24px' }}></div>
 
                     {selectedId ? (
                         <>
@@ -501,8 +532,13 @@ const LiveChat: React.FC = () => {
                                     )}
                                     <img src={`https://api.dicebear.com/7.x/bottts/svg?seed=${selectedConv?.visitorToken}`} className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-slate-100 border border-slate-200 shrink-0 shadow-2xs" alt="visitor" />
                                     <div className="min-w-0 flex-1">
-                                        <div className="text-xs font-bold text-slate-900 truncate">
-                                            {selectedConv?.visitorName ? selectedConv.visitorName : `User ${selectedConv?.visitorToken.substring(0, 8)}`}
+                                        <div className="text-xs font-bold text-slate-900 truncate flex items-center gap-2">
+                                            <span>{selectedConv?.visitorName ? parseVisitorName(selectedConv.visitorName).cleanName : `User ${selectedConv?.visitorToken.substring(0, 8)}`}</span>
+                                            {selectedConv?.visitorName && parseVisitorName(selectedConv.visitorName).tag && (
+                                                <span className="shrink-0 bg-primary/10 text-primary text-[9px] font-extrabold px-2 py-0.5 rounded-md uppercase tracking-wider animate-pulse">
+                                                    {parseVisitorName(selectedConv.visitorName).tag}
+                                                </span>
+                                            )}
                                         </div>
                                         <div className="text-[11px] font-semibold text-green-500 flex items-center gap-1">
                                             <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse shrink-0"></span>
@@ -510,8 +546,21 @@ const LiveChat: React.FC = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4 text-slate-400 shrink-0">
+                                <div className="flex items-center gap-3 text-slate-400 shrink-0">
                                     {!isMobile && <Search className="w-5 h-5 cursor-pointer hover:text-primary transition-colors" />}
+                                    {!isMobile && (
+                                        <button 
+                                            onClick={() => setShowContactCard(prev => !prev)}
+                                            className={cn(
+                                                "p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-bold border",
+                                                showContactCard ? "border-primary bg-primary/5 text-primary hover:text-primary hover:bg-primary/10" : "border-slate-200 bg-white"
+                                            )}
+                                            title="Toggle Contact Card"
+                                        >
+                                            <User className="w-3.5 h-3.5" />
+                                            <span>Contact Info</span>
+                                        </button>
+                                    )}
                                     <MoreVertical className="w-5 h-5 cursor-pointer hover:text-slate-700 transition-colors" />
                                 </div>
                             </div>
@@ -705,6 +754,135 @@ const LiveChat: React.FC = () => {
                             <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-400 bg-slate-100 px-4 py-2 rounded-xl border border-slate-200 shadow-2xs">
                                 <CheckCheck className="w-3.5 h-3.5 shrink-0" />
                                 <span>Real-time syncing enabled</span>
+                            </div>
+                        </div>
+                    )}
+                    </div>
+
+                    {/* Right-side Contact Card Panel */}
+                    {selectedId && showContactCard && !isMobile && selectedConv && (
+                        <div className="w-[320px] shrink-0 border-l border-slate-200 bg-white flex flex-col h-full animate-in slide-in-from-right duration-300 z-10">
+                            {/* Panel Header */}
+                            <div className="h-[72px] px-6 border-b border-slate-200 flex items-center justify-between bg-white shrink-0">
+                                <h3 className="text-sm font-bold text-slate-800 m-0">Contact Details</h3>
+                                <button 
+                                    onClick={() => setShowContactCard(false)}
+                                    className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                                >
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+
+                            {/* Panel Body */}
+                            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+                                {/* Avatar and Name */}
+                                <div className="flex flex-col items-center text-center pb-4 border-b border-slate-100">
+                                    <div className="relative mb-3 group">
+                                        <img 
+                                            src={`https://api.dicebear.com/7.x/bottts/svg?seed=${selectedConv.visitorToken}`} 
+                                            className="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-200 shadow-sm p-1.5 transition-transform duration-300 group-hover:scale-105" 
+                                            alt="Visitor avatar" 
+                                        />
+                                        <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white animate-pulse" />
+                                    </div>
+                                    <h4 className="text-sm font-bold text-slate-900 m-0 line-clamp-1">
+                                        {selectedConv.visitorName ? parseVisitorName(selectedConv.visitorName).cleanName : `User ${selectedConv.visitorToken.substring(0, 8)}`}
+                                    </h4>
+                                    <span className="text-[10px] font-semibold text-slate-400 mt-1 uppercase tracking-wider select-all">
+                                        Token: {selectedConv.visitorToken.substring(0, 8)}
+                                    </span>
+                                </div>
+
+                                {/* Form Source Tag (if available) */}
+                                {selectedConv.visitorName && parseVisitorName(selectedConv.visitorName).tag && (
+                                    <div className="p-3.5 bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-2xl flex items-start gap-3">
+                                        <div className="w-8 h-8 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0">
+                                            <Tag className="w-4 h-4" />
+                                        </div>
+                                        <div className="min-w-0">
+                                            <span className="block text-[10px] font-bold text-primary/70 uppercase tracking-wider">Leads Source Tag</span>
+                                            <span className="block text-xs font-extrabold text-slate-800 mt-0.5 truncate uppercase">
+                                                {parseVisitorName(selectedConv.visitorName).tag}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Contact Details */}
+                                <div className="space-y-4">
+                                    <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Contact Methods</div>
+                                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                                        <div className="flex items-center justify-between mb-3">
+                                            <div className="flex items-center gap-2">
+                                                <Phone className="w-4 h-4 text-slate-400" />
+                                                <span className="text-xs font-bold text-slate-700">{selectedConv.visitorPhone || 'N/A'}</span>
+                                            </div>
+                                            {selectedConv.visitorPhone && selectedConv.visitorPhone !== 'N/A' && (
+                                                <button 
+                                                    onClick={() => copyToClipboard(selectedConv.visitorPhone)}
+                                                    className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-md transition-colors cursor-pointer relative"
+                                                    title="Copy phone number"
+                                                >
+                                                    {copiedPhone ? (
+                                                        <Check className="w-3.5 h-3.5 text-green-600 animate-bounce" />
+                                                    ) : (
+                                                        <Copy className="w-3.5 h-3.5" />
+                                                    )}
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {selectedConv.visitorPhone && selectedConv.visitorPhone !== 'N/A' && (
+                                            <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-slate-200">
+                                                <a 
+                                                    href={`tel:${selectedConv.visitorPhone}`}
+                                                    className="py-2 px-3 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs text-center"
+                                                >
+                                                    <Phone className="w-3.5 h-3.5 text-primary" /> Call Client
+                                                </a>
+                                                <a 
+                                                    href={`https://wa.me/${selectedConv.visitorPhone.replace(/\D/g, '')}`}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="py-2 px-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs text-center"
+                                                >
+                                                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.859 0c3.166.001 6.141 1.233 8.375 3.469 2.235 2.237 3.465 5.212 3.462 8.377-.003 6.535-5.328 11.86-11.859 11.86-2.004-.001-3.973-.51-5.716-1.48L0 24zm6.59-4.846c1.6.95 3.1 1.45 4.6 1.452 5.4 0 9.8-4.4 9.803-9.8.002-2.6-1.01-5.07-2.85-6.91-1.85-1.83-4.3-2.84-6.91-2.84-5.4 0-9.8 4.4-9.8 9.8-.001 1.7.46 3.3 1.35 4.74l-.99 3.6 3.7-.97zm10.4-3.5c-.3-.15-1.7-.85-2.0-.95-.3-.1-.5-.15-.7.15-.2.3-.75.95-.9.1-.15-.15-.3-.45-.3-.45 0-1.7-.6-3.2-1.95-1.16-1-1.95-2.3-2.2-2.7-.2-.3-.02-.45.13-.6.13-.13.3-.35.45-.5.15-.15.2-.25.3-.45.1-.2.05-.4-.02-.55-.07-.15-.7-1.7-.95-2.3-.3-.6-.6-.5-.8-.5-.2 0-.4 0-.6 0-.2 0-.6.1-.9.4-.3.3-1.1 1.1-1.1 2.7 0 1.6 1.2 3.1 1.35 3.3.15.2 2.35 3.6 5.7 5.03.8.34 1.43.55 1.9.7.8.25 1.5.2 2.1.1.65-.1 1.7-.7 2.0-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3z"/></svg> WhatsApp
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Tracking & Metadata */}
+                                <div className="space-y-4 pt-2">
+                                    <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Tracking Details</div>
+                                    <div className="divide-y divide-slate-100 text-xs">
+                                        <div className="py-2.5 flex items-center justify-between gap-4">
+                                            <span className="text-slate-500 font-semibold flex items-center gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> Source Link</span>
+                                            <span className="font-bold text-slate-800 text-right truncate max-w-[140px] select-all" title={selectedConv.linkTitle}>
+                                                {selectedConv.linkTitle}
+                                            </span>
+                                        </div>
+                                        <div className="py-2.5 flex items-center justify-between gap-4">
+                                            <span className="text-slate-500 font-semibold flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> First Connected</span>
+                                            <span className="font-bold text-slate-800 text-right" title={selectedConv.createdAt}>
+                                                {selectedConv.createdAt ? format(new Date(selectedConv.createdAt), 'MMM d, yyyy h:mm a') : 'N/A'}
+                                            </span>
+                                        </div>
+                                        <div className="py-2.5 flex items-center justify-between gap-4">
+                                            <span className="text-slate-500 font-semibold flex items-center gap-1.5"><Calendar className="w-3.5 h-3.5" /> Link Route</span>
+                                            <a 
+                                                href={`/chat/${selectedConv.linkSlug}`} 
+                                                target="_blank" 
+                                                rel="noreferrer"
+                                                className="font-bold text-primary hover:underline flex items-center gap-1.5 shrink-0"
+                                            >
+                                                <span>/{selectedConv.linkSlug}</span>
+                                                <ExternalLink className="w-3 h-3" />
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}

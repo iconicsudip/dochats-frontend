@@ -44,7 +44,9 @@
   box-sizing: border-box;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   width: 100%;
   margin: 0;
@@ -61,7 +63,12 @@ body {
   line-height: 1.5;
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-sans);
   font-weight: 600;
   letter-spacing: -0.01em;
@@ -84,4 +91,37 @@ h1, h2, h3, h4, h5, h6 {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+input:where([type='text']),
+input:where(:not([type])),
+input:where([type='email']),
+input:where([type='url']),
+input:where([type='password']),
+input:where([type='number']),
+input:where([type='date']),
+input:where([type='datetime-local']),
+input:where([type='month']),
+input:where([type='search']),
+input:where([type='tel']),
+input:where([type='time']),
+input:where([type='week']),
+select:where([multiple]),
+textarea,
+select {
+  font-size: 12.5px !important;
+}
+
+/* Reset font-size override for Ant Design components to their native 14px */
+input[class*="ant-"],
+select[class*="ant-"],
+textarea[class*="ant-"],
+[class*="ant-"] input,
+[class*="ant-"] select,
+[class*="ant-"] textarea,
+.ant-picker-dropdown input,
+.ant-picker-dropdown select,
+.ant-select-dropdown input,
+.ant-select-dropdown select {
+  font-size: 14px !important;
 }

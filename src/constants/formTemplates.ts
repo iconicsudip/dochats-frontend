@@ -1,5 +1,216 @@
 export const FORM_TEMPLATES = [
     {
+        id: 'premium-custom-dnd',
+        title: 'Premium Slot Booking (Custom DnD Design)',
+        description: 'Premium multi-step form utilizing custom sidebar layouts, dependent field options, and pre-configured sortable post-submission action blocks.',
+        industry: 'Premium Custom',
+        design: {
+            isMultistep: true,
+            layout: 'custom',
+            primaryColor: '#7c3aed',
+            steps: [
+                { id: 'step-selection', title: 'Category & Selection', description: 'Choose domain and specific service' },
+                { id: 'step-datetime', title: 'Preferred Slot', description: 'Pick your date and time slot' },
+                { id: 'step-uploads', title: 'Reference Uploads', description: 'Upload reference images or documents' },
+                { id: 'step-details', title: 'Contact Information', description: 'Enter your booking details' }
+            ],
+            thankYouPage: {
+                template: 'custom',
+                blocks: [
+                    { id: 'icon', type: 'icon', value: 'star', color: '#7c3aed', visible: true },
+                    { id: 'title', type: 'title', value: 'Booking Requested!', visible: true },
+                    { id: 'msg', type: 'message', value: 'Your request has been submitted. You can manage or reorder these blocks dynamically using drag and drop.', visible: true },
+                    { id: 'summary', type: 'booking_summary', value: 'Show Booking Details', visible: true },
+                    { id: 'btn_whatsapp', type: 'connect_whatsapp', label: 'Message Front Desk on WhatsApp', url: 'https://wa.me/', visible: true },
+                    { id: 'btn_livechat', type: 'connect_livechat', label: 'Chat Live with Host', slug: '', visible: true },
+                    { id: 'btn', type: 'button', label: 'Return to Website', url: '', visible: true }
+                ]
+            }
+        },
+        fields: [
+            { id: 'pd1', label: 'Booking Category', type: 'select', required: true, options: ['Salon & Beauty', 'Car / Villa Rental', 'Premium Restaurant'], stepId: 'step-selection' },
+            { id: 'pd2', label: 'Select Service / Selection', type: 'select', required: true, dependsOnFieldId: 'pd1', options: [
+                'HydraFacial Treatment | Salon & Beauty',
+                'Hair Balayage Coloring | Salon & Beauty',
+                'Luxury Beachfront Villa | Car / Villa Rental',
+                'Premium Tesla Model S Rental | Car / Villa Rental',
+                'VIP Rooftop Table Reservation | Premium Restaurant',
+                'Standard Dinner Buffet | Premium Restaurant'
+            ], stepId: 'step-selection' },
+            { id: 'pd3', label: 'Appointment Slot', type: 'date_time_calendar', required: true, stepId: 'step-datetime' },
+            { id: 'pd4', label: 'Reference Photos', type: 'image', required: false, options: ['multiple=true'], stepId: 'step-uploads' },
+            { id: 'pd5', label: 'Full Name', type: 'text', required: true, stepId: 'step-details' },
+            { id: 'pd6', label: 'Phone Number', type: 'tel', required: true, stepId: 'step-details' },
+            { id: 'pd7', label: 'Special Instructions', type: 'textarea', required: false, stepId: 'step-details' }
+        ]
+    },
+    {
+        id: 'restaurant-single',
+        title: 'Restaurant Table Booking (Single-Step)',
+        description: 'Instantly reserve a table, select party size, reservation date, and input guest details in one step.',
+        industry: 'Restaurant',
+        design: {
+            isMultistep: false,
+            layout: 'default',
+            primaryColor: '#e11d48',
+            thankYouPage: {
+                template: 'custom',
+                blocks: [
+                    { id: 'icon', type: 'icon', value: 'check-circle', color: '#e11d48', visible: true },
+                    { id: 'title', type: 'title', value: 'Table Reserved!', visible: true },
+                    { id: 'msg', type: 'message', value: 'Thank you for booking with us. We have reserved your table. See you soon!', visible: true },
+                    { id: 'summary', type: 'booking_summary', value: 'Show Reservation Summary', visible: true },
+                    { id: 'btn_whatsapp', type: 'connect_whatsapp', label: 'Message Host on WhatsApp', url: 'https://wa.me/', visible: true },
+                    { id: 'btn_livechat', type: 'connect_livechat', label: 'Chat Live with Host', slug: '', visible: false },
+                    { id: 'btn', type: 'button', label: 'Done', url: '', visible: true }
+                ]
+            }
+        },
+        fields: [
+            { id: 'ts1', label: 'Full Name', type: 'text', required: true },
+            { id: 'ts2', label: 'Phone Number', type: 'tel', required: true },
+            { id: 'ts3', label: 'Party Size', type: 'number', required: true },
+            { id: 'ts4', label: 'Reservation Date & Time', type: 'date_time_calendar', required: true },
+            { id: 'ts5', label: 'Special Occasion / Notes', type: 'textarea', required: false }
+        ]
+    },
+    {
+        id: 'restaurant-multi',
+        title: 'Premium Restaurant Slot Booking (Multi-Step)',
+        description: 'Exquisite multi-step reservation wizard for choosing seating preference, booking slots, and guest confirmation.',
+        industry: 'Restaurant',
+        design: {
+            isMultistep: true,
+            layout: 'custom', // Premium Sidebar Layout
+            primaryColor: '#d97706',
+            steps: [
+                { id: 'step-dining', title: 'Dining Preference', description: 'Select seating area & guests' },
+                { id: 'step-datetime', title: 'Date & Time Slot', description: 'Choose your preferred slot' },
+                { id: 'step-details', title: 'Guest Details', description: 'Enter contact information' },
+                { id: 'step-summary', title: 'Summary & Notes', description: 'Confirm and specify requests' }
+            ],
+            thankYouPage: {
+                template: 'custom',
+                blocks: [
+                    { id: 'icon', type: 'icon', value: 'star', color: '#d97706', visible: true },
+                    { id: 'title', type: 'title', value: 'Booking Requested!', visible: true },
+                    { id: 'msg', type: 'message', value: 'Your premium table request is being processed. Feel free to connect directly with our front desk below.', visible: true },
+                    { id: 'summary', type: 'booking_summary', value: 'Show reservation overview', visible: true },
+                    { id: 'btn_whatsapp', type: 'connect_whatsapp', label: 'Message Front Desk', url: 'https://wa.me/', visible: false },
+                    { id: 'btn_livechat', type: 'connect_livechat', label: 'Connect via Live Chat', slug: '', visible: true },
+                    { id: 'btn', type: 'button', label: 'Return Home', url: '', visible: true }
+                ]
+            }
+        },
+        fields: [
+            { id: 'tm1', label: 'Dining Area Preference', type: 'select', required: true, options: ['Indoor Main Hall', 'Outdoor Garden Patio', 'Rooftop Terrace', 'Private VIP Room'], stepId: 'step-dining' },
+            { id: 'tm2', label: 'Number of Guests', type: 'number', required: true, stepId: 'step-dining' },
+            { id: 'tm3', label: 'Preferred Date & Time Slot', type: 'date_time_calendar', required: true, stepId: 'step-datetime' },
+            { id: 'tm4', label: 'Full Name', type: 'text', required: true, stepId: 'step-details' },
+            { id: 'tm5', label: 'Phone Number', type: 'tel', required: true, stepId: 'step-details' },
+            { id: 'tm6', label: 'Email Address (Optional)', type: 'email', required: false, stepId: 'step-details' },
+            { id: 'tm7', label: 'Special Occasion / Dietary Notes', type: 'textarea', required: false, stepId: 'step-summary' }
+        ]
+    },
+    {
+        id: 'salon-service',
+        title: 'Salon & Beauty Treatment Booking',
+        description: 'Allow clients to pick skin or hair treatment, schedule slots, and upload photos for stylist preparation.',
+        industry: 'Service Booking',
+        design: {
+            isMultistep: true,
+            layout: 'custom', // Premium Sidebar Layout
+            primaryColor: '#00a884',
+            steps: [
+                { id: 'step-service', title: 'Service', description: 'Choose category and treatment' },
+                { id: 'step-datetime', title: 'Date & Time', description: 'Select slot on Calendar' },
+                { id: 'step-details', title: 'Basic Details', description: 'Fill contact and upload references' },
+                { id: 'step-summary', title: 'Summary', description: 'Verify and book' }
+            ],
+            thankYouPage: {
+                template: 'custom',
+                blocks: [
+                    { id: 'icon', type: 'icon', value: 'check-circle', color: '#10b981', visible: true },
+                    { id: 'title', type: 'title', value: 'Booking Requested!', visible: true },
+                    { id: 'msg', type: 'message', value: 'We have received your salon treatment query. A confirmation SMS will be sent shortly.', visible: true },
+                    { id: 'summary', type: 'booking_summary', value: 'Show booking details', visible: true },
+                    { id: 'btn_whatsapp', type: 'connect_whatsapp', label: 'Connect on WhatsApp', url: 'https://wa.me/', visible: false },
+                    { id: 'btn_livechat', type: 'connect_livechat', label: 'Chat Live', slug: '', visible: false },
+                    { id: 'btn', type: 'button', label: 'Back to Salon Website', url: 'https://mysalon.com', visible: true }
+                ]
+            }
+        },
+        fields: [
+            { id: 's1', label: 'Treatment Category', type: 'select', required: true, options: ['Skin Treatment', 'Beauty Care', 'Hair Treatment', 'Body Treatment'], stepId: 'step-service' },
+            { id: 's2', label: 'Select Service', type: 'select', required: true, dependsOnFieldId: 's1', options: [
+                'HydraFacial Aqua | Skin Treatment',
+                'HydraFacial Pro | Skin Treatment',
+                'HydraFacial Rejuvenation | Skin Treatment',
+                'Super Facial | Skin Treatment',
+                'Hydra Growth Factor Caviar | Skin Treatment',
+                'Deep Facial | Beauty Care',
+                'Carbon Extraction Mask | Beauty Care',
+                'Nail Strong gel | Beauty Care',
+                'Hair Spa & Trim | Hair Treatment',
+                'Balayage Coloring | Hair Treatment',
+                'Hot Stone Massage | Body Treatment',
+                'Deep Tissue Therapy | Body Treatment'
+            ], stepId: 'step-service' },
+            { id: 's3', label: 'Appointment Date & Time', type: 'date_time_calendar', required: true, stepId: 'step-datetime' },
+            { id: 's4', label: 'Full Name', type: 'text', required: true, stepId: 'step-details' },
+            { id: 's5', label: 'Phone Number', type: 'tel', required: true, stepId: 'step-details' },
+            { id: 's6', label: 'Email Address', type: 'email', required: false, stepId: 'step-details' },
+            { id: 's7', label: 'Reference Image (Optional)', type: 'image', required: false, options: ['multiple=false'], stepId: 'step-details' }
+        ]
+    },
+    {
+        id: 'rental-booking',
+        title: 'Villa & Rental Car Booking',
+        description: 'Seamless check-in/out and vehicle rental scheduling with multiple ID uploads.',
+        industry: 'Rental Booking',
+        design: {
+            isMultistep: true,
+            layout: 'custom', // Premium Sidebar Layout
+            primaryColor: '#4f46e5',
+            steps: [
+                { id: 'step-accommodation', title: 'Selection', description: 'Choose your rental' },
+                { id: 'step-dates', title: 'Dates & Duration', description: 'Select booking range' },
+                { id: 'step-guests', title: 'Guest & ID Proof', description: 'Enter details and upload ID' },
+                { id: 'step-summary', title: 'Summary', description: 'Confirm booking' }
+            ],
+            thankYouPage: {
+                template: 'custom',
+                blocks: [
+                    { id: 'icon', type: 'icon', value: 'check-circle', color: '#4f46e5', visible: true },
+                    { id: 'title', type: 'title', value: 'Reservation Reserved!', visible: true },
+                    { id: 'msg', type: 'message', value: 'Thank you for booking with us. Your room/vehicle is temporarily held pending ID verification.', visible: true },
+                    { id: 'summary', type: 'booking_summary', value: 'Show rental overview', visible: true },
+                    { id: 'btn_whatsapp', type: 'connect_whatsapp', label: 'Connect on WhatsApp', url: 'https://wa.me/', visible: false },
+                    { id: 'btn_livechat', type: 'connect_livechat', label: 'Chat Live', slug: '', visible: false },
+                    { id: 'btn', type: 'button', label: 'Explore Activities', url: 'https://myresort.com/activities', visible: true }
+                ]
+            }
+        },
+        fields: [
+            { id: 'r1', label: 'Rental Category', type: 'select', required: true, options: ['Luxury Villa', 'Deluxe Hotel Room', 'Luxury Sedan', 'SUV Off-Road'], stepId: 'step-accommodation' },
+            { id: 'r2', label: 'Select Model / Suite', type: 'select', required: true, dependsOnFieldId: 'r1', options: [
+                'Presidential Villa | Luxury Villa',
+                'Royal Beachfront Villa | Luxury Villa',
+                'Sunset Pool Room | Deluxe Hotel Room',
+                'Executive Suite | Deluxe Hotel Room',
+                'Tesla Model S | Luxury Sedan',
+                'Mercedes S-Class | Luxury Sedan',
+                'Range Rover Sport | SUV Off-Road',
+                'Jeep Wrangler Rubicon | SUV Off-Road'
+            ], stepId: 'step-accommodation' },
+            { id: 'r3', label: 'Booking Range', type: 'date_time_calendar', required: true, options: ['range=true'], stepId: 'step-dates' },
+            { id: 'r4', label: 'Number of Guests/Drivers', type: 'number', required: true, stepId: 'step-dates' },
+            { id: 'r5', label: 'Primary Guest Name', type: 'text', required: true, stepId: 'step-guests' },
+            { id: 'r6', label: 'Phone Number', type: 'tel', required: true, stepId: 'step-guests' },
+            { id: 'r7', label: 'Upload ID Proof (Multiple Allowed)', type: 'image', required: true, options: ['multiple=true'], stepId: 'step-guests' }
+        ]
+    },
+    {
         id: 'real-estate-lead',
         title: 'Real Estate Lead Capture',
         description: 'Qualify property buyers and sellers with specific requirements.',
@@ -59,21 +270,6 @@ export const FORM_TEMPLATES = [
             { id: '2', label: 'Organization', type: 'text', required: false },
             { id: '3', label: 'WhatsApp Number', type: 'tel', required: true },
             { id: '4', label: 'How did you hear about us?', type: 'select', required: false, options: ['Social Media', 'Email', 'Friend', 'Ad'] }
-        ]
-    },
-    {
-        id: 'hotel-booking',
-        title: 'Hotel Room Booking',
-        description: 'Streamline room reservations with guest details and preferences.',
-        industry: 'Hospitality',
-        fields: [
-            { id: '1', label: 'Guest Name', type: 'text', required: true },
-            { id: '2', label: 'Phone Number', type: 'tel', required: true },
-            { id: '3', label: 'Room Type', type: 'select', required: true, options: ['Single Room', 'Double Room', 'Deluxe Suite', 'Presidential Suite'] },
-            { id: '4', label: 'Check-in Date', type: 'date', required: true },
-            { id: '5', label: 'Check-out Date', type: 'date', required: true },
-            { id: '6', label: 'Number of Guests', type: 'number', required: true },
-            { id: '7', label: 'Special Requests', type: 'textarea', required: false }
         ]
     }
 ];
