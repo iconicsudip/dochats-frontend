@@ -14,6 +14,7 @@ export type MessageType = typeof MessageType[keyof typeof MessageType];
 export const Module = {
     OVERVIEW: 'OVERVIEW',
     LIVE_CHAT: 'LIVE_CHAT',
+    CHAT_GROUPS: 'CHAT_GROUPS',
     CRM: 'CRM',
     BOOKINGS: 'BOOKINGS',
     AUTOMATION: 'AUTOMATION',
@@ -31,6 +32,7 @@ export type Module = typeof Module[keyof typeof Module];
 export const ModuleLabel: Record<Module, string> = {
     OVERVIEW: 'Overview',
     LIVE_CHAT: 'Live Chat',
+    CHAT_GROUPS: 'Chat Groups',
     CRM: 'CRM & Pipeline',
     BOOKINGS: 'Bookings',
     AUTOMATION: 'Automation',

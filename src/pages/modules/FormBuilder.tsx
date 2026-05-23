@@ -13,6 +13,7 @@ import {
     useSensor,
     useSensors,
     DragEndEvent,
+    DragOverlay
 } from '@dnd-kit/core';
 import {
     arrayMove,
@@ -23,6 +24,7 @@ import {
     useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Icons
 import { Plus, Trash2, Save, ArrowLeft, GripVertical, Settings, Copy, Globe, Check, X, ChevronUp, ChevronDown, Eye, EyeOff } from 'lucide-react';
@@ -780,9 +782,10 @@ const SortableThankYouBlock: React.FC<SortableThankYouBlockProps> = ({
 };
 
 const FormBuilder: React.FC = () => {
-    const { id } = useParams();
+    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const location = useLocation();
+    const queryClient = useQueryClient();
     
     // Custom Toast State
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
@@ -844,13 +847,14 @@ const FormBuilder: React.FC = () => {
         return updated;
     };
 
+    const { data: smartLinksData } = useQuery({
+        queryKey: ['smart-links'],
+        queryFn: () => apiClient.get('/links?limit=500').then(res => res.data?.data || res.data || [])
+    });
+
     useEffect(() => {
-        apiClient.get('/links?limit=500')
-            .then(res => {
-                setSmartLinks(res.data?.data || res.data || []);
-            })
-            .catch(err => console.error('Failed to fetch smart links', err));
-    }, []);
+        if (smartLinksData) setSmartLinks(smartLinksData);
+    }, [smartLinksData]);
 
     const sensors = useSensors(
         useSensor(PointerSensor, {
@@ -863,9 +867,37 @@ const FormBuilder: React.FC = () => {
         })
     );
 
+    const { data: formData, isLoading: loadingForm } = useQuery({
+        queryKey: ['form', id],
+        queryFn: () => formsApi.getForm(id!),
+        enabled: !!id
+    });
+
     useEffect(() => {
-        if (id) {
-            fetchForm();
+        if (formData) {
+            const data = formData.data;
+            setTitle(data.title || '');
+            setDescription(data.description || '');
+            setIsActive(data.isActive !== false);
+            setAddToCrm(data.addToCrm || false);
+            setPrimaryColor(data.design?.primaryColor || '#2563eb');
+            setBackgroundColor(data.design?.backgroundColor || '#f8fafc');
+            setTextColor(data.design?.textColor || '#0f172a');
+            
+            const isMs = data.design?.isMultistep || false;
+            const lay = data.design?.layout || 'default';
+            const stps = data.design?.steps || [];
+            setIsMultistep(isMs);
+            setLayout(lay);
+            setSteps(stps);
+            setStepsSidebarTitle(data.design?.stepsSidebarTitle || 'Booking Steps');
+            setSubmitButtonText(data.design?.submitButtonText || (isMs ? 'Book Appointment' : 'Submit Response'));
+            if (stps.length > 0) {
+                setActiveStepTab(stps[0].id);
+            }
+            setThankYouBlocks(ensureCtaBlocks(data.design?.thankYouPage?.blocks || []));
+            setFields(data.fields.map((f: any) => ({ ...f, validation: f.validation || {} })));
+            setLoading(false);
         } else if (location.state?.template) {
             const template = location.state.template;
             setTitle(template.title || '');
@@ -901,13 +933,23 @@ const FormBuilder: React.FC = () => {
                 id: f.id || Date.now().toString() + Math.random().toString(),
                 validation: f.validation || {}
             })));
-        } else {
+        } else if (!id) {
             setFields([
                 { id: '1', label: 'Full Name', type: 'text', required: true, validation: {} },
                 { id: '2', label: 'Email Address', type: 'email', required: true, validation: {} }
             ]);
         }
-    }, [id, location.state]);
+    }, [formData, id, location.state]);
+
+    const createFormMutation = useMutation({
+        mutationFn: (data: any) => formsApi.createForm(data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['forms'] })
+    });
+
+    const updateFormMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string, data: any }) => formsApi.updateForm(id, data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['forms'] })
+    });
 
     useEffect(() => {
         if (isMultistep && steps.length === 0) {
@@ -923,46 +965,6 @@ const FormBuilder: React.FC = () => {
             setActiveStepTab(steps[0].id);
         }
     }, [steps, activeStepTab]);
-
-    const fetchForm = async () => {
-        setLoading(true);
-        try {
-            const res = await formsApi.getForm(id!);
-            const data = res.data;
-            setTitle(data.title || '');
-            setDescription(data.description || '');
-            setIsActive(data.isActive !== false);
-            setAddToCrm(data.addToCrm || false);
-            setPrimaryColor(data.design?.primaryColor || '#2563eb');
-            setBackgroundColor(data.design?.backgroundColor || '#f8fafc');
-            setTextColor(data.design?.textColor || '#0f172a');
-            
-            const isMs = data.design?.isMultistep || false;
-            const lay = data.design?.layout || 'default';
-            const stps = data.design?.steps || [];
-            setIsMultistep(isMs);
-            setLayout(lay);
-            setSteps(stps);
-            setStepsSidebarTitle(data.design?.stepsSidebarTitle || 'Booking Steps');
-            setSubmitButtonText(data.design?.submitButtonText || (isMs ? 'Book Appointment' : 'Submit Response'));
-            if (stps.length > 0) {
-                setActiveStepTab(stps[0].id);
-            }
-            setThankYouBlocks(ensureCtaBlocks(data.design?.thankYouPage?.blocks || [
-                { id: 'icon', type: 'icon', value: 'check-circle', color: '#10b981', visible: true },
-                { id: 'title', type: 'title', value: 'Booking Requested!', visible: true },
-                { id: 'msg', type: 'message', value: 'We have received your salon treatment query. A confirmation SMS will be sent shortly.', visible: true },
-                { id: 'summary', type: 'booking_summary', value: 'Show booking details', visible: true },
-                { id: 'btn', type: 'button', label: 'Done', url: '', visible: true }
-            ]));
-            
-            setFields(data.fields.map((f: any) => ({ ...f, validation: f.validation || {} })));
-        } catch (e) {
-            showToast('Failed to fetch form details', 'error');
-        } finally {
-            setLoading(false);
-        }
-    };
 
     // Step Operations
     const addStep = () => {
@@ -1170,10 +1172,10 @@ const FormBuilder: React.FC = () => {
             };
 
             if (id) {
-                await formsApi.updateForm(id, payload);
+                await updateFormMutation.mutateAsync({ id, data: payload });
                 showToast('Form updated successfully', 'success');
             } else {
-                await formsApi.createForm(payload);
+                await createFormMutation.mutateAsync(payload);
                 showToast('Form created successfully', 'success');
             }
             navigate('/dashboard/forms');

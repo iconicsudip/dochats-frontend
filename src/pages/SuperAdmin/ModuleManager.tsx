@@ -16,6 +16,7 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 
 const ALL_MODULES: { key: Module; icon: React.ReactNode; color: string; desc: string }[] = [
     { key: Module.LIVE_CHAT, icon: <MessageSquare className="w-5 h-5 text-purple-500" />, color: 'border-purple-200 bg-purple-50 text-purple-700', desc: 'Real-time chat with visitors' },
+    { key: Module.CHAT_GROUPS, icon: <MessageSquare className="w-5 h-5 text-violet-500" />, color: 'border-violet-200 bg-violet-50 text-violet-700', desc: 'Internal team group chat' },
     { key: Module.CRM, icon: <TrendingUp className="w-5 h-5 text-purple-500" />, color: 'border-purple-200 bg-purple-50 text-purple-700', desc: 'Pipeline, leads, deals' },
     { key: Module.BOOKINGS, icon: <Calendar className="w-5 h-5 text-blue-500" />, color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Appointments & reservations' },
     { key: Module.AUTOMATION, icon: <Zap className="w-5 h-5 text-amber-500" />, color: 'border-amber-200 bg-amber-50 text-amber-700', desc: 'Workflow automation engine' },
@@ -56,7 +57,7 @@ const ModuleManager: React.FC = () => {
                 
                 if (combined.length === 0) {
                     combined = [
-                        Module.LIVE_CHAT, Module.CRM, Module.BOOKINGS, 
+                        Module.LIVE_CHAT, Module.CHAT_GROUPS, Module.CRM, Module.BOOKINGS, 
                         Module.AUTOMATION, Module.ANALYTICS, Module.LINKS, 
                         Module.SUB_USERS, Module.BILLING, Module.PLANS, 
                         Module.FORMS, Module.WHATSAPP, Module.EMAIL

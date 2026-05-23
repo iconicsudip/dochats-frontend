@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
 import apiClient from '../api/apiClient';
@@ -10,7 +10,8 @@ import { MessageType } from '../enums';
 import {
     Send, Smile, Paperclip, MoreVertical, Search, MessageSquare,
     Check, CheckCheck, Mic, Filter, X, ArrowLeft,
-    User, Copy, ExternalLink, Phone, Calendar, Tag, Clock
+    User, Copy, ExternalLink, Phone, Calendar, Tag, Clock,
+    MessagesSquare
 } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -99,29 +100,73 @@ const LiveChat: React.FC = () => {
         ? conversations
         : conversations.filter((c: any) => c.linkId === selectedLinkId);
 
+    const markReadMutation = useMutation({
+        mutationFn: (conversationId: string) => apiClient.post('/messages/mark-read', { conversationId, isAdmin: true })
+    });
+
+    const sendMsgMutation = useMutation({
+        mutationFn: (data: any) => apiClient.post('/messages', data)
+    });
+
+    const previewMutation = useMutation({
+        mutationFn: (url: string) => apiClient.post('/public/preview', { url })
+    });
+
+    const loadMoreMutation = useMutation({
+        mutationFn: ({ conversationId, cursor }: { conversationId: string, cursor: string }) => 
+            apiClient.get(`/messages?conversationId=${conversationId}&cursor=${cursor}&limit=40`)
+    });
+
+    const { data: fetchedMessages, isLoading: loadingFetchedMessages } = useQuery({
+        queryKey: ['live-messages', selectedId],
+        queryFn: () => apiClient.get(`/messages?conversationId=${selectedId}`).then(res => res.data),
+        enabled: !!selectedId,
+        refetchInterval: 5000,
+    });
+
     useEffect(() => {
-        if (!selectedId) {
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-            return;
+        if (fetchedMessages && selectedId) {
+            setLoadingMessages(false);
+            setMessages(prev => {
+                const newMsgs = fetchedMessages;
+                const existingIds = new Set(prev.map(m => m.id));
+                const merged = [...prev];
+
+                newMsgs.forEach((msg: any) => {
+                    if (existingIds.has(msg.id)) return;
+
+                    const dupeIndex = merged.findIndex(m =>
+                        (msg.tempId && m.id === msg.tempId) ||
+                        (m.id.startsWith('temp-') && m.content === msg.content && m.isFromAdmin === msg.isFromAdmin)
+                    );
+
+                    if (dupeIndex !== -1) {
+                        merged[dupeIndex] = msg;
+                    } else {
+                        merged.push(msg);
+                    }
+                });
+
+                const sorted = merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                messagesCache.current[selectedId] = sorted;
+                return sorted;
+            });
+
+            if (fetchedMessages.length > 0) {
+                markReadMutation.mutate(selectedId);
+            }
         }
-
-        pollIntervalRef.current = setInterval(() => {
-            fetchMessages(true);
-        }, 5000);
-
-        return () => {
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-        };
-    }, [selectedId]);
+    }, [fetchedMessages, selectedId]);
 
     useEffect(() => {
         if (selectedId) {
+            setLoadingMessages(true);
             if (messagesCache.current[selectedId]) {
                 setMessages(messagesCache.current[selectedId]);
+                setLoadingMessages(false);
             } else {
                 setMessages([]);
             }
-            fetchMessages(true);
             setLinkPreview(null);
         } else {
             setMessages([]);
@@ -142,7 +187,7 @@ const LiveChat: React.FC = () => {
             if (linkPreview?.url === url) return;
 
             const timer = setTimeout(() => {
-                apiClient.post('/public/preview', { url })
+                previewMutation.mutateAsync(url)
                     .then(res => setLinkPreview(res.data))
                     .catch(() => setLinkPreview(null));
             }, 1000);
@@ -152,57 +197,14 @@ const LiveChat: React.FC = () => {
         }
     }, [inputText]);
 
-    const fetchMessages = async (isInitial = false) => {
-        if (!selectedId) return;
-        if (isSending.current && !isInitial) return;
 
-        const currentFetch = ++fetchCounter.current;
-        try {
-            const res = await apiClient.get(`/messages?conversationId=${selectedId}`);
-            if (currentFetch !== fetchCounter.current) return;
-
-            setMessages(prev => {
-                const newMsgs = res.data;
-                const existingIds = new Set(prev.map(m => m.id));
-                const merged = [...prev];
-
-                newMsgs.forEach((msg: any) => {
-                    if (existingIds.has(msg.id)) return;
-
-                    const dupeIndex = merged.findIndex(m =>
-                        (msg.tempId && m.id === msg.tempId) ||
-                        (m.id.startsWith('temp-') && m.content === msg.content && m.isFromAdmin === msg.isFromAdmin)
-                    );
-
-                    if (dupeIndex !== -1) {
-                        merged[dupeIndex] = msg;
-                    } else {
-                        merged.push(msg);
-                    }
-                });
-
-                const sorted = merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-                messagesCache.current[selectedId!] = sorted;
-                return sorted;
-            });
-
-            if (res.data.length > 0) {
-                apiClient.post('/messages/mark-read', { conversationId: selectedId, isAdmin: true })
-                    .catch(err => console.error('Mark read error:', err));
-            }
-        } catch (err) {
-            console.error('Fetch messages error:', err);
-        } finally {
-            if (isInitial) setLoadingMessages(false);
-        }
-    };
 
     const loadMoreMessages = async () => {
         if (loadingMore || !hasMore || messages.length === 0) return;
         setLoadingMore(true);
         const oldestId = messages[0].id;
         try {
-            const res = await apiClient.get(`/messages?conversationId=${selectedId}&cursor=${oldestId}&limit=40`);
+            const res = await loadMoreMutation.mutateAsync({ conversationId: selectedId!, cursor: oldestId });
             if (res.data.length < 40) setHasMore(false);
             const prevHeight = scrollRef.current?.scrollHeight || 0;
             setMessages(prev => [...res.data, ...prev]);
@@ -245,7 +247,7 @@ const LiveChat: React.FC = () => {
         setMessages(prev => [...prev, optimisticMsg]);
 
         try {
-            const res = await apiClient.post('/messages', {
+            const res = await sendMsgMutation.mutateAsync({
                 conversationId: selectedId,
                 content,
                 type: MessageType.TEXT,
@@ -291,7 +293,7 @@ const LiveChat: React.FC = () => {
         setMessages(prev => [...prev, optimisticMsg]);
 
         try {
-            const res = await apiClient.post('/messages', {
+            const res = await sendMsgMutation.mutateAsync({
                 conversationId: selectedId,
                 content: audioBase64,
                 type: MessageType.AUDIO,

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pagination } from 'antd';
 import apiClient from '../../api/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
@@ -139,6 +140,7 @@ const Bookings: React.FC = () => {
     const [copiedFeed, setCopiedFeed] = useState(false);
 
     const { user } = useAuth();
+    const queryClient = useQueryClient();
     const [teamMembers, setTeamMembers] = useState<any[]>([]);
 
     // Form State
@@ -164,32 +166,10 @@ const Bookings: React.FC = () => {
 
     const location = useLocation();
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchBookings();
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [page, pageSize, searchTerm, filterStatus, filterDate, filterOwner, view]);
-
-    useEffect(() => {
-        const params = new URLSearchParams(location.search);
-        if (params.get('tab') === 'settings') {
-            setView('calendar');
-        }
-        fetchCalendarConfig();
-        fetchTeamMembers();
-    }, [location.search]);
-
-    const fetchTeamMembers = async () => {
-        try {
-            const res = await apiClient.get('/auth/sub-users');
-            if (res.data && Array.isArray(res.data.users)) {
-                setTeamMembers(res.data.users);
-            }
-        } catch (err) {
-            console.error('Failed to fetch team members', err);
-        }
-    };
+    const { data: teamMembersData } = useQuery({
+        queryKey: ['sub-users'],
+        queryFn: () => apiClient.get('/auth/sub-users').then(res => res.data?.users || [])
+    });
 
     const teamMembersMap = React.useMemo(() => {
         const map: Record<string, string> = {};
@@ -200,16 +180,25 @@ const Bookings: React.FC = () => {
         return map;
     }, [user, teamMembers]);
 
-    const fetchBookings = async () => {
-        try {
-            const data = await bookingsApi.getBookings({ 
-                page: view === 'calendar' ? undefined : page, 
-                limit: view === 'calendar' ? undefined : pageSize, 
-                search: searchTerm, 
-                status: filterStatus === 'all' ? undefined : filterStatus,
-                date: filterDate === 'all' ? undefined : filterDate,
-                owner: filterOwner === 'all' ? undefined : filterOwner
-            });
+    useEffect(() => {
+        if (teamMembersData) setTeamMembers(teamMembersData);
+    }, [teamMembersData]);
+
+    const { data: bookingsData } = useQuery({
+        queryKey: ['bookings', page, pageSize, searchTerm, filterStatus, filterDate, filterOwner, view],
+        queryFn: () => bookingsApi.getBookings({ 
+            page: view === 'calendar' ? undefined : page, 
+            limit: view === 'calendar' ? undefined : pageSize, 
+            search: searchTerm, 
+            status: filterStatus === 'all' ? undefined : filterStatus,
+            date: filterDate === 'all' ? undefined : filterDate,
+            owner: filterOwner === 'all' ? undefined : filterOwner
+        })
+    });
+
+    useEffect(() => {
+        if (bookingsData) {
+            const data = bookingsData;
             if (data && data.data) {
                 setBookings(data.data);
                 setTotal(data.total || 0);
@@ -217,32 +206,66 @@ const Bookings: React.FC = () => {
             } else if (Array.isArray(data)) {
                 setBookings(data);
                 setTotal(data.length);
-                const confirmed = data.filter(b => b.status === 'CONFIRMED').length;
-                const completed = data.filter(b => b.status === 'COMPLETED').length;
-                const pending = data.filter(b => b.status === 'PENDING').length;
-                const fromAi = data.filter(b => b.source === 'AI Chat').length;
-                const today = data.filter(b => dayjs(b.date).format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD')).length;
+                const confirmed = data.filter((b: any) => b.status === 'CONFIRMED').length;
+                const completed = data.filter((b: any) => b.status === 'COMPLETED').length;
+                const pending = data.filter((b: any) => b.status === 'PENDING').length;
+                const fromAi = data.filter((b: any) => b.source === 'AI Chat').length;
+                const today = data.filter((b: any) => dayjs(b.date).format('YYYY-MM-DD') === dayjs().format('YYYY-MM-DD')).length;
                 setSummary({ totalBookings: data.length, todaySlots: today, pendingConfirmation: pending, fromAiChat: fromAi });
             }
-        } catch (error) {
-            console.error(error);
         }
-    };
+    }, [bookingsData]);
 
-    const fetchCalendarConfig = async () => {
-        try {
-            const config = await bookingsApi.getCalendarConfig();
-            if (config) setCalendarConfig(config);
-        } catch (error) {
-            console.error(error);
+    const { data: configData } = useQuery({
+        queryKey: ['calendar-config'],
+        queryFn: () => bookingsApi.getCalendarConfig()
+    });
+
+    useEffect(() => {
+        if (configData) setCalendarConfig(configData);
+    }, [configData]);
+
+    const saveCalendarConfigMutation = useMutation({
+        mutationFn: (newConfig: CalendarConfig) => bookingsApi.updateCalendarConfig(newConfig),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['calendar-config'] })
+    });
+
+    const importIcalMutation = useMutation({
+        mutationFn: (url: string) => bookingsApi.importExternalIcal(url),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    });
+
+    const createBookingMutation = useMutation({
+        mutationFn: (data: Partial<Booking>) => bookingsApi.createBooking(data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    });
+
+    const updateBookingMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string, data: Partial<Booking> }) => bookingsApi.updateBooking(id, data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    });
+
+    const updateStatusMutation = useMutation({
+        mutationFn: ({ id, status }: { id: string, status: string }) => bookingsApi.updateStatus(id, status),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    });
+
+    const syncExternalMutation = useMutation({
+        mutationFn: (id: string) => bookingsApi.syncExternal(id),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    });
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        if (params.get('tab') === 'settings') {
+            setView('calendar');
         }
-    };
+    }, [location.search]);
 
     const saveCalendarConfig = async (newConfig: CalendarConfig) => {
         setIsSavingConfig(true);
         try {
-            const saved = await bookingsApi.updateCalendarConfig(newConfig);
-            setCalendarConfig(saved);
+            await saveCalendarConfigMutation.mutateAsync(newConfig);
             showToast("Calendar sync configuration saved", 'success');
         } catch (error) {
             console.error(error);
@@ -257,9 +280,8 @@ const Bookings: React.FC = () => {
         if (!importIcalUrl) return;
         setIsImporting(true);
         try {
-            const res = await bookingsApi.importExternalIcal(importIcalUrl);
-            showToast(res.message, res.count > 0 ? 'success' : 'warning');
-            fetchBookings();
+            const res = await importIcalMutation.mutateAsync(importIcalUrl);
+            showToast(`Imported ${res.count || 0} events from iCal feed`, 'success');
             setImportIcalUrl('');
         } catch (error) {
             console.error(error);
@@ -282,14 +304,13 @@ const Bookings: React.FC = () => {
                 meetingUrl: finalMeetingUrl,
                 source: 'Manual',
             };
-            await bookingsApi.createBooking(data);
+            await createBookingMutation.mutateAsync(data);
+            showToast("Meeting booked successfully!", 'success');
             setDrawerType('none');
             setFormData({
                 clientName: '', phone: '', email: '', service: 'Property Consultation', 
                 date: dayjs().format('YYYY-MM-DD'), time: '10:00', duration: 30, notes: '', meetingUrl: '', assignedTo: user?.id || ''
             });
-            fetchBookings();
-            showToast("Booking scheduled successfully with calendar links", 'success');
         } catch (error) {
             console.error(error);
             showToast("Failed to create booking", 'error');
@@ -298,10 +319,10 @@ const Bookings: React.FC = () => {
 
     const handleAssignBooking = async (id: string, assignedTo: string) => {
         try {
-            const updated = await bookingsApi.updateBooking(id, { assignedTo });
-            setBookings(prev => prev.map(b => b.id === id ? { ...b, assignedTo } : b));
+            const updated = await updateBookingMutation.mutateAsync({ id, data: { assignedTo } });
+            setBookings(prev => prev.map(b => b.id === id ? updated : b));
             if (selectedBooking?.id === id) setSelectedBooking(updated);
-            showToast("Assigned owner updated successfully", "success");
+            showToast("Assigned successfully!", "success");
         } catch (err) {
             console.error("Failed to assign booking", err);
             showToast("Failed to assign booking", "error");
@@ -309,15 +330,13 @@ const Bookings: React.FC = () => {
     };
 
     const updateStatus = async (id: string, status: BookingStatus) => {
-        setBookings(prev => prev.map(b => b.id === id ? { ...b, status: status.toUpperCase() as any } : b));
-        if (selectedBooking?.id === id) setSelectedBooking(prev => prev ? { ...prev, status: status.toUpperCase() as any } : null);
-        
         try {
-            await bookingsApi.updateStatus(id, status.toUpperCase());
-            showToast(`Booking ${status}`, 'success');
+            await updateStatusMutation.mutateAsync({ id, status: status.toUpperCase() });
+            setBookings(prev => prev.map(b => b.id === id ? { ...b, status: status.toUpperCase() as any } : b));
+            if (selectedBooking?.id === id) setSelectedBooking(prev => prev ? { ...prev, status: status.toUpperCase() as any } : null);
+            showToast("Booking status updated", 'success');
         } catch (error) {
             console.error(error);
-            fetchBookings();
             showToast("Failed to update status", 'error');
         }
     };
@@ -325,7 +344,7 @@ const Bookings: React.FC = () => {
     const handleExternalSync = async (id: string) => {
         setIsSyncing(id);
         try {
-            const res = await bookingsApi.syncExternal(id);
+            await syncExternalMutation.mutateAsync(id);
             setBookings(prev => prev.map(b => b.id === id ? { ...b, externalSynced: true } : b));
             if (selectedBooking?.id === id) setSelectedBooking(prev => prev ? { ...prev, externalSynced: true } : null);
             showToast("Successfully synchronized with external calendar providers", 'success');

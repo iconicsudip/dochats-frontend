@@ -11,7 +11,7 @@ import {
     Users, PieChart, CreditCard, DollarSign, AlertTriangle, 
     Zap, Rocket, Menu, Calendar, PlayCircle, BarChart3, AppWindow, 
     FileText, Phone, Mail, Settings as SettingsIcon, ChevronDown, X, Plug, Search, Bell, HelpCircle, LayoutGrid, MessageCircle,
-    Building2, Briefcase, LifeBuoy, ShoppingBag
+    Building2, Briefcase, LifeBuoy, ShoppingBag, MessagesSquare
 } from 'lucide-react';
 
 const DashboardLayout: React.FC = () => {
@@ -90,6 +90,7 @@ const DashboardLayout: React.FC = () => {
             label: 'Workspace',
             children: [
                 { key: '/dashboard/sub-users', icon: Users, label: 'Team', module: Module.SUB_USERS },
+                { key: '/dashboard/chat-groups', icon: MessagesSquare, label: 'Chat Groups', module: Module.CHAT_GROUPS },
                 { key: '/dashboard/plans', icon: Zap, label: 'My Plan', module: Module.PLANS },
                 { key: '/dashboard/billing', icon: CreditCard, label: 'Billing', module: Module.BILLING },
                 { key: '/dashboard/settings', icon: SettingsIcon, label: 'Settings' },
@@ -100,6 +101,7 @@ const DashboardLayout: React.FC = () => {
     // Strictly preserved Sub User items
     const subUserItems = [
         { key: '/dashboard/chat', icon: MessageSquare, label: 'Live Inbox', module: Module.LIVE_CHAT },
+        { key: '/dashboard/chat-groups', icon: MessagesSquare, label: 'Chat Groups', module: Module.CHAT_GROUPS },
         {
             key: 'crm',
             icon: Users,

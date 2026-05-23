@@ -4,6 +4,7 @@ import DashboardLayout from './layouts/DashboardLayout';
 import Overview from './pages/Overview';
 import Links from './pages/Links';
 import LiveChat from './pages/LiveChat';
+import ChatGroups from './pages/ChatGroups';
 import PublicChat from './pages/PublicChat';
 import SubUsers from './pages/SubUsers';
 import Reports from './pages/Reports';
@@ -75,6 +76,7 @@ function App() {
                         {/* Gated routes */}
                         <Route path="links" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Links />} />
                         <Route path="sub-users" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <SubUsers />} />
+                        <Route path="chat-groups" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <ChatGroups />} />
                         <Route path="reports" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Reports />} />
                         {/* Business OS Modules */}
                         <Route path="crm" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <CRM />} />
@@ -101,6 +103,7 @@ function App() {
                 {(user?.role === Role.ADMIN || user?.role === Role.SUB_USER) && (
                     <>
                         <Route path="chat" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <LiveChat />} />
+                        <Route path="chat-groups" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <ChatGroups />} />
                         {user?.role === Role.SUB_USER && (
                             <>
                                 <Route path="crm" element={<CRM />} />

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Pagination } from 'antd';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import apiClient from '../../api/apiClient';
 import { useAuth } from '../../contexts/AuthContext';
 import { crmApi, CrmLead, ActivityItem } from '../../api/crm';
@@ -41,6 +42,7 @@ const SAMPLE_CSV = `name,phone,email,company,jobTitle,city,industry,value,lifecy
 
 const CRM: React.FC = () => {
     const { user } = useAuth();
+    const queryClient = useQueryClient();
     const [teamMembers, setTeamMembers] = useState<{ id: string; name: string; username: string }[]>([]);
 
     const [view, setView] = useState<'pipeline' | 'list' | 'detail'>('list');
@@ -143,21 +145,76 @@ const CRM: React.FC = () => {
         }
     }, [location.search]);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchLeads();
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [page, pageSize, searchTerm, filterStatus, view]);
+    const { data: teamMembersData } = useQuery({
+        queryKey: ['sub-users', 50],
+        queryFn: () => apiClient.get('/auth/sub-users?limit=50').then(res => res.data?.data || [])
+    });
 
     useEffect(() => {
-        apiClient.get('/auth/sub-users?limit=50')
-            .then(res => {
-                if (res.data?.data) {
-                    setTeamMembers(res.data.data);
-                }
-            }).catch(err => console.error(err));
-    }, []);
+        if (teamMembersData) setTeamMembers(teamMembersData);
+    }, [teamMembersData]);
+
+    const { data: leadsData, isLoading: loadingLeads } = useQuery({
+        queryKey: ['leads', page, pageSize, searchTerm, filterStatus, view],
+        queryFn: () => crmApi.getLeads({
+            page: view === 'pipeline' ? undefined : page,
+            limit: view === 'pipeline' ? undefined : pageSize,
+            search: searchTerm,
+            status: filterStatus === 'all' ? undefined : filterStatus.toUpperCase()
+        }),
+    });
+
+    useEffect(() => {
+        if (leadsData) {
+            const data = leadsData;
+            if (data && data.data) {
+                setLeads(data.data.map((l: any) => ({ 
+                    ...l, 
+                    lastActivity: l.updatedAt ? l.updatedAt.split('T')[0] : 'Just now' 
+                })));
+                setTotal(data.total || 0);
+                if (data.summary) setSummary(data.summary);
+            } else if (Array.isArray(data)) {
+                setLeads(data.map((l: any) => ({ 
+                    ...l, 
+                    lastActivity: l.updatedAt ? l.updatedAt.split('T')[0] : 'Just now' 
+                })));
+                setTotal(data.length);
+                const won = data.filter((l: any) => l.status === 'WON').length;
+                const totalVal = data.reduce((a: any, l: any) => a + (l.value || 0), 0);
+                const cust = data.filter((l: any) => (l.lifecycleStage || '').toLowerCase() === 'customer').length;
+                const conv = data.length > 0 ? Math.round((won / data.length) * 100) : 0;
+                setSummary({ total: data.length, won, totalValue: totalVal, customers: cust, conversionRate: conv });
+            }
+        }
+    }, [leadsData]);
+
+    const createLeadMutation = useMutation({
+        mutationFn: (data: Partial<CrmLead>) => crmApi.createLead(data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leads'] })
+    });
+
+    const updateLeadMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string, data: any }) => crmApi.updateLead(id, data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['leads'] });
+        }
+    });
+
+    const deleteLeadsMutation = useMutation({
+        mutationFn: (ids: string[]) => crmApi.deleteLeads(ids),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leads'] })
+    });
+
+    const bulkCreateMutation = useMutation({
+        mutationFn: (data: Partial<CrmLead>[]) => crmApi.bulkCreate(data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leads'] })
+    });
+
+    const updateStatusMutation = useMutation({
+        mutationFn: ({ id, status }: { id: string; status: string }) => crmApi.updateStatus(id, status),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['leads'] })
+    });
 
     const teamMembersMap = React.useMemo(() => {
         const map: Record<string, string> = {};
@@ -187,38 +244,6 @@ const CRM: React.FC = () => {
         return () => document.removeEventListener('click', handleClickOutside);
     }, []);
 
-    const fetchLeads = async () => {
-        try {
-            const data = await crmApi.getLeads({
-                page: view === 'pipeline' ? undefined : page,
-                limit: view === 'pipeline' ? undefined : pageSize,
-                search: searchTerm,
-                status: filterStatus === 'all' ? undefined : filterStatus.toUpperCase()
-            });
-            if (data && data.data) {
-                setLeads(data.data.map((l: any) => ({ 
-                    ...l, 
-                    lastActivity: l.updatedAt ? l.updatedAt.split('T')[0] : 'Just now' 
-                })));
-                setTotal(data.total || 0);
-                if (data.summary) setSummary(data.summary);
-            } else if (Array.isArray(data)) {
-                setLeads(data.map(l => ({ 
-                    ...l, 
-                    lastActivity: l.updatedAt ? l.updatedAt.split('T')[0] : 'Just now' 
-                })));
-                setTotal(data.length);
-                const won = data.filter(l => l.status === 'WON').length;
-                const totalVal = data.reduce((a, l) => a + (l.value || 0), 0);
-                const cust = data.filter(l => (l.lifecycleStage || '').toLowerCase() === 'customer').length;
-                const conv = data.length > 0 ? Math.round((won / data.length) * 100) : 0;
-                setSummary({ total: data.length, won, totalValue: totalVal, customers: cust, conversionRate: conv });
-            }
-        } catch (error) {
-            console.error(error);
-            showToast('Failed to fetch CRM contacts', 'error');
-        }
-    };
 
     const toggleSelectAll = (filteredList: CrmLead[]) => {
         if (selectedLeadIds.length === filteredList.length) {
@@ -271,7 +296,7 @@ const CRM: React.FC = () => {
 
     const handleAddContactSubmit = async (data: Partial<CrmLead>) => {
         try {
-            const newLead = await crmApi.createLead({
+            const newLead = await createLeadMutation.mutateAsync({
                 ...data,
                 preferredChannels: ['Email', 'WhatsApp', 'Phone']
             });
@@ -287,7 +312,7 @@ const CRM: React.FC = () => {
     const handleUpdateContactSubmit = async (data: Partial<CrmLead>) => {
         if (!selectedLead) return;
         try {
-            const updated = await crmApi.updateLead(selectedLead.id, data);
+            const updated = await updateLeadMutation.mutateAsync({ id: selectedLead.id, data });
             setSelectedLead(updated);
             setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
             setDrawerType('none');
@@ -313,7 +338,7 @@ const CRM: React.FC = () => {
         };
 
         try {
-            const updated = await crmApi.updateLead(selectedLead.id, { newActivityItem: newItem });
+            const updated = await updateLeadMutation.mutateAsync({ id: selectedLead.id, data: { newActivityItem: newItem } });
             setSelectedLead(updated);
             setLeads(prev => prev.map(l => l.id === updated.id ? updated : l));
             setActivityTitle('');
@@ -331,10 +356,9 @@ const CRM: React.FC = () => {
         if (!window.confirm(`Are you sure you want to delete ${selectedLeadIds.length} selected contacts?`)) return;
 
         try {
-            await crmApi.deleteLeads(selectedLeadIds);
+            await deleteLeadsMutation.mutateAsync(selectedLeadIds);
             showToast(`Successfully deleted ${selectedLeadIds.length} contacts`, 'success');
             setSelectedLeadIds([]);
-            fetchLeads();
             if (selectedLead && selectedLeadIds.includes(selectedLead.id)) {
                 setView('list');
                 setSelectedLead(null);
@@ -405,10 +429,9 @@ const CRM: React.FC = () => {
                             { name: "Meera Menon", phone: "+91 9988776657", email: "meera@biotech.org", company: "BioTech Global", jobTitle: "Head of Research", city: "Chennai", value: 95000, lifecycleStage: "Customer", status: "WON" }
                         ];
                         try {
-                            await crmApi.bulkCreate(simulatedContacts);
+                            await bulkCreateMutation.mutateAsync(simulatedContacts);
                             showToast(`Successfully imported ${simulatedContacts.length} contacts from ${file.name}!`, 'success');
                             setImportHistory(prevHistory => [{ file: file.name, date: new Date().toISOString().split('T')[0], records: simulatedContacts.length, status: "Success" }, ...prevHistory]);
-                            fetchLeads();
                             setDrawerType('none');
                         } catch (err) {
                             showToast('Import execution error', 'error');
@@ -426,12 +449,11 @@ const CRM: React.FC = () => {
         if (selectedLead?.id === leadId) setSelectedLead(prev => prev ? { ...prev, status: newStatus.toUpperCase() as any } : null);
         setOpenDropdownId(null);
         try {
-            await crmApi.updateStatus(leadId, newStatus.toUpperCase());
+            await updateStatusMutation.mutateAsync({ id: leadId, status: newStatus.toUpperCase() });
             showToast(`Contact moved to ${newStatus}`, 'success');
         } catch (error) {
             console.error(error);
             showToast('Failed to update status', 'error');
-            fetchLeads();
         }
     };
 
@@ -524,7 +546,7 @@ const CRM: React.FC = () => {
                                         <button 
                                             onClick={async () => {
                                                 if (window.confirm("Delete this contact record?")) {
-                                                    await crmApi.deleteLeads([selectedLead.id]);
+                                                    await deleteLeadsMutation.mutateAsync([selectedLead.id]);
                                                     showToast("Contact deleted", 'success');
                                                     setView('list');
                                                 }
@@ -611,7 +633,7 @@ const CRM: React.FC = () => {
                                                 onChange={async (e) => {
                                                     const newOwner = e.target.value;
                                                     try {
-                                                        const updated = await crmApi.updateLead(selectedLead.id, { assignedTo: newOwner });
+                                                        const updated = await updateLeadMutation.mutateAsync({ id: selectedLead.id, data: { assignedTo: newOwner } });
                                                         setSelectedLead(updated);
                                                         setLeads(prev => prev.map(l => l.id === selectedLead.id ? updated : l));
                                                         showToast("Record successfully assigned to team member!", "success");
@@ -1693,11 +1715,11 @@ const CRM: React.FC = () => {
                                                                         ))}
                                                                         <div className="border-t border-slate-100 my-1" />
                                                                         <button
-                                                                            onClick={async () => {
-                                                                                if (window.confirm("Delete this contact?")) {
-                                                                                    await crmApi.deleteLeads([lead.id]);
-                                                                                    showToast("Deleted contact", 'success');
-                                                                                    fetchLeads();
+                                                                            onClick={async (e) => {
+                                                                                e.stopPropagation();
+                                                                                if (window.confirm("Delete this contact record?")) {
+                                                                                    await deleteLeadsMutation.mutateAsync([lead.id]);
+                                                                                    showToast("Contact deleted", 'success');
                                                                                 }
                                                                             }}
                                                                             className="w-full text-left px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"

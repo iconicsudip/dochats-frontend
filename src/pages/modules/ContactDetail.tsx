@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { crmApi, CrmLead, ActivityItem } from '../../api/crm';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { crmApi, CrmLead } from '../../api/crm';
 import { ContactDrawerForm } from '../../components/crm/ContactDrawerForm';
 import { bookingsApi, Booking } from '../../api/bookings';
 import apiClient from '../../api/apiClient';
@@ -24,25 +25,21 @@ const ContactDetail: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { user } = useAuth();
+    const queryClient = useQueryClient();
     const isSubUser = user?.role === Role.SUB_USER;
 
     const [lead, setLead] = useState<CrmLead | null>(null);
     const [orders, setOrders] = useState<Booking[]>([]);
     const [subUsersList, setSubUsersList] = useState<{ id: string; name: string; email: string }[]>([]);
-    const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState<'about' | 'activities' | 'revenue'>('about');
 
-    // Toast State
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
     const showToast = (message: string, type: 'success' | 'error' | 'info' = 'success') => {
         setToast({ message, type });
         setTimeout(() => setToast(null), 3500);
     };
 
-    // Modal / Drawer States
     const [modalType, setModalType] = useState<'edit_contact' | 'add_company' | 'add_deal' | 'add_ticket' | 'add_order' | 'add_activity' | null>(null);
-
-    // Form States
     const [editForm, setEditForm] = useState<Partial<CrmLead>>({});
     const [workspaceCompanies, setWorkspaceCompanies] = useState<any[]>([]);
     const [addCompanyMode, setAddCompanyMode] = useState<'select' | 'new'>('select');
@@ -58,48 +55,71 @@ const ContactDetail: React.FC = () => {
     const [orderTitle, setOrderTitle] = useState('');
     const [orderAmount, setOrderAmount] = useState<number>(0);
     const [orderStatus, setOrderStatus] = useState<'pending' | 'confirmed' | 'completed' | 'cancelled'>('confirmed');
-
     const [activityType, setActivityType] = useState<'NOTE' | 'EMAIL' | 'CALL' | 'MEETING' | 'TASK'>('NOTE');
     const [activityTitle, setActivityTitle] = useState('');
     const [activityDesc, setActivityDesc] = useState('');
 
-    const fetchData = async () => {
-        if (!id) return;
-        setLoading(true);
-        try {
+    const { data: teamMembersData } = useQuery({
+        queryKey: ['sub-users', 50],
+        queryFn: () => apiClient.get('/auth/sub-users?limit=50').then(res => res.data.subUsers || []),
+        enabled: !isSubUser
+    });
+
+    const { data: contactData, isLoading: loadingContact } = useQuery({
+        queryKey: ['contact', id],
+        queryFn: async () => {
+            if (!id) return null;
             const [data, bookingsRes, compRes] = await Promise.all([
                 crmApi.getLead(id),
                 bookingsApi.getBookings({ limit: 100 }),
                 crmApi.getCompanies({ limit: 100 })
             ]);
-            const bookingsList = bookingsRes?.data || bookingsRes || [];
-            const compList = compRes?.data || compRes || [];
+            return { data, bookingsList: bookingsRes?.data || bookingsRes || [], compList: compRes?.data || compRes || [] };
+        },
+        enabled: !!id
+    });
+
+    useEffect(() => {
+        if (teamMembersData) setSubUsersList(teamMembersData);
+    }, [teamMembersData]);
+
+    useEffect(() => {
+        if (contactData) {
+            const { data, bookingsList, compList } = contactData;
             setLead(data);
             setEditForm(data);
             setWorkspaceCompanies(compList);
-            if (compList.length > 0) setSelectedCompanyKey(compList[0].name);
-
-            // Fetch bookings / orders associated with contact
             const contactOrders = bookingsList.filter((b: Booking) => b.leadId === data.id || b.clientName.toLowerCase() === data.name.toLowerCase());
             setOrders(contactOrders);
-
-            // Fetch sub users for assignment
-            if (!isSubUser) {
-                const suRes = await apiClient.get('/auth/sub-users?limit=50');
-                setSubUsersList(suRes.data.subUsers || []);
-            }
-        } catch (error) {
-            console.error('Error fetching contact:', error);
-            showToast("Failed to load contact record", "error");
-            navigate('/dashboard/crm');
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [contactData]);
 
-    useEffect(() => {
-        fetchData();
-    }, [id]);
+    const updateLeadMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) => crmApi.updateLead(id, data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contact', id] })
+    });
+    
+    const deleteLeadsMutation = useMutation({
+        mutationFn: (ids: string[]) => crmApi.deleteLeads(ids),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['contact', id] });
+        }
+    });
+
+    const updateAssociationsMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) => crmApi.updateAssociations(id, data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contact', id] })
+    });
+
+    const createBookingMutation = useMutation({
+        mutationFn: (data: any) => bookingsApi.createBooking(data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contact', id] })
+    });
+
+    const updateBookingStatusMutation = useMutation({
+        mutationFn: ({ id, status }: { id: string; status: string }) => bookingsApi.updateStatus(id, status),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contact', id] })
+    });
 
     const handleCopyEmail = () => {
         if (lead?.email) {
@@ -111,9 +131,8 @@ const ContactDetail: React.FC = () => {
     const handleAssignTeamMember = async (newAssignee: string) => {
         if (!lead || isSubUser) return;
         try {
-            await crmApi.updateLead(lead.id, { assignedTo: newAssignee || undefined });
+            await updateLeadMutation.mutateAsync({ id: lead.id, data: { assignedTo: newAssignee || undefined } });
             showToast("Successfully assigned record to team member!", "success");
-            fetchData();
         } catch (err) {
             showToast("Failed to assign record", "error");
         }
@@ -123,7 +142,7 @@ const ContactDetail: React.FC = () => {
         if (!lead || isSubUser) return;
         if (window.confirm("Are you sure you want to permanently delete this contact record?")) {
             try {
-                await crmApi.deleteLeads([lead.id]);
+                await deleteLeadsMutation.mutateAsync([lead.id]);
                 showToast("Contact deleted successfully", "success");
                 navigate('/dashboard/crm');
             } catch (err) {
@@ -134,15 +153,10 @@ const ContactDetail: React.FC = () => {
 
     const handleUpdateContactSubmit = async (data: Partial<CrmLead>) => {
         if (!lead) return;
-
         const payload = { ...data };
-        if (isSubUser) {
-            delete payload.assignedTo;
-        }
-
+        if (isSubUser) delete payload.assignedTo;
         try {
-            const updatedLead = await crmApi.updateLead(lead.id, payload);
-            setLead(updatedLead);
+            await updateLeadMutation.mutateAsync({ id: lead.id, data: payload });
             showToast("Contact updated successfully!");
             setModalType(null);
         } catch (err) {
@@ -150,184 +164,75 @@ const ContactDetail: React.FC = () => {
         }
     };
 
-    // Add Company
     const handleAddCompany = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!lead) return;
-
         const assoc: any = lead.associations || {};
         const comps = assoc.companies || [];
-
         let newComp: any = null;
         if (addCompanyMode === 'select') {
-            if (!selectedCompanyKey) {
-                showToast("Please select a company organization", "error");
-                return;
-            }
+            if (!selectedCompanyKey) { showToast("Please select a company", "error"); return; }
             const found = workspaceCompanies.find(c => c.name === selectedCompanyKey);
             newComp = { name: selectedCompanyKey, domain: found?.domain || null };
         } else {
-            if (!companyName.trim()) {
-                showToast("Company name is required", "error");
-                return;
-            }
+            if (!companyName.trim()) { showToast("Company name is required", "error"); return; }
             newComp = { name: companyName.trim(), domain: companyDomain.trim() || null };
         }
-
-        // Avoid exact duplicates
         const exists = comps.some((c: any) => c.name?.toLowerCase() === newComp.name.toLowerCase());
         const updatedComps = exists ? comps : [...comps, newComp];
-
         try {
-            await crmApi.updateAssociations(lead.id, { ...assoc, companies: updatedComps });
-            const leadUpdatePayload: any = {
-                newActivityItem: {
-                    id: 'act-' + Date.now(),
-                    type: 'NOTE',
-                    title: `Associated with company ${newComp.name}`,
-                    description: `Attached to account ${newComp.name} ${newComp.domain ? '('+newComp.domain+')' : ''}`,
-                    date: new Date().toISOString()
-                }
-            };
-            if (!lead.company) {
-                leadUpdatePayload.company = newComp.name;
-            }
-            await crmApi.updateLead(lead.id, leadUpdatePayload);
-
-            showToast("Associated company added successfully!");
+            await updateAssociationsMutation.mutateAsync({ id: lead.id, data: { ...assoc, companies: updatedComps } });
+            await updateLeadMutation.mutateAsync({ id: lead.id, data: { newActivityItem: { id: 'act-' + Date.now(), type: 'NOTE', title: `Associated with ${newComp.name}`, description: `Attached to account ${newComp.name}`, date: new Date().toISOString() } } });
+            showToast("Company added successfully!");
             setModalType(null);
-            setCompanyName('');
-            setCompanyDomain('');
-            fetchData();
-        } catch (err) {
-            showToast("Failed to add company", "error");
-        }
+        } catch (err) { showToast("Failed to add company", "error"); }
     };
 
-    // Add Deal
     const handleAddDeal = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!lead || !dealTitle.trim()) return;
-
         const assoc: any = lead.associations || {};
-        const dList = assoc.deals || [];
         const newDeal = { id: 'deal-' + Date.now(), title: dealTitle.trim(), amount: Number(dealValue) || 0, stage: dealStage.toUpperCase() };
-
         try {
-            await crmApi.updateAssociations(lead.id, { ...assoc, deals: [...dList, newDeal] });
-            await crmApi.updateLead(lead.id, {
-                newActivityItem: {
-                    id: 'act-' + Date.now(),
-                    type: 'MEETING',
-                    title: `Opportunity created: ${dealTitle.trim()}`,
-                    description: `Value: ₹${Number(dealValue).toLocaleString('en-IN')} in stage ${dealStage.toUpperCase()}`,
-                    date: new Date().toISOString()
-                }
-            });
-            showToast("Deal opportunity added successfully!");
+            await updateAssociationsMutation.mutateAsync({ id: lead.id, data: { ...assoc, deals: [...(assoc.deals || []), newDeal] } });
+            showToast("Deal created!");
             setModalType(null);
-            setDealTitle('');
-            setDealValue(0);
-            fetchData();
-        } catch (err) {
-            showToast("Failed to create deal", "error");
-        }
+        } catch (err) { showToast("Failed to create deal", "error"); }
     };
 
-    // Add Ticket
     const handleAddTicket = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!lead || !ticketTitle.trim()) return;
-
         const assoc: any = lead.associations || {};
-        const tList = assoc.tickets || [];
         const newTkt = { id: 'tkt-' + Date.now(), title: ticketTitle.trim(), priority: ticketPriority, status: ticketStatus, date: new Date().toLocaleDateString('en-GB') };
-
         try {
-            await crmApi.updateAssociations(lead.id, { ...assoc, tickets: [...tList, newTkt] });
-            await crmApi.updateLead(lead.id, {
-                newActivityItem: {
-                    id: 'act-' + Date.now(),
-                    type: 'TASK',
-                    title: `Support Ticket logged: #${newTkt.id}`,
-                    description: `Subject: ${ticketTitle.trim()} | Priority: ${ticketPriority}`,
-                    date: new Date().toISOString()
-                }
-            });
-            showToast("Support ticket logged successfully!");
+            await updateAssociationsMutation.mutateAsync({ id: lead.id, data: { ...assoc, tickets: [...(assoc.tickets || []), newTkt] } });
+            showToast("Ticket created!");
             setModalType(null);
-            setTicketTitle('');
-            fetchData();
-        } catch (err) {
-            showToast("Failed to create ticket", "error");
-        }
+        } catch (err) { showToast("Failed to create ticket", "error"); }
     };
 
-    // Add Order
     const handleAddOrder = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!lead || !orderTitle.trim()) return;
-
-        const payload = {
-            clientName: lead.name,
-            phone: lead.phone || '0000000000',
-            email: lead.email,
-            service: orderTitle.trim(),
-            date: new Date().toISOString().split('T')[0],
-            time: '12:00',
-            duration: 60,
-            status: orderStatus.toUpperCase() as any,
-            notes: `Amount: ₹${orderAmount}`,
-            leadId: lead.id
-        };
-
+        const payload = { clientName: lead.name, email: lead.email, service: orderTitle.trim(), status: orderStatus.toUpperCase(), leadId: lead.id };
         try {
-            await bookingsApi.createBooking(payload);
-            await crmApi.updateLead(lead.id, {
-                newActivityItem: {
-                    id: 'act-' + Date.now(),
-                    type: 'MEETING',
-                    title: `Sales Order Placed: ${orderTitle.trim()}`,
-                    description: `Value: ₹${orderAmount} | Status: ${orderStatus.toUpperCase()}`,
-                    date: new Date().toISOString()
-                }
-            });
-            showToast("Sales order created successfully!");
+            await createBookingMutation.mutateAsync(payload);
+            showToast("Order booked!");
             setModalType(null);
-            setOrderTitle('');
-            setOrderAmount(0);
-            fetchData();
-        } catch (err) {
-            showToast("Failed to place order", "error");
-        }
+        } catch (err) { showToast("Failed to place order", "error"); }
     };
 
-    // Add Activity
     const handleAddActivity = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!lead || !activityTitle.trim()) return;
-
         try {
-            await crmApi.updateLead(lead.id, {
-                newActivityItem: {
-                    id: 'act-' + Date.now(),
-                    type: activityType,
-                    title: activityTitle.trim(),
-                    description: activityDesc.trim(),
-                    date: new Date().toISOString()
-                }
-            });
-            showToast("Activity logged successfully!");
+            await updateLeadMutation.mutateAsync({ id: lead.id, data: { newActivityItem: { id: 'act-' + Date.now(), type: activityType, title: activityTitle.trim(), description: activityDesc.trim(), date: new Date().toISOString() } } });
+            showToast("Activity logged!");
             setModalType(null);
-            setActivityTitle('');
-            setActivityDesc('');
-            fetchData();
-        } catch (err) {
-            showToast("Failed to log activity", "error");
-        }
+        } catch (err) { showToast("Failed to log activity", "error"); }
     };
 
-    // Quick Update Helpers
     const handleUpdateDealStage = async (idx: number, newStage: string) => {
         if (!lead || isSubUser) return;
         const assoc: any = lead.associations || {};
@@ -335,9 +240,8 @@ const ContactDetail: React.FC = () => {
         if (dList[idx]) {
             dList[idx].stage = newStage;
             try {
-                await crmApi.updateAssociations(lead.id, { ...assoc, deals: dList });
+                await updateAssociationsMutation.mutateAsync({ id: lead.id, data: { ...assoc, deals: dList } });
                 showToast(`Opportunity stage updated to ${newStage}`);
-                fetchData();
             } catch (err) {
                 showToast("Failed to update opportunity", "error");
             }
@@ -351,9 +255,8 @@ const ContactDetail: React.FC = () => {
         if (tList[idx]) {
             tList[idx][field] = val;
             try {
-                await crmApi.updateAssociations(lead.id, { ...assoc, tickets: tList });
+                await updateAssociationsMutation.mutateAsync({ id: lead.id, data: { ...assoc, tickets: tList } });
                 showToast(`Ticket ${field} updated to ${val}`);
-                fetchData();
             } catch (err) {
                 showToast("Failed to update ticket", "error");
             }
@@ -361,17 +264,6 @@ const ContactDetail: React.FC = () => {
     };
 
     const handleUpdateOrderStatus = async (orderId: string, status: string) => {
-        if (isSubUser) return;
-        try {
-            await bookingsApi.updateStatus(orderId, status.toUpperCase());
-            showToast(`Order status updated to ${status.toUpperCase()}`);
-            fetchData();
-        } catch (err) {
-            showToast("Failed to update order status", "error");
-        }
-    };
-
-    if (loading) {
         return (
             <div className="h-96 flex flex-col items-center justify-center bg-white rounded-3xl border border-slate-200/80 shadow-2xs font-sans">
                 <div className="w-10 h-10 border-3 border-slate-200 border-t-primary rounded-full animate-spin mb-3" />

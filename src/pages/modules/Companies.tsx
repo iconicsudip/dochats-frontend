@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Pagination } from 'antd';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { crmApi, CrmLead } from '../../api/crm';
 import { useAuth } from '../../contexts/AuthContext';
 import apiClient from '../../api/apiClient';
@@ -39,6 +40,7 @@ const COMPANY_TYPES = ['Prospect', 'Partner', 'Reseller', 'Vendor', 'Customer'];
 
 const Companies: React.FC = () => {
     const { user } = useAuth();
+    const queryClient = useQueryClient();
     const isSubUser = user?.role === 'SUB_USER';
     const [companies, setCompanies] = useState<CompanyAccount[]>([]);
     const [leads, setLeads] = useState<CrmLead[]>([]);
@@ -82,13 +84,30 @@ const Companies: React.FC = () => {
     const [companyDescription, setCompanyDescription] = useState('');
     const [companyLinkedin, setCompanyLinkedin] = useState('');
 
-    const fetchData = async () => {
-        setLoading(true);
-        try {
+    const { data: teamMembersData } = useQuery({
+        queryKey: ['sub-users', 50],
+        queryFn: () => apiClient.get('/auth/sub-users?limit=50').then(res => res.data.subUsers || []),
+        enabled: !isSubUser
+    });
+
+    useEffect(() => {
+        if (teamMembersData) setSubUsersList(teamMembersData);
+    }, [teamMembersData]);
+
+    const { data: compData, isLoading: loadingCompanies } = useQuery({
+        queryKey: ['companies', page, pageSize, searchTerm],
+        queryFn: async () => {
             const [compRes, leadData] = await Promise.all([
                 crmApi.getCompanies({ page, limit: pageSize, search: searchTerm }),
                 crmApi.getLeads()
             ]);
+            return { compRes, leadData };
+        }
+    });
+
+    useEffect(() => {
+        if (compData) {
+            const { compRes, leadData } = compData;
             setCompanies(compRes.data || compRes || []);
             if (compRes.summary) {
                 setSummary(compRes.summary);
@@ -101,26 +120,18 @@ const Companies: React.FC = () => {
                 setSummary({ totalCompanies: arr.length, totalPipeline: totalPipe, avgAccountValue: avgVal });
             }
             setLeads(leadData);
-
-            if (!isSubUser) {
-                apiClient.get('/auth/sub-users?limit=50')
-                    .then(res => setSubUsersList(res.data.subUsers || []))
-                    .catch(() => {});
-            }
-        } catch (error) {
-            console.error('Error fetching data:', error);
-            showToast("Failed to fetch companies data", "error");
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [compData]);
 
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            fetchData();
-        }, 300);
-        return () => clearTimeout(timer);
-    }, [page, pageSize, searchTerm]);
+    const updateAssociationsMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) => crmApi.updateAssociations(id, data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companies'] })
+    });
+
+    const updateLeadMutation = useMutation({
+        mutationFn: ({ id, data }: { id: string; data: any }) => crmApi.updateLead(id, data),
+        onSuccess: () => queryClient.invalidateQueries({ queryKey: ['companies'] })
+    });
 
     // Local filter if needed
     const filteredCompanies = companies.filter(c => 
@@ -170,26 +181,31 @@ const Companies: React.FC = () => {
                 linkedin: companyLinkedin.trim()
             };
 
-            await crmApi.updateAssociations(lead.id, {
-                ...existingAssoc,
-                companies: [...existingCompanies, newCompanyObj]
+            await updateAssociationsMutation.mutateAsync({
+                id: lead.id,
+                data: {
+                    ...existingAssoc,
+                    companies: [...existingCompanies, newCompanyObj]
+                }
             });
 
             // Also update lead's primary company field & add activity
-            await crmApi.updateLead(lead.id, {
-                company: companyName.trim(),
-                newActivityItem: {
-                    id: 'act-' + Date.now(),
-                    type: 'NOTE',
-                    title: `Associated with company ${companyName.trim()}`,
-                    description: `Contact attached to key account ${companyName.trim()}${companyDomain ? ` (${companyDomain})` : ''}`,
-                    date: new Date().toISOString()
+            await updateLeadMutation.mutateAsync({
+                id: lead.id,
+                data: {
+                    company: companyName.trim(),
+                    newActivityItem: {
+                        id: 'act-' + Date.now(),
+                        type: 'NOTE',
+                        title: `Associated with company ${companyName.trim()}`,
+                        description: `Contact attached to key account ${companyName.trim()}${companyDomain ? ` (${companyDomain})` : ''}`,
+                        date: new Date().toISOString()
+                    }
                 }
             });
 
             showToast("Company key account created successfully!");
             setModalType(null);
-            fetchData();
         } catch (err) {
             showToast("Failed to create company", "error");
         }
@@ -231,19 +247,21 @@ const Companies: React.FC = () => {
                             ? { ...c, ...updatedFields }
                             : c
                     );
-                    await crmApi.updateAssociations(leadId, { ...assoc, companies: comps });
+                    await updateAssociationsMutation.mutateAsync({ id: leadId, data: { ...assoc, companies: comps } });
                     if (lead.company?.toLowerCase() === selectedCompany.name.toLowerCase()) {
-                        await crmApi.updateLead(leadId, { 
-                            company: companyName.trim(),
-                            industry: companyIndustry,
-                            city: companyCity.trim()
+                        await updateLeadMutation.mutateAsync({ 
+                            id: leadId,
+                            data: {
+                                company: companyName.trim(),
+                                industry: companyIndustry,
+                                city: companyCity.trim()
+                            }
                         });
                     }
                 }
             }
             showToast("Company details updated successfully!");
             setModalType(null);
-            fetchData();
         } catch (err) {
             showToast("Failed to update company", "error");
         }
@@ -321,7 +339,7 @@ const Companies: React.FC = () => {
                         Create Company
                     </button>
                     <button 
-                        onClick={() => { setPage(1); fetchData(); }}
+                        onClick={() => { setPage(1); queryClient.invalidateQueries({ queryKey: ['companies'] }); }}
                         className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-semibold text-xs border border-slate-200 transition-all cursor-pointer shadow-2xs"
                     >
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

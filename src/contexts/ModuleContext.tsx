@@ -15,6 +15,7 @@ const ModuleContext = createContext<ModuleContextType | undefined>(undefined);
 const DEFAULT_ADMIN_MODULES: Module[] = [
     Module.OVERVIEW,
     Module.LIVE_CHAT,
+    Module.CHAT_GROUPS,
     Module.CRM,
     Module.BOOKINGS,
     Module.AUTOMATION,
@@ -30,6 +31,7 @@ const DEFAULT_ADMIN_MODULES: Module[] = [
 
 const SUB_USER_MODULES: Module[] = [
     Module.LIVE_CHAT,
+    Module.CHAT_GROUPS,
     Module.CRM,
     Module.BOOKINGS,
 ];
@@ -51,7 +53,8 @@ export const ModuleProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         const savedModules = user?.enabledModules as Module[] | undefined;
 
         if (savedModules && savedModules.length > 0) {
-            setEnabledModules(savedModules);
+            const merged = new Set([...savedModules, Module.CHAT_GROUPS]);
+            setEnabledModules(Array.from(merged) as Module[]);
         } else {
             if (user.role === 'SUB_USER') {
                 setEnabledModules(SUB_USER_MODULES);

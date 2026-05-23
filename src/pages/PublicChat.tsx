@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
 import apiClient from '../api/apiClient';
@@ -77,13 +78,26 @@ const PublicChat: React.FC = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
 
     const { isRecording, recordingTime, formatTime, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
+    const queryClient = useQueryClient();
+
+    const initMutation = useMutation({
+        mutationFn: (data: any) => apiClient.post('/public/init', data)
+    });
+
+    const markReadMutation = useMutation({
+        mutationFn: (conversationId: string) => apiClient.post('/public/mark-read', { conversationId, isAdmin: false })
+    });
+
+    const sendMsgMutation = useMutation({
+        mutationFn: (data: any) => apiClient.post('/public/messages', data)
+    });
 
     useEffect(() => {
         if (slug && visitorToken) {
             const storedName = localStorage.getItem('visitor_name') || undefined;
             const storedPhone = localStorage.getItem('visitor_phone') || undefined;
 
-            apiClient.post('/public/init', { slug, visitorToken, visitorName: storedName, visitorPhone: storedPhone })
+            initMutation.mutateAsync({ slug, visitorToken, visitorName: storedName, visitorPhone: storedPhone })
                 .then(res => {
                     setConversationId(res.data.conversationId);
                     setChatInfo(res.data);
@@ -103,18 +117,33 @@ const PublicChat: React.FC = () => {
         }
     }, [slug, visitorToken]);
 
+    const { data: fetchedMessages, isLoading: loadingMessages } = useQuery({
+        queryKey: ['public-messages', conversationId],
+        queryFn: () => apiClient.get(`/public/messages?conversationId=${conversationId}`).then(res => res.data),
+        enabled: !!conversationId,
+        refetchInterval: 5000,
+    });
+
     useEffect(() => {
-        if (conversationId) {
-            fetchMessages();
-            
-            if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-            pollIntervalRef.current = setInterval(() => { fetchMessages(); }, 5000);
-            
-            return () => {
-                if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-            };
+        if (fetchedMessages) {
+            setIsInitialLoading(false);
+            setMessages(prev => {
+                const newMsgs = fetchedMessages;
+                const existingIds = new Set(prev.map(m => m.id));
+                const merged = [...prev];
+                newMsgs.forEach((msg: any) => {
+                    if (existingIds.has(msg.id)) return;
+                    const dupeIndex = merged.findIndex(m => (msg.tempId && m.id === msg.tempId) || (m.content === msg.content && m.isFromAdmin === msg.isFromAdmin && m.id.startsWith('temp-')));
+                    if (dupeIndex !== -1) merged[dupeIndex] = msg;
+                    else merged.push(msg);
+                });
+                return merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            });
+            if (fetchedMessages.length > 0) {
+                markReadMutation.mutate(conversationId!);
+            }
         }
-    }, [conversationId]);
+    }, [fetchedMessages]);
 
     useEffect(() => {
         if (!chatInfo || !conversationId || isInitialLoading || hasTriggeredOnboarding.current) return;
@@ -135,35 +164,13 @@ const PublicChat: React.FC = () => {
         runFlow();
     }, [chatInfo, conversationId, isInitialLoading, messages]);
 
-    const fetchMessages = async () => {
-        if (!conversationId) return;
-        try {
-            const res = await apiClient.get(`/public/messages?conversationId=${conversationId}`);
-            setMessages(prev => {
-                const newMsgs = res.data;
-                const existingIds = new Set(prev.map(m => m.id));
-                const merged = [...prev];
-                newMsgs.forEach((msg: any) => {
-                    if (existingIds.has(msg.id)) return;
-                    const dupeIndex = merged.findIndex(m => (msg.tempId && m.id === msg.tempId) || (m.content === msg.content && m.isFromAdmin === msg.isFromAdmin && m.id.startsWith('temp-')));
-                    if (dupeIndex !== -1) merged[dupeIndex] = msg;
-                    else merged.push(msg);
-                });
-                return merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-            });
-            if (res.data.length > 0) apiClient.post('/public/mark-read', { conversationId, isAdmin: false }).catch(() => { });
-        } catch (err) { 
-            console.error('Fetch messages error:', err); 
-        } finally {
-            setIsInitialLoading(false);
-        }
-    };
+
 
     const sendBotMessage = async (text: string) => {
         if (!conversationId) return;
         const alreadyExists = messages.some(m => m.isFromAdmin && m.content === text);
         if (alreadyExists) return;
-        try { await apiClient.post('/public/messages', { conversationId, content: text, isFromAdmin: true }); } catch (err) { }
+        try { await sendMsgMutation.mutateAsync({ conversationId, content: text, isFromAdmin: true }); } catch (err) { }
     };
 
     const handleOnboardingSubmit = async () => {
@@ -173,7 +180,7 @@ const PublicChat: React.FC = () => {
         localStorage.setItem('visitor_phone', phone);
         setOnboardingStep(3);
         try {
-            await apiClient.post('/public/init', { slug, visitorToken, visitorName: name, visitorPhone: phone });
+            await initMutation.mutateAsync({ slug, visitorToken, visitorName: name, visitorPhone: phone });
             const tempIdName = `temp-name-${Date.now()}`;
             const tempIdPhone = `temp-phone-${Date.now()}`;
             setMessages(prev => [
@@ -196,7 +203,7 @@ const PublicChat: React.FC = () => {
         const tempId = `temp-${Date.now()}`;
         addOptimisticMessage(content, MessageType.TEXT, tempId);
         try {
-            const res = await apiClient.post('/public/messages', { conversationId, content, type: MessageType.TEXT, isFromAdmin: false, tempId, replyToId: replyingTo?.id });
+            const res = await sendMsgMutation.mutateAsync({ conversationId, content, type: MessageType.TEXT, isFromAdmin: false, tempId, replyToId: replyingTo?.id });
             setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
         } catch (err) { console.error('Send error:', err); setMessages(prev => prev.filter(m => m.id !== tempId)); }
     };
@@ -214,7 +221,7 @@ const PublicChat: React.FC = () => {
         const tempId = `temp-${Date.now()}`;
         addOptimisticMessage(audioBase64, MessageType.AUDIO, tempId);
         try {
-            const res = await apiClient.post('/public/messages', { conversationId, content: audioBase64, type: MessageType.AUDIO, isFromAdmin: false, tempId });
+            const res = await sendMsgMutation.mutateAsync({ conversationId, content: audioBase64, type: MessageType.AUDIO, isFromAdmin: false, tempId });
             setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
         } catch (err) { setMessages(prev => prev.filter(m => m.id !== tempId)); }
     };
