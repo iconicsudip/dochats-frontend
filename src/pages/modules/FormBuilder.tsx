@@ -798,10 +798,14 @@ const FormBuilder: React.FC = () => {
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [isActive, setIsActive] = useState(true);
+    const [showTitle, setShowTitle] = useState(true);
+    const [showDescription, setShowDescription] = useState(true);
     const [addToCrm, setAddToCrm] = useState(false);
     const [primaryColor, setPrimaryColor] = useState('#2563eb');
+    const [formBackgroundColor, setFormBackgroundColor] = useState('#ffffff');
     const [backgroundColor, setBackgroundColor] = useState('#f8fafc');
     const [textColor, setTextColor] = useState('#0f172a');
+    const [formTextColor, setFormTextColor] = useState('#1e293b');
     
     const [fields, setFields] = useState<FormField[]>([]);
     const [loading, setLoading] = useState(false);
@@ -879,10 +883,14 @@ const FormBuilder: React.FC = () => {
             setTitle(data.title || '');
             setDescription(data.description || '');
             setIsActive(data.isActive !== false);
+            setShowTitle(data.design?.showTitle !== false);
+            setShowDescription(data.design?.showDescription !== false);
             setAddToCrm(data.addToCrm || false);
             setPrimaryColor(data.design?.primaryColor || '#2563eb');
+            setFormBackgroundColor(data.design?.formBackgroundColor || '#ffffff');
             setBackgroundColor(data.design?.backgroundColor || '#f8fafc');
             setTextColor(data.design?.textColor || '#0f172a');
+            setFormTextColor(data.design?.formTextColor || '#1e293b');
             
             const isMs = data.design?.isMultistep || false;
             const lay = data.design?.layout || 'default';
@@ -902,9 +910,13 @@ const FormBuilder: React.FC = () => {
             const template = location.state.template;
             setTitle(template.title || '');
             setDescription(template.description || '');
+            setShowTitle(template.design?.showTitle !== false);
+            setShowDescription(template.design?.showDescription !== false);
             setPrimaryColor(template.design?.primaryColor || '#2563eb');
+            setFormBackgroundColor(template.design?.formBackgroundColor || '#ffffff');
             setBackgroundColor(template.design?.backgroundColor || '#f8fafc');
             setTextColor(template.design?.textColor || '#0f172a');
+            setFormTextColor(template.design?.formTextColor || '#1e293b');
             
             const isMs = template.design?.isMultistep || false;
             const lay = template.design?.layout || 'default';
@@ -1155,9 +1167,13 @@ const FormBuilder: React.FC = () => {
                 isActive,
                 addToCrm,
                 design: {
+                    showTitle,
+                    showDescription,
                     primaryColor,
+                    formBackgroundColor,
                     backgroundColor,
                     textColor,
+                    formTextColor,
                     isMultistep,
                     layout,
                     steps,
@@ -1247,6 +1263,39 @@ const FormBuilder: React.FC = () => {
                                         placeholder="Shown below the title" 
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white min-h-[80px] transition-all resize-none font-semibold"
                                     />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                                    <div className="flex items-center justify-between bg-slate-50 border border-slate-200 p-3 rounded-xl">
+                                        <div className="space-y-0.5">
+                                            <label className="font-bold text-slate-900 block text-[11px] uppercase tracking-wider">Show Title</label>
+                                            <p className="font-semibold text-slate-500 m-0 text-[10px]">Show title on form</p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" className="sr-only peer" checked={showTitle} onChange={e => setShowTitle(e.target.checked)} />
+                                            <div className="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-primary transition-all border border-slate-300">
+                                                <div className={cn(
+                                                    "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-2xs",
+                                                    showTitle ? "translate-x-4.5" : "translate-x-0.5"
+                                                )} />
+                                            </div>
+                                        </label>
+                                    </div>
+                                    <div className="flex items-center justify-between bg-slate-50 border border-slate-200 p-3 rounded-xl">
+                                        <div className="space-y-0.5">
+                                            <label className="font-bold text-slate-900 block text-[11px] uppercase tracking-wider">Show Description</label>
+                                            <p className="font-semibold text-slate-500 m-0 text-[10px]">Show description on form</p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input type="checkbox" className="sr-only peer" checked={showDescription} onChange={e => setShowDescription(e.target.checked)} />
+                                            <div className="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:bg-primary transition-all border border-slate-300">
+                                                <div className={cn(
+                                                    "absolute top-0.5 w-4 h-4 bg-white rounded-full transition-transform shadow-2xs",
+                                                    showDescription ? "translate-x-4.5" : "translate-x-0.5"
+                                                )} />
+                                            </div>
+                                        </label>
+                                    </div>
                                 </div>
 
                                 <div className="pt-5 border-t border-slate-100 flex items-center justify-between">
@@ -1348,9 +1397,9 @@ const FormBuilder: React.FC = () => {
                             <div className="p-5 border-b border-slate-100 bg-slate-50">
                                 <h2 className="font-bold text-slate-900 m-0 text-sm">Brand Styling Tokens</h2>
                             </div>
-                            <div className="p-5 grid grid-cols-3 gap-3">
+                            <div className="p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
                                 <div>
-                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Primary</label>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Form Color</label>
                                     <div className="relative">
                                         <input type="color" value={primaryColor} onChange={e => setPrimaryColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
                                         <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
@@ -1359,7 +1408,16 @@ const FormBuilder: React.FC = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Background</label>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Form Bg Color</label>
+                                    <div className="relative">
+                                        <input type="color" value={formBackgroundColor} onChange={e => setFormBackgroundColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
+                                        <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
+                                            <div className="w-6 h-6 rounded-lg shadow-2xs border border-black/10" style={{ backgroundColor: formBackgroundColor }} />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Page Bg Color</label>
                                     <div className="relative">
                                         <input type="color" value={backgroundColor} onChange={e => setBackgroundColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
                                         <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
@@ -1368,11 +1426,20 @@ const FormBuilder: React.FC = () => {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Text Color</label>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Page Text Color</label>
                                     <div className="relative">
                                         <input type="color" value={textColor} onChange={e => setTextColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
                                         <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
                                             <div className="w-6 h-6 rounded-lg shadow-2xs border border-black/10" style={{ backgroundColor: textColor }} />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Form Text Color</label>
+                                    <div className="relative">
+                                        <input type="color" value={formTextColor} onChange={e => setFormTextColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
+                                        <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
+                                            <div className="w-6 h-6 rounded-lg shadow-2xs border border-black/10" style={{ backgroundColor: formTextColor }} />
                                         </div>
                                     </div>
                                 </div>

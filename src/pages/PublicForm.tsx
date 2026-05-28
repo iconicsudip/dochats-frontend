@@ -40,6 +40,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
     const [submitting, setSubmitting] = useState(false);
     const [searchParams] = useSearchParams();
     const isEmbed = searchParams.get('embed') === 'true';
+    const customWidth = searchParams.get('width');
 
     const [formData, setFormData] = useState<Record<string, any>>({});
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -289,8 +290,12 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
 
     // Dynamic configuration variables
     const primaryColor = form?.design?.primaryColor || '#2563eb';
+    const formBackgroundColor = form?.design?.formBackgroundColor || '#ffffff';
     const bgColor = form?.design?.backgroundColor || (isEmbed ? 'transparent' : '#f8fafc');
     const textColor = form?.design?.textColor || '#0f172a';
+    const formTextColor = form?.design?.formTextColor || '#1e293b';
+    const showTitle = form?.design?.showTitle !== false;
+    const showDescription = form?.design?.showDescription !== false;
     const steps = form?.design?.steps || [];
     const isMultistep = form?.design?.isMultistep && steps.length > 0;
     const layout = form?.design?.layout || 'default';
@@ -407,7 +412,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
         if (thankYouConfig && thankYouConfig.template === 'custom') {
             return (
                 <div className={cn("flex items-center justify-center min-h-screen p-6", isEmbed ? "bg-transparent" : "bg-slate-50")}>
-                    <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-10 max-w-lg w-full text-center animate-in zoom-in-95 duration-500 text-xs font-semibold">
+                    <div className="rounded-3xl border border-slate-200 shadow-xl p-10 max-w-lg w-full text-center animate-in zoom-in-95 duration-500 text-xs font-semibold" style={{ backgroundColor: formBackgroundColor }}>
                         {thankYouConfig.blocks.filter((b: any) => b.visible).map((block: any) => {
                             switch (block.type) {
                                 case 'icon':
@@ -525,7 +530,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
 
         return (
             <div className={cn("flex items-center justify-center min-h-screen p-6", isEmbed ? "bg-transparent" : "bg-slate-50")}>
-                <div className="bg-white rounded-3xl border border-slate-200 shadow-xl p-10 max-w-md w-full text-center animate-in zoom-in-95 duration-500 text-xs">
+                <div className="rounded-3xl border border-slate-200 shadow-xl p-10 max-w-md w-full text-center animate-in zoom-in-95 duration-500 text-xs" style={{ backgroundColor: formBackgroundColor }}>
                     <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto mb-6">
                         <CheckCircle2 className="w-10 h-10 text-green-500" />
                     </div>
@@ -886,7 +891,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                     const colSpan = field.colSpan || 12;
                     return (
                         <div key={field.id} className={cn(getColSpanClass(colSpan), "space-y-2")}>
-                            <label className="flex items-center text-[10px] font-bold uppercase tracking-wider font-sans mb-1" style={{ color: isEmbed ? '#8696a0' : (isHorizontal ? '#1e293b' : textColor) }}>
+                            <label className="flex items-center text-[10px] font-bold uppercase tracking-wider font-sans mb-1" style={{ color: isEmbed ? '#8696a0' : (isHorizontal ? '#1e293b' : formTextColor) }}>
                                 {field.label}
                                 {field.required && <span className="text-red-500 ml-1">*</span>}
                             </label>
@@ -995,7 +1000,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
             return (
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
                     {/* Left Steps Sidebar */}
-                    <div className="md:col-span-4 bg-white border border-slate-200/80 rounded-3xl p-6 shadow-md space-y-4">
+                    <div className="md:col-span-4 border border-slate-200/80 rounded-3xl p-6 shadow-md space-y-4" style={{ backgroundColor: formBackgroundColor }}>
                         <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
                             <span className="font-extrabold text-slate-800 text-[13px] uppercase tracking-wider">{form?.design?.stepsSidebarTitle || 'Booking Steps'}</span>
                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Step {visibleSteps.findIndex((s: StepDef) => s.id === currentStep?.id) + 1} of {visibleSteps.length}</span>
@@ -1049,7 +1054,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                     </div>
 
                     {/* Right Form Fields Container */}
-                    <div className="md:col-span-8 bg-white border border-slate-200/80 rounded-3xl p-6 md:p-8 shadow-md">
+                    <div className="md:col-span-8 border border-slate-200/80 rounded-3xl p-6 md:p-8 shadow-md" style={{ backgroundColor: formBackgroundColor }}>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="border-b border-slate-100 pb-4 mb-4">
                                 <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider m-0">
@@ -1070,7 +1075,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
 
         // Default layout (centered card with stepper at top if multistep)
         return (
-            <div className={cn("rounded-3xl", isEmbed ? "p-2 bg-transparent shadow-none border-none" : "bg-white shadow-xl border border-slate-100 p-8 md:p-10")}>
+            <div className={cn("rounded-3xl", isEmbed ? "p-2 bg-transparent shadow-none border-none" : "shadow-xl border border-slate-100 p-8 md:p-10")} style={!isEmbed ? { backgroundColor: formBackgroundColor } : undefined}>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {isMultistep && (
                         <div className="border-b border-slate-100 pb-5 mb-6 text-xs font-semibold">
@@ -1158,7 +1163,10 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                         </button>
                     </div>
                 )}
-                <div className="max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans flex flex-col justify-center">
+                <div 
+                    className={cn("mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 font-sans flex flex-col justify-center w-full", !customWidth && "max-w-4xl")}
+                    style={customWidth ? { maxWidth: customWidth } : undefined}
+                >
                     {/* Custom Toast Notification */}
                     {toast && (
                         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl bg-slate-900 text-white shadow-xl text-xs font-semibold animate-in slide-in-from-bottom-4 duration-200">
@@ -1174,10 +1182,12 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                         {form.owner?.logoUrl && (
                             <img src={form.owner.logoUrl} alt={form.owner.name} className="h-16 mx-auto mb-5 rounded-lg shadow-sm" />
                         )}
-                        <h1 className="text-2xl font-extrabold tracking-tight mb-2 font-sans" style={{ color: textColor }}>
-                            {form.title}
-                        </h1>
-                        {form.description && (
+                        {showTitle && (
+                            <h1 className="text-2xl font-extrabold tracking-tight mb-2 font-sans" style={{ color: textColor }}>
+                                {form.title}
+                            </h1>
+                        )}
+                        {showDescription && form.description && (
                             <p className="text-xs opacity-75 font-sans font-bold uppercase tracking-wider" style={{ color: textColor }}>
                                 {form.description}
                             </p>
