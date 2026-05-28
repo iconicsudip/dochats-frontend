@@ -381,8 +381,8 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
 
     const renderThankYouSummary = () => {
         return (
-            <div className="bg-slate-50 border border-slate-200/80 rounded-2xl p-5 text-left my-6 space-y-3 font-sans">
-                <span className="font-bold text-slate-800 text-xs uppercase tracking-wider block border-b border-slate-200/60 pb-2">
+            <div className="border rounded-2xl p-5 text-left my-6 space-y-3 font-sans" style={{ backgroundColor: inputBackgroundColor, borderColor: inputBorderColor }}>
+                <span className="font-bold text-xs uppercase tracking-wider block border-b pb-2" style={{ color: titleColor, borderColor: inputBorderColor }}>
                     Booking Details
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
@@ -392,10 +392,10 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                         if (f.type === 'image') {
                             return (
                                 <div key={f.id} className="sm:col-span-2 space-y-1.5">
-                                    <span className="font-bold text-slate-500 block">{f.label}:</span>
+                                    <span className="font-bold block" style={{ color: descriptionColor }}>{f.label}:</span>
                                     <div className="flex gap-2 flex-wrap">
                                         {val.map((img: any, idx: number) => (
-                                            <img key={idx} src={img.base64} alt="reference" className="w-12 h-12 object-cover rounded-xl border border-slate-200" />
+                                            <img key={idx} src={img.base64} alt="reference" className="w-12 h-12 object-cover rounded-xl border" style={{ borderColor: inputBorderColor }} />
                                         ))}
                                     </div>
                                 </div>
@@ -403,8 +403,8 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                         }
                         return (
                             <div key={f.id} className="space-y-0.5">
-                                <span className="font-bold text-slate-500 block">{f.label}:</span>
-                                <span className="font-semibold text-slate-800">{val}</span>
+                                <span className="font-bold block" style={{ color: descriptionColor }}>{f.label}:</span>
+                                <span className="font-semibold" style={{ color: inputTextColor }}>{val}</span>
                             </div>
                         );
                     })}
@@ -417,27 +417,27 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
         const thankYouConfig = form.design?.thankYouPage;
         if (thankYouConfig && thankYouConfig.template === 'custom') {
             return (
-                <div className={cn("flex items-center justify-center min-h-screen p-6", isEmbed ? "bg-transparent" : "bg-slate-50")}>
-                    <div className="rounded-3xl border border-slate-200 shadow-xl p-10 max-w-lg w-full text-center animate-in zoom-in-95 duration-500 text-xs font-semibold" style={{ backgroundColor: formBackgroundColor }}>
+                <div className={cn("flex items-center justify-center min-h-screen p-6", isEmbed ? "bg-transparent" : "")} style={{ backgroundColor: !isEmbed ? bgColor : undefined }}>
+                    <div className="rounded-3xl border shadow-xl p-10 max-w-lg w-full text-center animate-in zoom-in-95 duration-500 text-xs font-semibold" style={{ backgroundColor: formBackgroundColor, borderColor: frameBorderColor }}>
                         {thankYouConfig.blocks.filter((b: any) => b.visible).map((block: any) => {
                             switch (block.type) {
                                 case 'icon':
                                     return (
                                         <div key={block.id} className="mb-6 flex justify-center">
-                                            <div className="w-20 h-20 rounded-full flex items-center justify-center bg-slate-50 border border-slate-100 shadow-2xs">
+                                            <div className="w-20 h-20 rounded-full flex items-center justify-center shadow-2xs border" style={{ backgroundColor: inputBackgroundColor, borderColor: inputBorderColor }}>
                                                 {renderThankYouIcon(block.value, block.color)}
                                             </div>
                                         </div>
                                     );
                                 case 'title':
                                     return (
-                                        <h2 key={block.id} className="text-2xl font-extrabold text-slate-900 mb-3 tracking-tight">
+                                        <h2 key={block.id} className="text-2xl font-extrabold mb-3 tracking-tight" style={{ color: titleColor }}>
                                             {block.value}
                                         </h2>
                                     );
                                 case 'message':
                                     return (
-                                        <p key={block.id} className="text-slate-500 leading-relaxed max-w-sm mx-auto mb-4">
+                                        <p key={block.id} className="leading-relaxed max-w-sm mx-auto mb-4" style={{ color: descriptionColor }}>
                                             {block.value}
                                         </p>
                                     );

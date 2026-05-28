@@ -1421,7 +1421,7 @@ const FormBuilder: React.FC = () => {
                             <div className="p-5 border-b border-slate-100 bg-slate-50">
                                 <h2 className="font-bold text-slate-900 m-0 text-sm">Brand Styling Tokens</h2>
                             </div>
-                            <div className="p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+                            <div className="p-5 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
                                 <div>
                                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Form Color</label>
                                     <div className="relative">
