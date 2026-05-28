@@ -806,6 +806,9 @@ const FormBuilder: React.FC = () => {
     const [backgroundColor, setBackgroundColor] = useState('#f8fafc');
     const [textColor, setTextColor] = useState('#0f172a');
     const [formTextColor, setFormTextColor] = useState('#1e293b');
+    const [frameBorderColor, setFrameBorderColor] = useState('#e2e8f0');
+    const [inputBackgroundColor, setInputBackgroundColor] = useState('#f8fafc');
+    const [inputBorderColor, setInputBorderColor] = useState('#e2e8f0');
     
     const [fields, setFields] = useState<FormField[]>([]);
     const [loading, setLoading] = useState(false);
@@ -891,6 +894,9 @@ const FormBuilder: React.FC = () => {
             setBackgroundColor(data.design?.backgroundColor || '#f8fafc');
             setTextColor(data.design?.textColor || '#0f172a');
             setFormTextColor(data.design?.formTextColor || '#1e293b');
+            setFrameBorderColor(data.design?.frameBorderColor || '#e2e8f0');
+            setInputBackgroundColor(data.design?.inputBackgroundColor || '#f8fafc');
+            setInputBorderColor(data.design?.inputBorderColor || '#e2e8f0');
             
             const isMs = data.design?.isMultistep || false;
             const lay = data.design?.layout || 'default';
@@ -917,6 +923,9 @@ const FormBuilder: React.FC = () => {
             setBackgroundColor(template.design?.backgroundColor || '#f8fafc');
             setTextColor(template.design?.textColor || '#0f172a');
             setFormTextColor(template.design?.formTextColor || '#1e293b');
+            setFrameBorderColor(template.design?.frameBorderColor || '#e2e8f0');
+            setInputBackgroundColor(template.design?.inputBackgroundColor || '#f8fafc');
+            setInputBorderColor(template.design?.inputBorderColor || '#e2e8f0');
             
             const isMs = template.design?.isMultistep || false;
             const lay = template.design?.layout || 'default';
@@ -1174,6 +1183,9 @@ const FormBuilder: React.FC = () => {
                     backgroundColor,
                     textColor,
                     formTextColor,
+                    frameBorderColor,
+                    inputBackgroundColor,
+                    inputBorderColor,
                     isMultistep,
                     layout,
                     steps,
@@ -1440,6 +1452,33 @@ const FormBuilder: React.FC = () => {
                                         <input type="color" value={formTextColor} onChange={e => setFormTextColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
                                         <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
                                             <div className="w-6 h-6 rounded-lg shadow-2xs border border-black/10" style={{ backgroundColor: formTextColor }} />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Frame Border</label>
+                                    <div className="relative">
+                                        <input type="color" value={frameBorderColor} onChange={e => setFrameBorderColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
+                                        <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
+                                            <div className="w-6 h-6 rounded-lg shadow-2xs border border-black/10" style={{ backgroundColor: frameBorderColor }} />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Input Bg Color</label>
+                                    <div className="relative">
+                                        <input type="color" value={inputBackgroundColor} onChange={e => setInputBackgroundColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
+                                        <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
+                                            <div className="w-6 h-6 rounded-lg shadow-2xs border border-black/10" style={{ backgroundColor: inputBackgroundColor }} />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Input Border Color</label>
+                                    <div className="relative">
+                                        <input type="color" value={inputBorderColor} onChange={e => setInputBorderColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
+                                        <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
+                                            <div className="w-6 h-6 rounded-lg shadow-2xs border border-black/10" style={{ backgroundColor: inputBorderColor }} />
                                         </div>
                                     </div>
                                 </div>
@@ -1893,9 +1932,16 @@ const FormBuilder: React.FC = () => {
                                     description,
                                     fields,
                                     design: {
+                                        showTitle,
+                                        showDescription,
                                         primaryColor,
+                                        formBackgroundColor,
                                         backgroundColor,
                                         textColor,
+                                        formTextColor,
+                                        frameBorderColor,
+                                        inputBackgroundColor,
+                                        inputBorderColor,
                                         isMultistep,
                                         layout,
                                         steps,

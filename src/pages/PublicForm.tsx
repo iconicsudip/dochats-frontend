@@ -294,6 +294,9 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
     const bgColor = form?.design?.backgroundColor || (isEmbed ? 'transparent' : '#f8fafc');
     const textColor = form?.design?.textColor || '#0f172a';
     const formTextColor = form?.design?.formTextColor || '#1e293b';
+    const frameBorderColor = form?.design?.frameBorderColor || '#e2e8f0';
+    const inputBackgroundColor = form?.design?.inputBackgroundColor || '#f8fafc';
+    const inputBorderColor = form?.design?.inputBorderColor || '#e2e8f0';
     const showTitle = form?.design?.showTitle !== false;
     const showDescription = form?.design?.showDescription !== false;
     const steps = form?.design?.steps || [];
@@ -589,7 +592,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                         ? "bg-[#2a3942] border border-[#3b4a54] text-white placeholder-[#8696a0] focus:ring-[#00a884]/40" 
                         : isBlueBorderField
                             ? "bg-white border-2 border-[#1e88e5] text-slate-800 placeholder-slate-400 focus:ring-[#1e88e5]/20 focus:border-[#1e88e5]"
-                            : "bg-slate-50 border border-slate-200/80 text-slate-800 placeholder-slate-400 focus:ring-primary/20 focus:bg-white"
+                            : "custom-form-input border text-slate-800 placeholder-slate-400 focus:ring-primary/20"
                       )
                   )
         );
@@ -1000,7 +1003,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
             return (
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
                     {/* Left Steps Sidebar */}
-                    <div className="md:col-span-4 border border-slate-200/80 rounded-3xl p-6 shadow-md space-y-4" style={{ backgroundColor: formBackgroundColor }}>
+                    <div className="md:col-span-4 border rounded-3xl p-6 shadow-md space-y-4" style={{ backgroundColor: formBackgroundColor, borderColor: frameBorderColor }}>
                         <div className="flex flex-col gap-1.5 border-b border-slate-100 pb-4">
                             <span className="font-extrabold text-slate-800 text-[13px] uppercase tracking-wider">{form?.design?.stepsSidebarTitle || 'Booking Steps'}</span>
                             <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Step {visibleSteps.findIndex((s: StepDef) => s.id === currentStep?.id) + 1} of {visibleSteps.length}</span>
@@ -1054,7 +1057,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                     </div>
 
                     {/* Right Form Fields Container */}
-                    <div className="md:col-span-8 border border-slate-200/80 rounded-3xl p-6 md:p-8 shadow-md" style={{ backgroundColor: formBackgroundColor }}>
+                    <div className="md:col-span-8 border rounded-3xl p-6 md:p-8 shadow-md" style={{ backgroundColor: formBackgroundColor, borderColor: frameBorderColor }}>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="border-b border-slate-100 pb-4 mb-4">
                                 <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider m-0">
@@ -1075,7 +1078,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
 
         // Default layout (centered card with stepper at top if multistep)
         return (
-            <div className={cn("rounded-3xl", isEmbed ? "p-2 bg-transparent shadow-none border-none" : "shadow-xl border border-slate-100 p-8 md:p-10")} style={!isEmbed ? { backgroundColor: formBackgroundColor } : undefined}>
+            <div className={cn("rounded-3xl", isEmbed ? "p-2 bg-transparent shadow-none border-none" : "shadow-xl border p-8 md:p-10")} style={!isEmbed ? { backgroundColor: formBackgroundColor, borderColor: frameBorderColor } : undefined}>
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {isMultistep && (
                         <div className="border-b border-slate-100 pb-5 mb-6 text-xs font-semibold">
@@ -1136,14 +1139,24 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                     fontFamily: 'Inter, sans-serif',
                     fontSize: 12,
                     controlHeight: 42,
-                    colorBgContainer: isEmbed ? '#2a3942' : '#f8fafc',
-                    colorText: isEmbed ? '#ffffff' : '#0f172a',
+                    colorBgContainer: isEmbed ? '#2a3942' : inputBackgroundColor,
+                    colorText: isEmbed ? '#ffffff' : textColor,
                     colorTextPlaceholder: isEmbed ? '#8696a0' : '#94a3b8',
-                    colorBorder: isEmbed ? '#3b4a54' : '#e2e8f0',
-                    colorBorderSecondary: isEmbed ? '#3b4a54' : '#e2e8f0',
+                    colorBorder: isEmbed ? '#3b4a54' : inputBorderColor,
+                    colorBorderSecondary: isEmbed ? '#3b4a54' : inputBorderColor,
                 },
             }}
         >
+            <style>{`
+                .custom-form-input {
+                    background-color: ${inputBackgroundColor} !important;
+                    border-color: ${inputBorderColor} !important;
+                }
+                .custom-form-input:focus {
+                    background-color: #ffffff !important;
+                    border-color: ${primaryColor} !important;
+                }
+            `}</style>
             <div 
                 className="min-h-screen flex" 
                 style={{ 
