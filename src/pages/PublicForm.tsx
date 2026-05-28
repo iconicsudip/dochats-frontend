@@ -297,6 +297,9 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
     const frameBorderColor = form?.design?.frameBorderColor || '#e2e8f0';
     const inputBackgroundColor = form?.design?.inputBackgroundColor || '#f8fafc';
     const inputBorderColor = form?.design?.inputBorderColor || '#e2e8f0';
+    const inputTextColor = form?.design?.inputTextColor || '#0f172a';
+    const titleColor = form?.design?.titleColor || form?.design?.textColor || '#0f172a';
+    const descriptionColor = form?.design?.descriptionColor || form?.design?.textColor || '#64748b';
     const showTitle = form?.design?.showTitle !== false;
     const showDescription = form?.design?.showDescription !== false;
     const steps = form?.design?.steps || [];
@@ -668,7 +671,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                     <div className="flex">
                         <span className={cn(
                             "inline-flex items-center px-4 rounded-l-xl border border-r-0 text-xs font-bold shrink-0",
-                            isEmbed ? "bg-[#182229] border-[#3b4a54] text-[#8696a0]" : "border-slate-200 bg-slate-100 text-slate-500"
+                            isEmbed ? "bg-[#182229] border-[#3b4a54] text-[#8696a0]" : "custom-form-input-addon"
                         )}>
                             +91
                         </span>
@@ -1041,13 +1044,14 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                                             <span 
                                                 className={cn(
                                                     "block font-bold transition-colors",
-                                                    isActive ? "text-slate-900" : isCompleted ? "text-slate-600" : "text-slate-400"
+                                                    isActive ? "" : isCompleted ? "opacity-75" : "opacity-50"
                                                 )}
+                                                style={{ color: titleColor }}
                                             >
                                                 {step.title}
                                             </span>
                                             {step.description && (
-                                                <span className="block text-[10px] text-slate-400 font-medium leading-normal">{step.description}</span>
+                                                <span className="block text-[10px] font-medium leading-normal opacity-75" style={{ color: descriptionColor }}>{step.description}</span>
                                             )}
                                         </div>
                                     </div>
@@ -1060,11 +1064,11 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                     <div className="md:col-span-8 border rounded-3xl p-6 md:p-8 shadow-md" style={{ backgroundColor: formBackgroundColor, borderColor: frameBorderColor }}>
                         <form onSubmit={handleSubmit} className="space-y-6">
                             <div className="border-b border-slate-100 pb-4 mb-4">
-                                <h3 className="text-sm font-extrabold text-slate-800 uppercase tracking-wider m-0">
+                                <h3 className="text-sm font-extrabold uppercase tracking-wider m-0" style={{ color: titleColor }}>
                                     {currentStep?.title}
                                 </h3>
                                 {currentStep?.description && (
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mt-1 m-0">{currentStep?.description}</p>
+                                    <p className="text-[10px] font-bold uppercase tracking-wider mt-1 m-0 opacity-75" style={{ color: descriptionColor }}>{currentStep?.description}</p>
                                 )}
                             </div>
 
@@ -1102,8 +1106,8 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                                             </div>
                                             <span className={cn(
                                                 "hidden sm:inline font-bold",
-                                                currentStep?.id === step.id ? "text-slate-800" : "text-slate-400"
-                                            )}>
+                                                currentStep?.id === step.id ? "" : "opacity-50"
+                                            )} style={{ color: titleColor }}>
                                                 {step.title}
                                             </span>
                                         </div>
@@ -1151,10 +1155,20 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                 .custom-form-input {
                     background-color: ${inputBackgroundColor} !important;
                     border-color: ${inputBorderColor} !important;
+                    color: ${inputTextColor} !important;
+                }
+                .custom-form-input::placeholder {
+                    color: ${inputTextColor} !important;
+                    opacity: 0.6 !important;
                 }
                 .custom-form-input:focus {
                     background-color: #ffffff !important;
                     border-color: ${primaryColor} !important;
+                }
+                .custom-form-input-addon {
+                    background-color: ${inputBackgroundColor} !important;
+                    border-color: ${inputBorderColor} !important;
+                    color: ${inputTextColor} !important;
                 }
             `}</style>
             <div 
@@ -1196,12 +1210,12 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                             <img src={form.owner.logoUrl} alt={form.owner.name} className="h-16 mx-auto mb-5 rounded-lg shadow-sm" />
                         )}
                         {showTitle && (
-                            <h1 className="text-2xl font-extrabold tracking-tight mb-2 font-sans" style={{ color: textColor }}>
+                            <h1 className="text-2xl font-extrabold tracking-tight mb-2 font-sans" style={{ color: titleColor }}>
                                 {form.title}
                             </h1>
                         )}
                         {showDescription && form.description && (
-                            <p className="text-xs opacity-75 font-sans font-bold uppercase tracking-wider" style={{ color: textColor }}>
+                            <p className="text-xs opacity-75 font-sans font-bold uppercase tracking-wider" style={{ color: descriptionColor }}>
                                 {form.description}
                             </p>
                         )}

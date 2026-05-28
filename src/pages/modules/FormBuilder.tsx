@@ -809,6 +809,9 @@ const FormBuilder: React.FC = () => {
     const [frameBorderColor, setFrameBorderColor] = useState('#e2e8f0');
     const [inputBackgroundColor, setInputBackgroundColor] = useState('#f8fafc');
     const [inputBorderColor, setInputBorderColor] = useState('#e2e8f0');
+    const [inputTextColor, setInputTextColor] = useState('#0f172a');
+    const [titleColor, setTitleColor] = useState('#0f172a');
+    const [descriptionColor, setDescriptionColor] = useState('#64748b');
     
     const [fields, setFields] = useState<FormField[]>([]);
     const [loading, setLoading] = useState(false);
@@ -897,6 +900,9 @@ const FormBuilder: React.FC = () => {
             setFrameBorderColor(data.design?.frameBorderColor || '#e2e8f0');
             setInputBackgroundColor(data.design?.inputBackgroundColor || '#f8fafc');
             setInputBorderColor(data.design?.inputBorderColor || '#e2e8f0');
+            setInputTextColor(data.design?.inputTextColor || '#0f172a');
+            setTitleColor(data.design?.titleColor || data.design?.textColor || '#0f172a');
+            setDescriptionColor(data.design?.descriptionColor || data.design?.textColor || '#64748b');
             
             const isMs = data.design?.isMultistep || false;
             const lay = data.design?.layout || 'default';
@@ -926,6 +932,9 @@ const FormBuilder: React.FC = () => {
             setFrameBorderColor(template.design?.frameBorderColor || '#e2e8f0');
             setInputBackgroundColor(template.design?.inputBackgroundColor || '#f8fafc');
             setInputBorderColor(template.design?.inputBorderColor || '#e2e8f0');
+            setInputTextColor(template.design?.inputTextColor || '#0f172a');
+            setTitleColor(template.design?.titleColor || template.design?.textColor || '#0f172a');
+            setDescriptionColor(template.design?.descriptionColor || template.design?.textColor || '#64748b');
             
             const isMs = template.design?.isMultistep || false;
             const lay = template.design?.layout || 'default';
@@ -1186,6 +1195,9 @@ const FormBuilder: React.FC = () => {
                     frameBorderColor,
                     inputBackgroundColor,
                     inputBorderColor,
+                    inputTextColor,
+                    titleColor,
+                    descriptionColor,
                     isMultistep,
                     layout,
                     steps,
@@ -1474,11 +1486,38 @@ const FormBuilder: React.FC = () => {
                                     </div>
                                 </div>
                                 <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Input Text Color</label>
+                                    <div className="relative">
+                                        <input type="color" value={inputTextColor} onChange={e => setInputTextColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
+                                        <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
+                                            <div className="w-6 h-6 rounded-lg shadow-2xs border border-black/10" style={{ backgroundColor: inputTextColor }} />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
                                     <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Input Border Color</label>
                                     <div className="relative">
                                         <input type="color" value={inputBorderColor} onChange={e => setInputBorderColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
                                         <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
                                             <div className="w-6 h-6 rounded-lg shadow-2xs border border-black/10" style={{ backgroundColor: inputBorderColor }} />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Title Color</label>
+                                    <div className="relative">
+                                        <input type="color" value={titleColor} onChange={e => setTitleColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
+                                        <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
+                                            <div className="w-6 h-6 rounded-lg shadow-2xs border border-black/10" style={{ backgroundColor: titleColor }} />
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Desc Color</label>
+                                    <div className="relative">
+                                        <input type="color" value={descriptionColor} onChange={e => setDescriptionColor(e.target.value)} className="opacity-0 absolute inset-0 w-full h-full cursor-pointer z-10" />
+                                        <div className="w-full h-10 rounded-xl border border-slate-200/80 flex items-center justify-center gap-2 overflow-hidden shadow-2xs bg-slate-50">
+                                            <div className="w-6 h-6 rounded-lg shadow-2xs border border-black/10" style={{ backgroundColor: descriptionColor }} />
                                         </div>
                                     </div>
                                 </div>
@@ -1942,6 +1981,9 @@ const FormBuilder: React.FC = () => {
                                         frameBorderColor,
                                         inputBackgroundColor,
                                         inputBorderColor,
+                                        inputTextColor,
+                                        titleColor,
+                                        descriptionColor,
                                         isMultistep,
                                         layout,
                                         steps,
