@@ -13,6 +13,7 @@ import {
     FileText, Phone, Mail, Settings as SettingsIcon, ChevronDown, X, Plug, Search, Bell, HelpCircle, LayoutGrid, MessageCircle,
     Building2, Briefcase, LifeBuoy, ShoppingBag, MessagesSquare, Radio
 } from 'lucide-react';
+import { APP_NAME } from '../constants/brand';
 
 const DashboardLayout: React.FC = () => {
     const navigate = useNavigate();
@@ -35,6 +36,118 @@ const DashboardLayout: React.FC = () => {
     }, []);
 
     const defaultPath = user?.role === Role.SUB_USER ? '/dashboard/chat' : '/dashboard';
+
+    // Notification System States
+    const [notifications, setNotifications] = useState<any[]>([]);
+    const [showNotificationsDropdown, setShowNotificationsDropdown] = useState(false);
+    const [currentToast, setCurrentToast] = useState<any | null>(null);
+
+    const showNotificationToast = (notif: any) => {
+        setCurrentToast(notif);
+        setTimeout(() => {
+            setCurrentToast((prev: any) => prev?.id === notif.id ? null : prev);
+        }, 4000);
+    };
+
+    const formatTimeAgo = (dateStr: string) => {
+        try {
+            const seconds = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / 1000);
+            if (seconds < 60) return 'just now';
+            const minutes = Math.floor(seconds / 60);
+            if (minutes < 60) return `${minutes}m ago`;
+            const hours = Math.floor(minutes / 60);
+            if (hours < 24) return `${hours}h ago`;
+            return new Date(dateStr).toLocaleDateString();
+        } catch (e) {
+            return '';
+        }
+    };
+
+    // Request browser notification permissions on mount
+    useEffect(() => {
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+            if (Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+    }, []);
+
+    // Connect to real-time EventSource globally
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const sseUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5001/api'}/realtime?token=${token}`;
+        const es = new EventSource(sseUrl);
+
+        es.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                
+                if (data.type === 'message') {
+                    const { message, conversationId } = data;
+                    if (message.isFromAdmin) return;
+
+                    // Suppress if user is already looking at this exact chat conversation
+                    const currentParams = new URLSearchParams(window.location.search);
+                    const activeConvId = currentParams.get('conv') || window.location.pathname.split('/').pop();
+                    if (window.location.pathname.includes('/dashboard/chat') && activeConvId === conversationId) {
+                        return;
+                    }
+
+                    const newNotification = {
+                        id: message.id || `msg-${Date.now()}`,
+                        title: `New Message from ${message.senderName || 'Visitor'}`,
+                        description: message.content || '🎤 Voice Message',
+                        type: 'message',
+                        link: `/dashboard/chat?conv=${conversationId}`,
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    setNotifications(prev => [newNotification, ...prev].slice(0, 20));
+                    
+                    if (Notification.permission === 'granted') {
+                        new Notification(newNotification.title, { body: newNotification.description });
+                    }
+                    
+                    showNotificationToast(newNotification);
+                } else if (data.type === 'group_message') {
+                    const { message, groupId } = data;
+                    if (message.senderId === user?.id) return;
+
+                    // Suppress if user is already viewing this group chat
+                    const currentParams = new URLSearchParams(window.location.search);
+                    const activeGroupId = currentParams.get('group');
+                    if (window.location.pathname.includes('/dashboard/chat-groups') && activeGroupId === groupId) {
+                        return;
+                    }
+
+                    const newNotification = {
+                        id: message.id || `gmsg-${Date.now()}`,
+                        title: `Group Chat: ${message.sender?.name || 'User'}`,
+                        description: message.content || 'Shared a link',
+                        type: 'group_message',
+                        link: `/dashboard/chat-groups?group=${groupId}`,
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    setNotifications(prev => [newNotification, ...prev].slice(0, 20));
+                    
+                    if (Notification.permission === 'granted') {
+                        new Notification(newNotification.title, { body: newNotification.description });
+                    }
+                    
+                    showNotificationToast(newNotification);
+                }
+            } catch (e) {
+                console.error('[SSE Global] Parse error:', e);
+            }
+        };
+
+        return () => {
+            es.close();
+        };
+    }, [user, navigate]);
 
     // Strictly preserved Super Admin items
     const superAdminItems = [
@@ -175,7 +288,7 @@ const DashboardLayout: React.FC = () => {
                     <Plug className="w-5 h-5 text-white" strokeWidth={2.5} />
                 </div>
                 <div>
-                    <span className="text-white text-lg font-bold m-0 leading-none tracking-tight block">DoConnect</span>
+                    <span className="text-white text-lg font-bold m-0 leading-none tracking-tight block">{APP_NAME}</span>
                 </div>
                 <div className="ml-auto w-6 h-6 bg-slate-800 border border-slate-700 rounded-lg flex items-center justify-center text-slate-400 font-semibold text-[10px]">
                     OS
@@ -396,10 +509,60 @@ const DashboardLayout: React.FC = () => {
                                     <HelpCircle className="w-4 h-4" />
                                 </button>
                             )}
-                            <button className="relative w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors shadow-2xs hover:bg-white cursor-pointer shrink-0">
-                                <Bell className="w-4 h-4" />
-                                <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-red-500 rounded-full border-2 border-white animate-pulse" />
-                            </button>
+                            <div className="relative shrink-0 font-sans">
+                                <button 
+                                    onClick={() => setShowNotificationsDropdown(!showNotificationsDropdown)}
+                                    className="relative w-10 h-10 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-600 hover:text-slate-900 transition-colors shadow-2xs hover:bg-white cursor-pointer shrink-0"
+                                >
+                                    <Bell className="w-4 h-4" />
+                                    {notifications.length > 0 && (
+                                        <span className="absolute top-1.5 right-1.5 min-w-4 h-4 bg-red-500 rounded-full border-2 border-white text-[9px] font-bold text-white flex items-center justify-center px-0.5 animate-pulse">
+                                            {notifications.length}
+                                        </span>
+                                    )}
+                                </button>
+                                
+                                {showNotificationsDropdown && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowNotificationsDropdown(false)} />
+                                        <div className="absolute right-0 mt-2.5 w-80 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 overflow-hidden py-1 animate-in zoom-in-95 duration-200">
+                                            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                                                <span className="font-bold text-slate-900 text-xs">Recent Notifications</span>
+                                                {notifications.length > 0 && (
+                                                    <button 
+                                                        onClick={() => setNotifications([])}
+                                                        className="text-[10px] font-bold text-primary hover:text-primary-hover cursor-pointer"
+                                                    >
+                                                        Clear all
+                                                    </button>
+                                                )}
+                                            </div>
+                                            <div className="max-h-64 overflow-y-auto custom-scrollbar">
+                                                {notifications.length === 0 ? (
+                                                    <div className="p-6 text-center text-slate-400 text-[11px] font-medium">
+                                                        No new notifications
+                                                    </div>
+                                                ) : (
+                                                    notifications.map((n) => (
+                                                        <button
+                                                            key={n.id}
+                                                            onClick={() => {
+                                                                navigate(n.link);
+                                                                setShowNotificationsDropdown(false);
+                                                            }}
+                                                            className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-50 last:border-0 flex flex-col gap-0.5 transition-colors cursor-pointer"
+                                                        >
+                                                            <div className="font-bold text-slate-800 text-[11.5px] truncate">{n.title}</div>
+                                                            <div className="text-[10.5px] text-slate-500 truncate font-semibold">{n.description}</div>
+                                                            <div className="text-[9px] text-slate-400 mt-0.5">{formatTimeAgo(n.createdAt)}</div>
+                                                        </button>
+                                                    ))
+                                                )}
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                             <button 
                                 onClick={() => navigate('/dashboard/settings')}
                                 className="w-10 h-10 rounded-xl border border-slate-200 shadow-2xs overflow-hidden hover:ring-2 hover:ring-primary/30 transition-all cursor-pointer shrink-0"
@@ -419,6 +582,39 @@ const DashboardLayout: React.FC = () => {
                     </div>
                 </main>
             </div>
+
+            {/* Dynamic Real-time Toast Notifications */}
+            <AnimatePresence>
+                {currentToast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 20, scale: 0.95 }}
+                        onClick={() => {
+                            navigate(currentToast.link);
+                            setCurrentToast(null);
+                        }}
+                        className="fixed bottom-6 right-6 z-[200] max-w-sm bg-slate-900 border border-slate-800 text-white rounded-2xl p-4 shadow-2xl flex items-start gap-3.5 cursor-pointer hover:border-primary/50 transition-all font-sans"
+                    >
+                        <div className="w-9 h-9 rounded-xl bg-primary/20 border border-primary/30 flex items-center justify-center text-primary shrink-0">
+                            {currentToast.type === 'message' ? <MessageCircle className="w-5 h-5" /> : <MessagesSquare className="w-5 h-5" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                            <div className="font-bold text-xs truncate pr-4">{currentToast.title}</div>
+                            <div className="text-[11px] text-slate-400 font-semibold truncate mt-0.5">{currentToast.description}</div>
+                        </div>
+                        <button 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setCurrentToast(null);
+                            }}
+                            className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer"
+                        >
+                            <X className="w-3.5 h-3.5" />
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
 
             <FeatureTour />
             <ChangePasswordModal />

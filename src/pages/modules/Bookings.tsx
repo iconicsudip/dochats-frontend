@@ -15,6 +15,7 @@ import {
 import dayjs from 'dayjs';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { APP_NAME } from '../../constants/brand';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
@@ -776,7 +777,7 @@ const Bookings: React.FC = () => {
                                                 className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl font-bold shrink-0 shadow-xs transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-70 text-xs"
                                             >
                                                 {isImporting && <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" />}
-                                                <span>{isImporting ? 'Syncing...' : 'Sync into DoConnect'}</span>
+                                                <span>{isImporting ? 'Syncing...' : `Sync into ${APP_NAME}`}</span>
                                             </button>
                                         </form>
 
@@ -900,7 +901,7 @@ const Bookings: React.FC = () => {
                                             <p className="m-0 leading-relaxed font-medium">
                                                 1. Copy the Universal ICS subscription feed URL below.<br />
                                                 2. In Outlook Web or Desktop, go to <strong className="font-bold text-slate-900">Calendar &gt; Add Calendar &gt; Subscribe from web</strong>.<br />
-                                                3. Paste the URL, enter a name (e.g. DoConnect Bookings), and click Import.
+                                                3. Paste the URL, enter a name (e.g. {APP_NAME} Bookings), and click Import.
                                             </p>
                                         </div>
                                     </div>

@@ -45,7 +45,6 @@ const Companies: React.FC = () => {
     const [companies, setCompanies] = useState<CompanyAccount[]>([]);
     const [leads, setLeads] = useState<CrmLead[]>([]);
     const [subUsersList, setSubUsersList] = useState<{ id: string; name: string; email: string }[]>([]);
-    const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
@@ -101,7 +100,7 @@ const Companies: React.FC = () => {
         if (teamMembersData) setSubUsersList(teamMembersData);
     }, [teamMembersData]);
 
-    const { data: compData, isLoading: loadingCompanies } = useQuery({
+    const { data: compData, isLoading: loadingCompanies, isFetching } = useQuery({
         queryKey: ['companies', page, pageSize, searchTerm],
         queryFn: async () => {
             const [compRes, leadData] = await Promise.all([
@@ -111,6 +110,8 @@ const Companies: React.FC = () => {
             return { compRes, leadData };
         }
     });
+
+    const loading = loadingCompanies;
 
     useEffect(() => {
         if (compData) {
@@ -349,7 +350,7 @@ const Companies: React.FC = () => {
                         onClick={() => { setPage(1); queryClient.invalidateQueries({ queryKey: ['companies'] }); }}
                         className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl font-semibold text-xs border border-slate-200 transition-all cursor-pointer shadow-2xs"
                     >
-                        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        <RefreshCw className={`w-4 h-4 ${isFetching ? 'animate-spin' : ''}`} />
                         Refresh
                     </button>
                     {!isMobile && (

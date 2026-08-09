@@ -82,7 +82,7 @@ const Plans: React.FC = () => {
     }
 
     return (
-        <div className="max-w-6xl mx-auto pb-20 px-4 sm:px-6 font-sans text-slate-800 animate-in fade-in duration-500">
+        <div className="pb-20 font-sans text-slate-800 animate-in fade-in duration-500 w-full min-w-0">
             {/* Title Banner */}
             <div className="text-center max-w-3xl mx-auto mb-12 pt-6">
                 <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight m-0 mb-3">
@@ -119,7 +119,12 @@ const Plans: React.FC = () => {
             </div>
 
             {/* Plans Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className={cn(
+                "grid gap-8 justify-center mx-auto w-full",
+                plans.length === 1 ? "grid-cols-1 max-w-md" :
+                plans.length === 2 ? "grid-cols-1 md:grid-cols-2 max-w-4xl" :
+                "grid-cols-1 md:grid-cols-2 lg:grid-cols-3 max-w-7xl"
+            )}>
                 {plans.map((plan) => {
                     const isCurrent = plan.id === user?.planId || (user?.plan?.name && plan.name === user?.plan?.name);
                     const isYearly = billingCycle === 'YEARLY';

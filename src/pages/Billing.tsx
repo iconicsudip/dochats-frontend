@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { APP_NAME } from '../constants/brand';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
@@ -51,17 +52,17 @@ const Billing: React.FC = () => {
         return () => { document.body.removeChild(script); };
     }, []);
 
-    const handlePayNow = async () => {
+    const handlePayNow = async (subscriptionId?: string) => {
         try {
             setPaymentLoading(true);
 
-            const { data: order } = await apiClient.post('/billing/create-order');
+            const { data: order } = await apiClient.post('/billing/create-order', { subscriptionId });
 
             const options = {
                 key: order.keyId,
                 amount: order.amount,
                 currency: order.currency,
-                name: 'DoChats',
+                name: APP_NAME,
                 description: `${status.billingCycle === 'YEARLY' ? 'Yearly' : 'Monthly'} Subscription`,
                 order_id: order.orderId,
                 handler: async (response: any) => {
@@ -161,7 +162,7 @@ const Billing: React.FC = () => {
                         </div>
                     </div>
                     <button
-                        onClick={handlePayNow}
+                        onClick={() => handlePayNow()}
                         disabled={paymentLoading}
                         className="px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/20 transition-all shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
@@ -183,7 +184,7 @@ const Billing: React.FC = () => {
                         </div>
                     </div>
                     <button
-                        onClick={handlePayNow}
+                        onClick={() => handlePayNow()}
                         disabled={paymentLoading}
                         className="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-md shadow-amber-500/20 transition-all shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
                     >
@@ -249,7 +250,7 @@ const Billing: React.FC = () => {
                         </p>
                     </div>
                     <button
-                        onClick={handlePayNow}
+                        onClick={() => handlePayNow()}
                         disabled={paymentLoading}
                         className="px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all shrink-0 w-full sm:w-auto flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer font-bold"
                     >
@@ -270,7 +271,7 @@ const Billing: React.FC = () => {
                         Start your subscription for ₹{(status?.defaultAmount || 999).toLocaleString()}/month to unlock full customer engagement capabilities.
                     </p>
                     <button
-                        onClick={handlePayNow}
+                        onClick={() => handlePayNow()}
                         disabled={paymentLoading}
                         className="px-6 py-3 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 mx-auto disabled:opacity-50 cursor-pointer"
                     >
@@ -331,9 +332,20 @@ const Billing: React.FC = () => {
                                             </td>
                                             <td className="py-4 px-6">
                                                 <div className="flex flex-col gap-1">
-                                                    <span className={cn("inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wide max-w-max", getStatusBadge(payStatus))}>
-                                                        {payStatus}
-                                                    </span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={cn("inline-flex px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wide max-w-max", getStatusBadge(payStatus))}>
+                                                            {payStatus}
+                                                        </span>
+                                                        {payStatus === 'PENDING' && (
+                                                            <button
+                                                                onClick={() => handlePayNow(record.id)}
+                                                                disabled={paymentLoading}
+                                                                className="px-2 py-0.5 bg-primary hover:bg-primary-hover text-white text-[10px] font-bold rounded-md uppercase tracking-wider cursor-pointer select-none transition-colors border-0 disabled:opacity-50 flex items-center justify-center"
+                                                            >
+                                                                {paymentLoading ? '...' : 'Pay Now'}
+                                                            </button>
+                                                        )}
+                                                    </div>
                                                     {record.payment?.paidAt && (
                                                         <span className="text-[10px] text-slate-400 font-medium">
                                                             {new Date(record.payment.paidAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}

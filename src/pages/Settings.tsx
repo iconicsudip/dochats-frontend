@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
-import { Camera, UploadCloud, Trash2, Lock, User, Save, Info, Shield, Key, Laptop } from 'lucide-react';
+import { Camera, UploadCloud, Trash2, Lock, User, Save, Info, Shield, Key, Laptop, Eye, EyeOff } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { APP_NAME } from '../constants/brand';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
@@ -17,6 +18,9 @@ const Settings: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'profile' | 'security' | 'preferences'>('profile');
     
     const [formData, setFormData] = useState({ name: '', password: '' });
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     // Toast Notification State
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
@@ -41,12 +45,21 @@ const Settings: React.FC = () => {
                 logoUrl: logoBase64,
             };
             if (formData.password) {
+                if (formData.password.length < 6) {
+                    setLoading(false);
+                    return showToast('Password must be at least 6 characters long', 'warning');
+                }
+                if (formData.password !== confirmPassword) {
+                    setLoading(false);
+                    return showToast('Passwords do not match', 'error');
+                }
                 payload.password = formData.password;
             }
             const res = await apiClient.put('/auth/update-me', payload);
             setUser({ ...user, ...res.data });
             showToast('Account settings updated successfully', 'success');
             setFormData(prev => ({ ...prev, password: '' }));
+            setConfirmPassword('');
         } catch (e: any) {
             showToast(e.response?.data?.error || 'Failed to update settings', 'error');
         } finally {
@@ -84,7 +97,7 @@ const Settings: React.FC = () => {
     };
 
     return (
-        <div className="animate-in fade-in duration-500 max-w-5xl mx-auto pb-20 font-sans text-slate-800">
+        <div className="animate-in fade-in duration-500 pb-20 font-sans text-slate-800 w-full min-w-0">
             {/* Header */}
             <div className="mb-8">
                 <div className="flex items-center gap-3 mb-1.5">
@@ -253,27 +266,60 @@ const Settings: React.FC = () => {
                     </div>
 
                     <form onSubmit={handleUpdate} className="space-y-6">
-                        <div className="max-w-md space-y-1.5">
-                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">New Password</label>
-                            <div className="relative">
-                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input
-                                    type="password"
-                                    value={formData.password}
-                                    onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                    placeholder="Enter new strong password"
-                                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50/50 border border-slate-200/80 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all placeholder:text-slate-400"
-                                />
+                        <div className="max-w-md space-y-4">
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">New Password</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input
+                                        type={showPassword ? "text" : "password"}
+                                        value={formData.password}
+                                        onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                        placeholder="Enter new strong password"
+                                        className="w-full pl-10 pr-10 py-2.5 bg-slate-50/50 border border-slate-200/80 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all placeholder:text-slate-400"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer flex items-center justify-center"
+                                    >
+                                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                                {formData.password && formData.password.length < 6 && (
+                                    <p className="text-xs font-bold text-rose-500 mt-1">Password must be at least 6 characters</p>
+                                )}
                             </div>
-                            {formData.password && formData.password.length < 6 && (
-                                <p className="text-xs font-bold text-rose-500 mt-1">Password must be at least 6 characters</p>
-                            )}
+
+                            <div className="space-y-1.5">
+                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Confirm New Password</label>
+                                <div className="relative">
+                                    <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                    <input
+                                        type={showConfirmPassword ? "text" : "password"}
+                                        value={confirmPassword}
+                                        onChange={e => setConfirmPassword(e.target.value)}
+                                        placeholder="Confirm your new password"
+                                        className="w-full pl-10 pr-10 py-2.5 bg-slate-50/50 border border-slate-200/80 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white focus:border-primary transition-all placeholder:text-slate-400"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer flex items-center justify-center"
+                                    >
+                                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    </button>
+                                </div>
+                                {formData.password && confirmPassword && formData.password !== confirmPassword && (
+                                    <p className="text-xs font-bold text-rose-500 mt-1">Passwords do not match</p>
+                                )}
+                            </div>
                         </div>
 
                         <div className="pt-6 border-t border-slate-100">
                             <button
                                 type="submit"
-                                disabled={loading || (!!formData.password && formData.password.length < 6)}
+                                disabled={loading || !formData.password || formData.password.length < 6 || formData.password !== confirmPassword}
                                 className="px-6 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
                             >
                                 {loading ? (
@@ -293,7 +339,7 @@ const Settings: React.FC = () => {
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-8 shadow-xs space-y-6 animate-in fade-in duration-300 text-xs">
                     <div>
                         <h3 className="text-sm font-bold text-slate-900 m-0 mb-1">Notification & UI Preferences</h3>
-                        <p className="text-xs font-semibold text-slate-500 m-0">Customize how DoConnect behaves and delivers alert notifications.</p>
+                        <p className="text-xs font-semibold text-slate-500 m-0">Customize how {APP_NAME} behaves and delivers alert notifications.</p>
                     </div>
 
                     <div className="space-y-4">

@@ -15,6 +15,7 @@ import {
     Briefcase, MapPin, TrendingUp, Send, MessageSquare, AlertCircle, ChevronUp,
     Copy, ExternalLink, ThumbsUp, ThumbsDown, CheckSquare, Settings, Paperclip, CheckCircle2
 } from 'lucide-react';
+import { APP_NAME } from '../../constants/brand';
 
 type LeadStatus = 'new' | 'contacted' | 'qualified' | 'proposal' | 'won' | 'lost';
 
@@ -574,7 +575,7 @@ const CRM: React.FC = () => {
                                         {selectedLead.name.charAt(0)}
                                     </div>
                                     <h2 className="text-base font-extrabold text-slate-900 m-0 mb-1">{selectedLead.name}</h2>
-                                    <p className="text-xs font-semibold text-slate-500 m-0 mb-3">{selectedLead.jobTitle || 'Executive'} at {selectedLead.company || 'DoConnect Partner'}</p>
+                                    <p className="text-xs font-semibold text-slate-500 m-0 mb-3">{selectedLead.jobTitle || 'Executive'} at {selectedLead.company || `${APP_NAME} Partner`}</p>
                                     
                                     <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-primary bg-primary/5 border border-primary/20 py-1.5 px-3 rounded-xl mb-6 w-fit mx-auto shadow-2xs">
                                         <span>{selectedLead.email || 'no-email@partner.com'}</span>

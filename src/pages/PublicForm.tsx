@@ -6,6 +6,7 @@ import { Calendar, DatePicker, ConfigProvider } from 'antd';
 import dayjs from 'dayjs';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { APP_NAME } from '../constants/brand';
 
 type StepDef = { id: string; title: string; description: string; dependsOnFieldId?: string; showWhenValue?: string };
 
@@ -1225,7 +1226,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
 
                     {!isEmbed && (
                         <div className="text-center mt-12 text-xs text-slate-400 font-bold uppercase tracking-widest">
-                            Powered by <strong className="text-slate-700 tracking-wider">DoConnect Business OS</strong>
+                            Powered by <strong className="text-slate-700 tracking-wider">{APP_NAME} Business OS</strong>
                         </div>
                     )}
                 </div>

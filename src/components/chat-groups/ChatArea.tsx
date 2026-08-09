@@ -41,6 +41,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
     LINK_TYPE_ICONS
 }) => {
     const scrollRef = useRef<HTMLDivElement>(null);
+    const chatInputRef = useRef<HTMLTextAreaElement>(null);
 
     useEffect(() => {
         if (messages.length) {
@@ -49,6 +50,32 @@ const ChatArea: React.FC<ChatAreaProps> = ({
             }, 50);
         }
     }, [messages.length, selectedGroupId]);
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+        if (e.key === 'Enter') {
+            if (e.shiftKey || e.metaKey || e.ctrlKey) {
+                e.preventDefault();
+                const target = e.currentTarget;
+                const start = target.selectionStart;
+                const end = target.selectionEnd;
+                const value = target.value;
+                const newValue = value.substring(0, start) + '\n' + value.substring(end);
+                setInputText(newValue);
+                
+                target.style.height = 'auto';
+                setTimeout(() => {
+                    target.selectionStart = target.selectionEnd = start + 1;
+                    target.style.height = target.scrollHeight + 'px';
+                }, 0);
+            } else {
+                e.preventDefault();
+                handleSend(e as unknown as React.FormEvent);
+                if (chatInputRef.current) {
+                    chatInputRef.current.style.height = 'auto';
+                }
+            }
+        }
+    };
 
     return (
         <div className={cn('flex-1 flex flex-col min-w-0', !selectedGroupId && 'hidden md:flex')}>
@@ -61,7 +88,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                 </div>
             ) : (
                 <>
-                    <div className="px-4 py-3 border-b border-slate-200 flex items-center gap-3 bg-white">
+                    <div className="px-4 py-3 border-b flex items-center gap-3 chat-area-header">
                         <button
                             className="md:hidden p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
                             onClick={onClearSelection}
@@ -97,7 +124,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                         )}
                     </div>
 
-                    <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50/30">
+                    <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 chat-area-feed">
                         {loadingMessages ? (
                             <div className="text-center text-slate-400 text-sm py-8">Loading messages...</div>
                         ) : messages.length === 0 ? (
@@ -109,7 +136,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                                     <div key={msg.id} className={cn('flex', own ? 'justify-end' : 'justify-start')}>
                                         <div className={cn(
                                             'max-w-[85%] md:max-w-[70%] rounded-2xl px-4 py-2.5 shadow-sm',
-                                            own ? 'bg-primary text-white rounded-br-md' : 'bg-white border border-slate-200 text-slate-800 rounded-bl-md'
+                                            own ? 'bg-primary text-white rounded-br-md' : 'bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/50 text-slate-800 dark:text-slate-100 rounded-bl-md'
                                         )}>
                                             {!own && (
                                                 <div className="text-[10px] font-semibold opacity-70 mb-1">
@@ -121,7 +148,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                                                     onClick={() => navigate(msg.systemLink.path)}
                                                     className={cn(
                                                         'w-full text-left p-3 rounded-xl border flex items-start gap-3 mb-2 transition-colors cursor-pointer',
-                                                        own ? 'bg-white/15 border-white/30 hover:bg-white/25' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                                                        own ? 'bg-white/15 border-white/30 hover:bg-white/25' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-850'
                                                     )}
                                                 >
                                                     <span className={cn('mt-0.5', own ? 'text-white' : 'text-primary')}>
@@ -152,7 +179,15 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                         )}
                     </div>
 
-                    <form onSubmit={(e) => handleSend(e)} className="p-3 border-t border-slate-200 bg-white flex gap-2 items-end">
+                    <form 
+                        onSubmit={(e) => {
+                            handleSend(e);
+                            if (chatInputRef.current) {
+                                chatInputRef.current.style.height = 'auto';
+                            }
+                        }} 
+                        className="p-3 border-t flex gap-2 items-end chat-area-footer"
+                    >
                         <button
                             type="button"
                             onClick={onOpenLinkPicker}
@@ -161,11 +196,18 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                         >
                             <Link2 className="w-5 h-5" />
                         </button>
-                        <input
+                        <textarea
+                            ref={chatInputRef}
                             value={inputText}
-                            onChange={(e) => setInputText(e.target.value)}
+                            onChange={(e) => {
+                                setInputText(e.target.value);
+                                e.target.style.height = 'auto';
+                                e.target.style.height = e.target.scrollHeight + 'px';
+                            }}
+                            onKeyDown={handleKeyDown}
                             placeholder="Type a message..."
-                            className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                            rows={1}
+                            className="flex-1 bg-transparent border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none max-h-32 custom-scrollbar"
                         />
                         <button
                             type="submit"

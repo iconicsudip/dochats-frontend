@@ -12,6 +12,7 @@ import Billing from './pages/Billing';
 import Plans from './pages/Plans';
 import Settings from './pages/Settings';
 import Auth from './pages/Auth';
+import ResetPassword from './pages/ResetPassword';
 import { useAuth } from './contexts/AuthContext';
 import { Role } from './enums';
 import SuperAdminOverview from './pages/SuperAdmin/Overview';
@@ -36,6 +37,7 @@ import PublicForm from './pages/PublicForm';
 import Email from './pages/modules/Email';
 import EmailBuilder from './pages/modules/EmailBuilder';
 import Broadcasts from './pages/modules/Broadcasts';
+import { APP_NAME } from './constants/brand';
 
 
 function App() {
@@ -44,7 +46,7 @@ function App() {
     if (loading) return (
         <div className="h-screen w-screen flex flex-col items-center justify-center bg-slate-900 font-sans">
             <div className="w-12 h-12 border-4 border-slate-700 border-t-primary rounded-full animate-spin mb-4" />
-            <div className="text-xs font-semibold text-slate-400 tracking-wide uppercase">Initializing DoConnect...</div>
+            <div className="text-xs font-semibold text-slate-400 tracking-wide uppercase">Initializing {APP_NAME}...</div>
         </div>
     );
 
@@ -54,6 +56,7 @@ function App() {
     return (
         <Routes>
             <Route path="/auth" element={!token ? <Auth /> : <Navigate to={defaultPath} />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Admin Dashboard */}
             <Route path="/dashboard" element={token ? <DashboardLayout /> : <Navigate to="/auth" />}>
@@ -72,7 +75,6 @@ function App() {
                     <>
                         <Route index element={<Overview />} />
                         <Route path="billing" element={<Billing />} />
-                        <Route path="plans" element={<Plans />} />
                         <Route path="settings" element={<Settings />} />
                         {/* Gated routes */}
                         <Route path="links" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Links />} />
@@ -106,6 +108,7 @@ function App() {
                     <>
                         <Route path="chat" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <LiveChat />} />
                         <Route path="chat-groups" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <ChatGroups />} />
+                        <Route path="plans" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Plans />} />
                         {user?.role === Role.SUB_USER && (
                             <>
                                 <Route path="crm" element={<CRM />} />

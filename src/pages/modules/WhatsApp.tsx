@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { APP_NAME } from '../../constants/brand';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
@@ -921,7 +922,7 @@ const WhatsApp: React.FC = () => {
                                         <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1.5">Footer Attribution Line (Optional)</label>
                                         <input 
                                             value={templateForm.footer} onChange={e => setTemplateForm({...templateForm, footer: e.target.value})}
-                                            placeholder="e.g. DoConnect Care" 
+                                            placeholder={`e.g. ${APP_NAME} Care`} 
                                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all text-xs" 
                                         />
                                     </div>

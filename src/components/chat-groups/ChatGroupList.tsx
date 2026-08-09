@@ -21,10 +21,10 @@ const ChatGroupList: React.FC<ChatGroupListProps> = ({
 }) => {
     return (
         <div className={cn(
-            'w-full md:w-80 border-r border-slate-200 flex flex-col bg-slate-50/20 shrink-0',
+            'w-full md:w-80 border-r flex flex-col chat-sidebar shrink-0',
             selectedGroupId && 'hidden md:flex'
         )}>
-            <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-white">
+            <div className="p-5 border-b flex items-center justify-between chat-sidebar-header">
                 <div className="flex items-center gap-2.5">
                     <MessagesSquare className="w-5 h-5 text-primary" strokeWidth={2} />
                     <h2 className="font-bold text-slate-900 text-[16px] m-0">Chat Groups</h2>
@@ -52,8 +52,8 @@ const ChatGroupList: React.FC<ChatGroupListProps> = ({
                             key={g.id}
                             onClick={() => onSelectGroup(g.id)}
                             className={cn(
-                                'w-full text-left px-5 py-4 border-b border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer bg-white group flex items-center gap-4',
-                                selectedGroupId === g.id && 'bg-slate-50/80 border-l-4 border-l-primary pl-4'
+                                'w-full text-left px-5 py-4 border-b transition-colors cursor-pointer chat-sidebar-item group flex items-center gap-4',
+                                selectedGroupId === g.id && 'chat-sidebar-item-active border-l-4 border-l-primary pl-4'
                             )}
                         >
                             <div className={cn(

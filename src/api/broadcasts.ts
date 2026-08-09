@@ -1,5 +1,13 @@
 import apiClient from './apiClient';
 
+export interface RecipientLog {
+    name: string;
+    phone: string;
+    status: 'SENT' | 'FAILED';
+    sentAt?: string;
+    error?: string;
+}
+
 export interface BroadcastCampaign {
     id: string;
     name: string;
@@ -14,6 +22,7 @@ export interface BroadcastCampaign {
     sentAt?: string;
     createdAt: string;
     updatedAt: string;
+    recipientsLog?: RecipientLog[];
 }
 
 export const broadcastsApi = {

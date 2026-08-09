@@ -50,6 +50,7 @@ const LiveChat: React.FC = () => {
     const fetchCounter = useRef(0);
     const isSending = useRef(false);
     const pollIntervalRef = useRef<any>(null);
+    const chatInputRef = useRef<HTMLTextAreaElement>(null);
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const { isRecording, recordingTime, formatTime, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
@@ -59,7 +60,7 @@ const LiveChat: React.FC = () => {
     const [isVisitorTyping, setIsVisitorTyping] = useState(false);
     const typingRef = useRef(false);
     const typingTimeoutRef = useRef<any>(null);
-    
+
     const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
     const [fetchingSuggestion, setFetchingSuggestion] = useState(false);
     const [activeLead, setActiveLead] = useState<any>(null);
@@ -153,14 +154,14 @@ const LiveChat: React.FC = () => {
         if (!selectedId) return;
         if (!typingRef.current) {
             typingRef.current = true;
-            apiClient.post('/realtime/typing', { conversationId: selectedId, isTyping: true, isFromAdmin: true }).catch(() => {});
+            apiClient.post('/realtime/typing', { conversationId: selectedId, isTyping: true, isFromAdmin: true }).catch(() => { });
         }
         if (typingTimeoutRef.current) {
             clearTimeout(typingTimeoutRef.current);
         }
         typingTimeoutRef.current = setTimeout(() => {
             typingRef.current = false;
-            apiClient.post('/realtime/typing', { conversationId: selectedId, isTyping: false, isFromAdmin: true }).catch(() => {});
+            apiClient.post('/realtime/typing', { conversationId: selectedId, isTyping: false, isFromAdmin: true }).catch(() => { });
         }, 2000);
     };
 
@@ -195,7 +196,7 @@ const LiveChat: React.FC = () => {
     });
 
     const loadMoreMutation = useMutation({
-        mutationFn: ({ conversationId, cursor }: { conversationId: string, cursor: string }) => 
+        mutationFn: ({ conversationId, cursor }: { conversationId: string, cursor: string }) =>
             apiClient.get(`/messages?conversationId=${conversationId}&cursor=${cursor}&limit=40`)
     });
 
@@ -263,7 +264,7 @@ const LiveChat: React.FC = () => {
         if (!token) return;
 
         const sseUrl = realtimeApi.getSSERealtimeUrl(token);
-        
+
         console.log('[SSE] LiveChat connecting to:', sseUrl);
         const es = new EventSource(sseUrl);
 
@@ -271,14 +272,14 @@ const LiveChat: React.FC = () => {
             try {
                 const data = JSON.parse(event.data);
                 console.log('[SSE] LiveChat received event:', data);
-                
+
                 if (data.type === 'message') {
                     const { conversationId, message } = data;
-                    
+
                     if (conversationId === selectedId) {
                         setMessages(prev => {
                             if (prev.some(m => m.id === message.id)) return prev;
-                            const dupeIndex = prev.findIndex(m => 
+                            const dupeIndex = prev.findIndex(m =>
                                 (message.tempId && m.id === message.tempId) ||
                                 (m.id.startsWith('temp-') && m.content === message.content && m.isFromAdmin === message.isFromAdmin)
                             );
@@ -292,7 +293,7 @@ const LiveChat: React.FC = () => {
                             messagesCache.current[conversationId] = sorted;
                             return sorted;
                         });
-                        
+
                         markReadMutation.mutate(conversationId);
                     } else {
                         messagesCache.current[conversationId] = [];
@@ -307,7 +308,7 @@ const LiveChat: React.FC = () => {
                         setIsVisitorTyping(isTyping);
                     }
                 }
-                
+
                 if (data.type === 'mark_read') {
                     const { conversationId, isAdmin } = data;
                     if (conversationId === selectedId) {
@@ -398,6 +399,9 @@ const LiveChat: React.FC = () => {
 
         const content = inputText;
         setInputText('');
+        if (chatInputRef.current) {
+            chatInputRef.current.style.height = 'auto';
+        }
         setLinkPreview(null);
         setShowEmoji(false);
         const currentReplyTo = replyingTo;
@@ -577,17 +581,19 @@ const LiveChat: React.FC = () => {
 
     return (
         <div className={cn(
-            "flex overflow-hidden bg-white border-slate-200",
-            isMobile ? "h-[calc(100vh-85px)] !-m-5 !mt-[-40px]" : "h-[calc(100vh-82px)] border rounded-2xl shadow-sm !m-[-40px]"
+            "flex overflow-hidden chat-container",
+            isMobile 
+                ? "h-[calc(100vh-80px)] mx-[-16px] my-[-32px]" 
+                : "h-[calc(100vh-82px)] border rounded-2xl shadow-sm m-[-40px]"
         )}>
             {/* Sidebar List */}
             {(!isMobile || !selectedId) && (
                 <div className={cn(
-                    "flex flex-col bg-slate-50 border-slate-200 z-20 font-sans text-slate-800",
+                    "flex flex-col border-slate-200 z-20 font-sans text-slate-800 chat-sidebar",
                     isMobile ? "w-full absolute inset-0" : "w-[360px] border-r"
                 )}>
                     {/* Header */}
-                    <div className="h-[72px] px-5 flex items-center justify-between border-b border-slate-200 bg-white shrink-0">
+                    <div className="h-[72px] px-5 flex items-center justify-between border-b shrink-0 chat-sidebar-header">
                         <div className="flex items-center gap-3">
                             <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.username}`} className="w-10 h-10 rounded-full border border-slate-200 bg-slate-100" alt="avatar" />
                             <h2 className="text-xl font-bold text-slate-900 m-0 tracking-tight">Live Inbox</h2>
@@ -599,7 +605,7 @@ const LiveChat: React.FC = () => {
                     </div>
 
                     {/* Filters & Search */}
-                    <div className="p-4 flex flex-col gap-3 shrink-0 border-b border-slate-200 bg-white">
+                    <div className="p-4 flex flex-col gap-3 shrink-0 border-b chat-sidebar-header">
                         <select
                             value={selectedLinkId}
                             onChange={(e) => {
@@ -628,8 +634,8 @@ const LiveChat: React.FC = () => {
                                 onClick={() => { setShowArchived(!showArchived); setSelectedId(null); }}
                                 className={cn(
                                     "px-3 py-1 rounded-full transition-all border font-extrabold cursor-pointer",
-                                    showArchived 
-                                        ? "bg-primary/10 text-primary border-primary/20" 
+                                    showArchived
+                                        ? "bg-primary/10 text-primary border-primary/20"
                                         : "bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100"
                                 )}
                             >
@@ -650,9 +656,9 @@ const LiveChat: React.FC = () => {
                                     const filtered = selectedLinkId === 'all'
                                         ? conversations
                                         : conversations.filter((c: any) => c.linkId === selectedLinkId);
-                                    
+
                                     const matchesArchive = filtered.filter((c: any) => showArchived ? c.isArchived : !c.isArchived);
-                                    
+
                                     const sorted = [...matchesArchive].sort((a: any, b: any) => {
                                         if (a.isPinned && !b.isPinned) return -1;
                                         if (!a.isPinned && b.isPinned) return 1;
@@ -664,10 +670,10 @@ const LiveChat: React.FC = () => {
                                             key={conv.id}
                                             onClick={() => setSelectedId(conv.id)}
                                             className={cn(
-                                                "flex items-center gap-3 p-4 cursor-pointer transition-all border-l-4 group",
+                                                "flex items-center gap-3 p-4 cursor-pointer transition-all border-l-4 group chat-sidebar-item",
                                                 selectedId === conv.id
-                                                    ? "bg-white border-primary shadow-xs"
-                                                    : "bg-transparent border-transparent hover:bg-slate-100"
+                                                    ? "chat-sidebar-item-active border-primary shadow-xs"
+                                                    : "border-transparent"
                                             )}
                                         >
                                             <div className="relative shrink-0">
@@ -710,24 +716,24 @@ const LiveChat: React.FC = () => {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    
+
                                                     {/* Hover actions */}
                                                     <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <button 
+                                                        <button
                                                             onClick={(e) => { e.stopPropagation(); togglePin(conv.id, conv.isPinned); }}
                                                             className="p-1 hover:bg-slate-200 rounded-md text-slate-400 hover:text-amber-500"
                                                             title={conv.isPinned ? "Unpin Chat" : "Pin Chat"}
                                                         >
                                                             <Pin className="w-3.5 h-3.5" />
                                                         </button>
-                                                        <button 
+                                                        <button
                                                             onClick={(e) => { e.stopPropagation(); toggleArchive(conv.id, conv.isArchived); }}
                                                             className="p-1 hover:bg-slate-200 rounded-md text-slate-400 hover:text-blue-500"
                                                             title={conv.isArchived ? "Unarchive Chat" : "Archive Chat"}
                                                         >
                                                             <Archive className="w-3.5 h-3.5" />
                                                         </button>
-                                                        <button 
+                                                        <button
                                                             onClick={(e) => { e.stopPropagation(); deleteConv(conv.id); }}
                                                             className="p-1 hover:bg-slate-200 rounded-md text-slate-400 hover:text-red-500"
                                                             title="Delete Chat"
@@ -969,6 +975,7 @@ const LiveChat: React.FC = () => {
                                         ) : (
                                             <form onSubmit={handleSend} className="flex-1 flex items-end gap-3 bg-slate-50 border border-slate-200 rounded-2xl p-1.5 focus-within:ring-2 focus-within:ring-primary/20 focus-within:bg-white transition-all shadow-2xs">
                                                 <textarea
+                                                    ref={chatInputRef}
                                                     className="flex-1 bg-transparent border-none focus:outline-none focus:ring-0 resize-none text-xs font-semibold text-slate-700 py-2.5 px-3.5 custom-scrollbar max-h-32"
                                                     rows={1}
                                                     placeholder="Type your message..."
@@ -1144,7 +1151,7 @@ const LiveChat: React.FC = () => {
                                         <Sparkles className="w-3.5 h-3.5 text-primary" />
                                         <span>AI Insights & Assistance</span>
                                     </div>
-                                    
+
                                     <div className="p-4 bg-gradient-to-br from-indigo-50/40 to-primary/5 border border-indigo-100 rounded-2xl space-y-4">
                                         {/* Auto-Summary */}
                                         <div>
@@ -1168,7 +1175,7 @@ const LiveChat: React.FC = () => {
                                                 <span className={cn(
                                                     "px-2 py-1 rounded-md text-[9px] font-bold uppercase tracking-wider",
                                                     activeLead.aiInsights.sentiment === 'positive' ? "bg-emerald-50 text-emerald-700" :
-                                                    activeLead.aiInsights.sentiment === 'negative' ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-600"
+                                                        activeLead.aiInsights.sentiment === 'negative' ? "bg-red-50 text-red-700" : "bg-slate-100 text-slate-600"
                                                 )}>
                                                     Sentiment: {activeLead.aiInsights.sentiment}
                                                 </span>
@@ -1203,7 +1210,7 @@ const LiveChat: React.FC = () => {
                                                     </>
                                                 )}
                                             </button>
-                                            
+
                                             {aiSuggestion && (
                                                 <div className="mt-3 p-3.5 bg-white border border-slate-200/80 rounded-xl relative group/suggest">
                                                     <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Suggested Reply</div>

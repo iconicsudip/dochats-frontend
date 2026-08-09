@@ -11,6 +11,7 @@ import ChatGroupList from '../components/chat-groups/ChatGroupList';
 import ChatArea from '../components/chat-groups/ChatArea';
 import CreateGroupModal from '../components/chat-groups/CreateGroupModal';
 import LinkPickerModal from '../components/chat-groups/LinkPickerModal';
+import { cn } from '../utils/cn';
 
 
 
@@ -28,6 +29,13 @@ const ChatGroups: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const isAdmin = user?.role === Role.ADMIN;
+
+    const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth <= 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
 
     const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
     const [inputText, setInputText] = useState('');
@@ -84,7 +92,7 @@ const ChatGroups: React.FC = () => {
         if (!token) return;
 
         const sseUrl = realtimeApi.getSSERealtimeUrl(token);
-        
+
         console.log('[SSE] ChatGroups connecting to:', sseUrl);
         const es = new EventSource(sseUrl);
 
@@ -92,7 +100,7 @@ const ChatGroups: React.FC = () => {
             try {
                 const data = JSON.parse(event.data);
                 console.log('[SSE] ChatGroups received event:', data);
-                
+
                 if (data.type === 'group_message') {
                     const { groupId } = data;
                     if (groupId === selectedGroupId) {
@@ -249,7 +257,12 @@ const ChatGroups: React.FC = () => {
         : [];
 
     return (
-        <div className="h-[calc(100vh-82px)] m-[-40px] min-h-[500px] flex flex-col md:flex-row bg-white overflow-hidden">
+        <div className={cn(
+            "min-h-[500px] flex flex-col md:flex-row chat-container overflow-hidden",
+            isMobile 
+                ? "h-[calc(100vh-80px)] mx-[-16px] my-[-32px]" 
+                : "h-[calc(100vh-82px)] border rounded-2xl shadow-sm m-[-40px]"
+        )}>
             <ChatGroupList
                 groups={groups}
                 isLoading={isLoading}

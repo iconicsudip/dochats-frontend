@@ -6,6 +6,7 @@ import { Role } from '../enums';
 import { Plug, User, Lock, ArrowRight, ShieldCheck, Zap, Globe, Eye, EyeOff } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
+import { APP_NAME, LOGIN_WELCOME, LOGIN_DESCRIPTION } from '../constants/brand';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
@@ -18,6 +19,27 @@ const Auth: React.FC = () => {
     
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [showPassword, setShowPassword] = useState(false);
+
+    // Forgot Password States
+    const [authView, setAuthView] = useState<'login' | 'forgot'>('login');
+    const [forgotUsername, setForgotUsername] = useState('');
+    const [forgotLoading, setForgotLoading] = useState(false);
+
+    const onForgotSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!forgotUsername.trim()) return;
+        setForgotLoading(true);
+        try {
+            const res = await apiClient.post('/auth/forgot-password', { username: forgotUsername });
+            showToast(res.data.message || 'Password reset link sent!', 'success');
+            setForgotUsername('');
+            setAuthView('login');
+        } catch (err: any) {
+            showToast(err.response?.data?.error || 'Failed to send reset link', 'error');
+        } finally {
+            setForgotLoading(false);
+        }
+    };
 
     // Toast Notification State
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
@@ -58,74 +80,132 @@ const Auth: React.FC = () => {
                         <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md shadow-primary/30 shrink-0">
                             <Plug className="w-5 h-5 text-white" strokeWidth={2.5} />
                         </div>
-                        <h1 className="text-xl font-bold text-slate-900 tracking-tight m-0">DoConnect</h1>
+                        <h1 className="text-xl font-bold text-slate-900 tracking-tight m-0">{APP_NAME}</h1>
                     </div>
 
-                    {/* Heading */}
-                    <div className="mb-10">
-                        <h2 className="text-2xl font-bold text-slate-900 m-0 mb-2 tracking-tight">Welcome back</h2>
-                        <p className="text-xs font-semibold text-slate-500 m-0">
-                            Enter your credentials to access your workspace.
-                        </p>
-                    </div>
-
-                    {/* Form */}
-                    <form onSubmit={onFinish} className="space-y-4 text-xs">
-                        <div className="space-y-1.5">
-                            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Username</label>
-                            <div className="relative">
-                                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input
-                                    required
-                                    type="text"
-                                    value={formData.username}
-                                    onChange={e => setFormData({ ...formData, username: e.target.value })}
-                                    placeholder="Enter your username"
-                                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-400"
-                                />
+                    {/* Heading & Forms */}
+                    {authView === 'login' ? (
+                        <>
+                            <div className="mb-10">
+                                <h2 className="text-2xl font-bold text-slate-900 m-0 mb-2 tracking-tight">{LOGIN_WELCOME}</h2>
+                                <p className="text-xs font-semibold text-slate-500 m-0">
+                                    {LOGIN_DESCRIPTION}
+                                </p>
                             </div>
-                        </div>
 
-                        <div className="space-y-1.5">
-                            <div className="flex justify-between items-center">
-                                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
-                                <a href="#" className="text-xs font-bold text-primary hover:text-primary-hover transition-colors">Forgot password?</a>
-                            </div>
-                            <div className="relative">
-                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input
-                                    required
-                                    type={showPassword ? "text" : "password"}
-                                    value={formData.password}
-                                    onChange={e => setFormData({ ...formData, password: e.target.value })}
-                                    placeholder="••••••••"
-                                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-400"
-                                />
+                            <form onSubmit={onFinish} className="space-y-4 text-xs">
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Username</label>
+                                    <div className="relative">
+                                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            required
+                                            type="text"
+                                            value={formData.username}
+                                            onChange={e => setFormData({ ...formData, username: e.target.value })}
+                                            placeholder="Enter your username"
+                                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-400"
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <div className="flex justify-between items-center">
+                                        <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
+                                        <button 
+                                            type="button"
+                                            onClick={() => setAuthView('forgot')}
+                                            className="text-xs font-bold text-primary hover:text-primary-hover transition-colors cursor-pointer bg-transparent border-0 p-0"
+                                        >
+                                            Forgot password?
+                                        </button>
+                                    </div>
+                                    <div className="relative">
+                                        <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            required
+                                            type={showPassword ? "text" : "password"}
+                                            value={formData.password}
+                                            onChange={e => setFormData({ ...formData, password: e.target.value })}
+                                            placeholder="••••••••"
+                                            className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-400"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer flex items-center justify-center"
+                                        >
+                                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                        </button>
+                                    </div>
+                                </div>
+
                                 <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer flex items-center justify-center"
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed mt-6 cursor-pointer"
                                 >
-                                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                    {loading ? (
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <>
+                                            <span>Sign in to workspace</span>
+                                            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                                        </>
+                                    )}
                                 </button>
+                            </form>
+                        </>
+                    ) : (
+                        <>
+                            <div className="mb-10">
+                                <h2 className="text-2xl font-bold text-slate-900 m-0 mb-2 tracking-tight">Forgot Password</h2>
+                                <p className="text-xs font-semibold text-slate-500 m-0">
+                                    Enter your username or email address and we will send you a reset link.
+                                </p>
                             </div>
-                        </div>
 
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed mt-6 cursor-pointer"
-                        >
-                            {loading ? (
-                                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                                <>
-                                    <span>Sign in to workspace</span>
-                                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                                </>
-                            )}
-                        </button>
-                    </form>
+                            <form onSubmit={onForgotSubmit} className="space-y-4 text-xs">
+                                <div className="space-y-1.5">
+                                    <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider">Username or Email</label>
+                                    <div className="relative">
+                                        <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                                        <input
+                                            required
+                                            type="text"
+                                            value={forgotUsername}
+                                            onChange={e => setForgotUsername(e.target.value)}
+                                            placeholder="Enter username or email"
+                                            className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200/80 rounded-xl font-medium focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all placeholder:text-slate-400"
+                                        />
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="submit"
+                                    disabled={forgotLoading}
+                                    className="w-full py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all flex items-center justify-center gap-2 group disabled:opacity-70 disabled:cursor-not-allowed mt-6 cursor-pointer"
+                                >
+                                    {forgotLoading ? (
+                                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    ) : (
+                                        <span>Send reset link</span>
+                                    )}
+                                </button>
+
+                                <div className="text-center mt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setAuthView('login')}
+                                        className="text-xs font-bold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer bg-transparent border-0"
+                                    >
+                                        Back to sign in
+                                    </button>
+                                </div>
+                            </form>
+                        </>
+                    )}
+
 
                     {/* Footer */}
                     <div className="pt-12 text-center">

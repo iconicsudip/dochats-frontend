@@ -18,26 +18,243 @@
     --radius-box: 1rem;
     --radius-card: 1.25rem;
   }
+
+  .dark {
+    --background: #090d16;
+    --surface: #101726;
+    --surface-secondary: #1a2336;
+    --border: #232d42;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --primary-light: #161b33;
+    --primary-soft: rgba(92, 89, 242, 0.15);
+  }
 }
 
 @theme {
   --font-sans: "Inter", sans-serif;
 
-  --color-primary: #5c59f2;
-  --color-primary-hover: #4e4be0;
-  --color-primary-light: #eff2ff;
-  --color-background: #f8fafc;
-  --color-surface: #ffffff;
-  --color-surface-secondary: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #64748b;
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
+  --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-secondary: var(--surface-secondary);
+  --color-border: var(--border);
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
 
   --shadow-xs: 0 1px 2px 0 rgba(15, 23, 42, 0.04);
   --shadow-sm: 0 2px 4px 0 rgba(15, 23, 42, 0.04);
   --shadow-md: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.02);
   --shadow-lg: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -4px rgba(15, 23, 42, 0.02);
   --shadow-xl: 0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.02);
+}
+
+/* Global Dark Mode Overrides */
+.dark body {
+  background-color: var(--background) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .bg-white {
+  background-color: var(--surface) !important;
+}
+
+.dark .bg-slate-50 {
+  background-color: var(--background) !important;
+  /* layout background */
+}
+
+.dark .bg-slate-100 {
+  background-color: var(--surface-secondary) !important;
+}
+
+.dark .bg-slate-200 {
+  background-color: var(--border) !important;
+}
+
+.dark .bg-slate-900 {
+  background-color: var(--background) !important;
+}
+
+.dark .bg-slate-50\/10,
+.dark .bg-slate-50\/20,
+.dark .bg-slate-50\/30,
+.dark .bg-slate-50\/50,
+.dark .bg-slate-50\/75,
+.dark .bg-slate-50\/80,
+.dark .bg-slate-100\/10,
+.dark .bg-slate-100\/20,
+.dark .bg-slate-100\/30,
+.dark .bg-slate-100\/50,
+.dark .bg-slate-100\/80 {
+  background-color: var(--surface-secondary) !important;
+}
+
+.dark tr:hover,
+.dark tbody tr:hover,
+.dark .hover\:bg-slate-200\/50:hover,
+.dark .hover\:bg-slate-100:hover,
+.dark .hover\:bg-slate-50:hover,
+.dark .hover\:bg-slate-50\/80:hover,
+.dark .hover\:bg-slate-50\/50:hover,
+.dark .hover\:bg-slate-100\/80:hover,
+.dark .hover\:bg-slate-100\/50:hover,
+.dark .hover\:bg-slate-200:hover {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+.dark .bg-white\/80 {
+  background-color: rgba(16, 23, 38, 0.8) !important;
+}
+
+.dark .bg-\[\#f8fafc\] {
+  background-color: var(--background) !important;
+}
+
+/* Pastel backgrounds in dark mode */
+.dark .bg-blue-50 {
+  background-color: rgba(92, 89, 242, 0.15) !important;
+}
+
+.dark .bg-emerald-50 {
+  background-color: rgba(16, 185, 129, 0.15) !important;
+}
+
+.dark .bg-purple-50 {
+  background-color: rgba(139, 92, 246, 0.15) !important;
+}
+
+.dark .bg-amber-50 {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+}
+
+.dark .bg-red-50 {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}
+
+.dark .bg-indigo-50 {
+  background-color: rgba(99, 102, 241, 0.15) !important;
+}
+
+/* Borders */
+.dark .border-slate-200,
+.dark .border-slate-200\/80,
+.dark .border-slate-200\/50,
+.dark .border-slate-200\/30,
+.dark .border-slate-100,
+.dark .border-slate-100\/80,
+.dark .border-slate-100\/50,
+.dark .border-slate-300,
+.dark .border-slate-300\/80,
+.dark .border-slate-300\/50,
+.dark .border-slate-300\/30,
+.dark .border-gray-200,
+.dark .border-gray-200\/80,
+.dark .border-gray-200\/50,
+.dark .border-gray-300,
+.dark .border-gray-300\/80,
+.dark .border-gray-300\/50,
+.dark .border-slate-800,
+.dark .border-slate-800\/80,
+.dark .border-slate-800\/60 {
+  border-color: var(--border) !important;
+}
+
+.dark .border-blue-100 {
+  border-color: rgba(92, 89, 242, 0.3) !important;
+}
+
+.dark .border-emerald-100 {
+  border-color: rgba(16, 185, 129, 0.3) !important;
+}
+
+.dark .border-purple-100 {
+  border-color: rgba(139, 92, 246, 0.3) !important;
+}
+
+.dark .border-amber-100 {
+  border-color: rgba(245, 158, 11, 0.3) !important;
+}
+
+.dark .border-red-100 {
+  border-color: rgba(239, 68, 68, 0.3) !important;
+}
+
+.dark .border-indigo-100 {
+  border-color: rgba(99, 102, 241, 0.3) !important;
+}
+
+/* Text Colors */
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700 {
+  color: var(--text-primary) !important;
+}
+
+.dark .text-slate-500,
+.dark .text-slate-600 {
+  color: var(--text-secondary) !important;
+}
+
+.dark .text-slate-400 {
+  color: #64748b !important;
+}
+
+.dark .text-slate-300 {
+  color: #94a3b8 !important;
+}
+
+/* Form inputs & controls */
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: var(--text-secondary) !important;
+  opacity: 0.6;
+}
+
+/* Ant Design Component overrides for Dark Mode */
+.dark .ant-pagination-item,
+.dark .ant-pagination-prev,
+.dark .ant-pagination-next,
+.dark .ant-pagination-jump-prev,
+.dark .ant-pagination-jump-next {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .ant-pagination-item-active {
+  border-color: var(--primary) !important;
+  background-color: var(--primary-soft) !important;
+}
+
+.dark .ant-pagination-item-active a {
+  color: var(--primary) !important;
+}
+
+.dark .ant-pagination-item a,
+.dark .ant-pagination-prev button,
+.dark .ant-pagination-next button {
+  color: var(--text-primary) !important;
+}
+
+.dark .ant-input {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .ant-form-item-label label {
+  color: var(--text-primary) !important;
 }
 
 * {
@@ -85,12 +302,20 @@ h6 {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
+  background: var(--border);
   border-radius: 9999px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15) !important;
 }
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25) !important;
 }
 
 input:where([type='text']),
@@ -124,4 +349,53 @@ textarea[class*="ant-"],
 .ant-select-dropdown input,
 .ant-select-dropdown select {
   font-size: 14px !important;
+}
+
+/* Premium Chat Component Theme Classes */
+.chat-container {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+.chat-sidebar {
+  background-color: var(--surface-secondary) !important;
+  border-color: var(--border) !important;
+}
+
+.chat-sidebar-header {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+.chat-sidebar-item {
+  background-color: transparent !important;
+  border-color: transparent !important;
+  transition: all 0.2s ease;
+}
+
+.chat-sidebar-item:hover {
+  background-color: var(--surface-secondary) !important;
+}
+
+.dark .chat-sidebar-item:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+}
+
+.chat-sidebar-item-active {
+  background-color: var(--surface) !important;
+  border-left-color: var(--primary) !important;
+}
+
+.chat-area-header {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+.chat-area-feed {
+  background-color: var(--background) !important;
+}
+
+.chat-area-footer {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
 }
