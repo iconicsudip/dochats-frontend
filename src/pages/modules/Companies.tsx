@@ -49,6 +49,13 @@ const Companies: React.FC = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
 
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
     // Pagination & Summary State
     const [page, setPage] = useState(1);
     const [pageSize, setPageSize] = useState(10);
@@ -99,7 +106,7 @@ const Companies: React.FC = () => {
         queryFn: async () => {
             const [compRes, leadData] = await Promise.all([
                 crmApi.getCompanies({ page, limit: pageSize, search: searchTerm }),
-                crmApi.getLeads()
+                crmApi.getLeads({ brief: true } as any)
             ]);
             return { compRes, leadData };
         }
@@ -345,20 +352,22 @@ const Companies: React.FC = () => {
                         <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
                         Refresh
                     </button>
-                    <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200">
-                        <button 
-                            onClick={() => setViewMode('table')}
-                            className={`p-2 rounded-lg transition-all cursor-pointer ${viewMode === 'table' ? 'bg-white text-primary font-bold shadow-2xs' : 'text-slate-500 hover:text-slate-900'}`}
-                        >
-                            <List className="w-4 h-4" />
-                        </button>
-                        <button 
-                            onClick={() => setViewMode('grid')}
-                            className={`p-2 rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white text-primary font-bold shadow-2xs' : 'text-slate-500 hover:text-slate-900'}`}
-                        >
-                            <LayoutGrid className="w-4 h-4" />
-                        </button>
-                    </div>
+                    {!isMobile && (
+                        <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200">
+                            <button 
+                                onClick={() => setViewMode('table')}
+                                className={`p-2 rounded-lg transition-all cursor-pointer ${viewMode === 'table' ? 'bg-white text-primary font-bold shadow-2xs' : 'text-slate-500 hover:text-slate-900'}`}
+                            >
+                                <List className="w-4 h-4" />
+                            </button>
+                            <button 
+                                onClick={() => setViewMode('grid')}
+                                className={`p-2 rounded-lg transition-all cursor-pointer ${viewMode === 'grid' ? 'bg-white text-primary font-bold shadow-2xs' : 'text-slate-500 hover:text-slate-900'}`}
+                            >
+                                <LayoutGrid className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -425,7 +434,7 @@ const Companies: React.FC = () => {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    {viewMode === 'table' ? (
+                    {viewMode === 'table' && !isMobile ? (
                         <div className="bg-white rounded-3xl border border-slate-200/80 shadow-2xs overflow-hidden font-sans">
                             <div className="overflow-x-auto custom-scrollbar">
                                 <table className="w-full text-left border-collapse">
@@ -576,9 +585,9 @@ const Companies: React.FC = () => {
             {/* HubSpot Slide-Over Drawer: Create / Edit Company */}
             {modalType && (
                 <div className="fixed inset-0 z-[200] flex justify-end bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200 font-sans">
-                    <div className="bg-white w-full max-w-xl h-full shadow-2xl flex flex-col font-sans animate-in slide-in-from-right duration-300">
+                    <div className="bg-white w-full sm:max-w-xl h-full shadow-2xl flex flex-col font-sans animate-in slide-in-from-right duration-300">
                         {/* Drawer Header */}
-                        <div className="flex items-center justify-between px-8 py-6 border-b border-slate-100 shrink-0">
+                        <div className="flex items-center justify-between px-5 sm:px-8 py-6 border-b border-slate-100 shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="w-11 h-11 rounded-2xl bg-primary text-white flex items-center justify-center font-bold shadow-lg shrink-0">
                                     <Building2 className="w-6 h-6" />
@@ -601,7 +610,7 @@ const Companies: React.FC = () => {
                         </div>
 
                         {/* Drawer Scrollable Body */}
-                        <form onSubmit={modalType === 'add_company' ? handleAddCompany : handleEditCompany} className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar text-xs">
+                        <form onSubmit={modalType === 'add_company' ? handleAddCompany : handleEditCompany} className="flex-1 overflow-y-auto p-5 sm:p-8 space-y-6 custom-scrollbar text-xs">
                             {/* Company domain name */}
                             <div>
                                 <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">

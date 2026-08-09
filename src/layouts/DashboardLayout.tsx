@@ -11,7 +11,7 @@ import {
     Users, PieChart, CreditCard, DollarSign, AlertTriangle, 
     Zap, Rocket, Menu, Calendar, PlayCircle, BarChart3, AppWindow, 
     FileText, Phone, Mail, Settings as SettingsIcon, ChevronDown, X, Plug, Search, Bell, HelpCircle, LayoutGrid, MessageCircle,
-    Building2, Briefcase, LifeBuoy, ShoppingBag, MessagesSquare
+    Building2, Briefcase, LifeBuoy, ShoppingBag, MessagesSquare, Radio
 } from 'lucide-react';
 
 const DashboardLayout: React.FC = () => {
@@ -53,6 +53,7 @@ const DashboardLayout: React.FC = () => {
             label: 'Engagement',
             children: [
                 { key: '/dashboard/chat', icon: MessageSquare, label: 'Live Chat', module: Module.LIVE_CHAT, tourKey: 'live-chat', badge: '46' },
+                { key: '/dashboard/broadcasts', icon: Radio, label: 'Broadcasts', module: Module.LIVE_CHAT },
                 { key: '/dashboard/links', icon: LinkIcon, label: 'Smart Links', module: Module.LINKS, tourKey: 'smart-links' },
                 { key: '/dashboard/reports', icon: PieChart, label: 'Reports' },
             ]

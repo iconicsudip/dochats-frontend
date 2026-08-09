@@ -35,6 +35,7 @@ import FormResponses from './pages/modules/FormResponses';
 import PublicForm from './pages/PublicForm';
 import Email from './pages/modules/Email';
 import EmailBuilder from './pages/modules/EmailBuilder';
+import Broadcasts from './pages/modules/Broadcasts';
 
 
 function App() {
@@ -75,6 +76,7 @@ function App() {
                         <Route path="settings" element={<Settings />} />
                         {/* Gated routes */}
                         <Route path="links" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Links />} />
+                        <Route path="broadcasts" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Broadcasts />} />
                         <Route path="sub-users" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <SubUsers />} />
                         <Route path="chat-groups" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <ChatGroups />} />
                         <Route path="reports" element={isOverdue ? <Navigate to="/dashboard/billing" replace /> : <Reports />} />

@@ -115,6 +115,13 @@ const SimpleCalendar = ({ bookings, onSelectBooking }: { bookings: Booking[], on
 const Bookings: React.FC = () => {
     const [bookings, setBookings] = useState<Booking[]>([]);
     const [view, setView] = useState<'list' | 'calendar'>('list');
+
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     const [filterStatus, setFilterStatus] = useState<string>('all');
     const [filterDate, setFilterDate] = useState<string>('all');
     const [filterOwner, setFilterOwner] = useState<string>('all');
@@ -384,28 +391,30 @@ const Bookings: React.FC = () => {
                 </div>
                 
                 <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto shrink-0">
-                    <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 w-full sm:w-auto">
-                        <button
-                            onClick={() => setView('list')}
-                            className={cn(
-                                "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer",
-                                view === 'list' ? "bg-white text-blue-600 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
-                            )}
-                        >
-                            <AlignJustify className="w-3.5 h-3.5" />
-                            <span>List View</span>
-                        </button>
-                        <button
-                            onClick={() => setView('calendar')}
-                            className={cn(
-                                "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer",
-                                view === 'calendar' ? "bg-white text-blue-600 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
-                            )}
-                        >
-                            <CalendarIcon className="w-3.5 h-3.5" />
-                            <span>Calendar View</span>
-                        </button>
-                    </div>
+                    {!isMobile && (
+                        <div className="flex bg-slate-100 p-1.5 rounded-xl border border-slate-200/80 w-full sm:w-auto">
+                            <button
+                                onClick={() => setView('list')}
+                                className={cn(
+                                    "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+                                    view === 'list' ? "bg-white text-blue-600 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
+                                )}
+                            >
+                                <AlignJustify className="w-3.5 h-3.5" />
+                                <span>List View</span>
+                            </button>
+                            <button
+                                onClick={() => setView('calendar')}
+                                className={cn(
+                                    "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg transition-all cursor-pointer",
+                                    view === 'calendar' ? "bg-white text-blue-600 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
+                                )}
+                            >
+                                <CalendarIcon className="w-3.5 h-3.5" />
+                                <span>Calendar View</span>
+                            </button>
+                        </div>
+                    )}
 
                     <button 
                         onClick={() => setDrawerType('sync')}
@@ -515,7 +524,7 @@ const Bookings: React.FC = () => {
                 </div>
             </div>
 
-            {view === 'list' ? (
+            {view === 'list' || isMobile ? (
                 <div className="space-y-4">
                     {bookings.map(booking => {
                         const sc = STATUS_CONFIG[booking.status.toLowerCase() as BookingStatus];

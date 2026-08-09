@@ -128,9 +128,9 @@ export const ContactDrawerForm: React.FC<ContactDrawerFormProps> = ({
 
     return (
         <div className="fixed inset-0 z-[200] flex justify-end bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200 font-sans">
-            <div className="bg-white w-full max-w-2xl h-full shadow-2xl flex flex-col font-sans animate-in slide-in-from-right duration-300">
+            <div className="bg-white w-full sm:max-w-2xl h-full shadow-2xl flex flex-col font-sans animate-in slide-in-from-right duration-300">
                 {/* Drawer Header */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-200 bg-white shrink-0">
+                <div className="flex items-center justify-between px-5 sm:px-6 py-6 border-b border-slate-200 bg-white shrink-0">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-bold text-lg shrink-0 border border-primary/20">
                             {mode === 'add' ? <Plus className="w-5 h-5" /> : <Edit3 className="w-5 h-5" />}
@@ -152,7 +152,7 @@ export const ContactDrawerForm: React.FC<ContactDrawerFormProps> = ({
                 </div>
 
                 {/* Drawer Body */}
-                <div className="flex-1 overflow-y-auto p-6 custom-scrollbar font-medium">
+                <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar font-medium">
                     <form id="contact-drawer-form" onSubmit={handleSubmit} className="space-y-6 text-xs text-slate-800">
                         {/* Section 1: Basic Identifiers */}
                         <div className="border border-slate-200/80 rounded-2xl p-6 bg-white shadow-2xs space-y-4">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import apiClient from '../api/apiClient';
+import { realtimeApi } from '../api/realtime';
 import { useAuth } from '../contexts/AuthContext';
 import { Role } from '../enums';
 import { User, Calendar, FileText, Link2, X } from 'lucide-react';
@@ -49,7 +50,6 @@ const ChatGroups: React.FC = () => {
     const { data: groups = [], isLoading } = useQuery({
         queryKey: ['chat-groups'],
         queryFn: () => apiClient.get('/chat-groups').then((r) => r.data),
-        refetchInterval: 15000
     });
 
     const selectedGroup = groups.find((g: any) => g.id === selectedGroupId);
@@ -64,7 +64,6 @@ const ChatGroups: React.FC = () => {
         queryKey: ['chat-messages', selectedGroupId],
         queryFn: () => apiClient.get(`/chat-groups/${selectedGroupId}/messages`).then((r) => r.data),
         enabled: !!selectedGroupId,
-        refetchInterval: 5000
     });
 
     useEffect(() => {
@@ -79,6 +78,42 @@ const ChatGroups: React.FC = () => {
         const t = setTimeout(() => setDebouncedLinkSearch(linkSearch), 300);
         return () => clearTimeout(t);
     }, [linkSearch]);
+
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) return;
+
+        const sseUrl = realtimeApi.getSSERealtimeUrl(token);
+        
+        console.log('[SSE] ChatGroups connecting to:', sseUrl);
+        const es = new EventSource(sseUrl);
+
+        es.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log('[SSE] ChatGroups received event:', data);
+                
+                if (data.type === 'group_message') {
+                    const { groupId } = data;
+                    if (groupId === selectedGroupId) {
+                        queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedGroupId] });
+                    }
+                    queryClient.invalidateQueries({ queryKey: ['chat-groups'] });
+                }
+            } catch (err) {
+                console.error('[SSE] ChatGroups parse error:', err);
+            }
+        };
+
+        es.onerror = (err) => {
+            console.error('[SSE] ChatGroups connection error:', err);
+        };
+
+        return () => {
+            es.close();
+        };
+    }, [selectedGroupId, queryClient]);
+
 
     const { data: linkable } = useQuery({
         queryKey: ['chat-linkable', debouncedLinkSearch],

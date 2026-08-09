@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import EmojiPicker, { Theme as EmojiTheme } from 'emoji-picker-react';
 import apiClient from '../api/apiClient';
+import { realtimeApi } from '../api/realtime';
 import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { MessageType } from '../enums';
@@ -77,6 +78,10 @@ const PublicChat: React.FC = () => {
     const pollIntervalRef = useRef<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
 
+    const [isAdminTyping, setIsAdminTyping] = useState(false);
+    const typingRef = useRef(false);
+    const typingTimeoutRef = useRef<any>(null);
+
     const { isRecording, recordingTime, formatTime, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
     const queryClient = useQueryClient();
 
@@ -121,7 +126,6 @@ const PublicChat: React.FC = () => {
         queryKey: ['public-messages', conversationId],
         queryFn: () => apiClient.get(`/public/messages?conversationId=${conversationId}`).then(res => res.data),
         enabled: !!conversationId,
-        refetchInterval: 5000,
     });
 
     useEffect(() => {
@@ -144,6 +148,67 @@ const PublicChat: React.FC = () => {
             }
         }
     }, [fetchedMessages]);
+
+    useEffect(() => {
+        if (!conversationId || !visitorToken) return;
+
+        const sseUrl = realtimeApi.getSSEVisitorRealtimeUrl(conversationId, visitorToken);
+        
+        console.log('[SSE] PublicChat connecting to:', sseUrl);
+        const es = new EventSource(sseUrl);
+
+        es.onmessage = (event) => {
+            try {
+                const data = JSON.parse(event.data);
+                console.log('[SSE] PublicChat received event:', data);
+                
+                if (data.type === 'message' && data.conversationId === conversationId) {
+                    const message = data.message;
+                    setMessages(prev => {
+                        if (prev.some(m => m.id === message.id)) return prev;
+                        const dupeIndex = prev.findIndex(m => 
+                            (message.tempId && m.id === message.tempId) ||
+                            (m.content === message.content && m.isFromAdmin === message.isFromAdmin && m.id.startsWith('temp-'))
+                        );
+                        const merged = [...prev];
+                        if (dupeIndex !== -1) {
+                            merged[dupeIndex] = message;
+                        } else {
+                            merged.push(message);
+                        }
+                        return merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+                    });
+                    
+                    if (message.isFromAdmin) {
+                        markReadMutation.mutate(conversationId);
+                    }
+                }
+
+                if (data.type === 'mark_read' && data.conversationId === conversationId) {
+                    const { isAdmin } = data;
+                    setMessages(prev => prev.map(m => m.isFromAdmin === !isAdmin ? { ...m, isRead: true } : m));
+                }
+
+                if (data.type === 'typing' && data.conversationId === conversationId) {
+                    const { isTyping, isFromAdmin: fromAdmin } = data;
+                    if (fromAdmin) {
+                        setIsAdminTyping(isTyping);
+                    }
+                }
+            } catch (err) {
+                console.error('[SSE] PublicChat parse error:', err);
+            }
+        };
+
+        es.onerror = (err) => {
+            console.error('[SSE] PublicChat connection error:', err);
+        };
+
+        return () => {
+            es.close();
+        };
+    }, [conversationId, visitorToken, markReadMutation]);
+
 
     useEffect(() => {
         if (!chatInfo || !conversationId || isInitialLoading || hasTriggeredOnboarding.current) return;
@@ -206,6 +271,77 @@ const PublicChat: React.FC = () => {
             const res = await sendMsgMutation.mutateAsync({ conversationId, content, type: MessageType.TEXT, isFromAdmin: false, tempId, replyToId: replyingTo?.id });
             setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
         } catch (err) { console.error('Send error:', err); setMessages(prev => prev.filter(m => m.id !== tempId)); }
+    };
+
+    const handleWhatsAppRedirect = () => {
+        if (!chatInfo?.whatsappLink) return;
+        
+        const customerName = visitorData.name || 'Visitor';
+        const customerPhone = visitorData.phone || 'N/A';
+        const visitedPage = window.location.href;
+        const leadId = conversationId || 'N/A';
+        const lastMsg = messages[messages.length - 1]?.content || 'N/A';
+        const time = format(new Date(), 'yyyy-MM-dd HH:mm:ss');
+        const refLink = window.location.origin + `/chat/${slug}`;
+        
+        const templateText = `Hi, I visited your website and need support.
+
+Name: ${customerName}
+Phone: ${customerPhone}
+Visited Page: ${visitedPage}
+Lead ID: ${leadId}
+Current Issue: ${lastMsg}
+Time: ${time}
+Reference Link: ${refLink}`;
+
+        const waUrl = new URL(chatInfo.whatsappLink);
+        waUrl.searchParams.set('text', templateText);
+        
+        window.open(waUrl.toString(), '_blank');
+        setShowWAPopup(false);
+    };
+
+    const selectMenuOption = async (opt: any) => {
+        if (!conversationId) return;
+        const optimisticMsg = {
+            id: 'temp-' + Date.now(),
+            content: opt.label,
+            type: MessageType.TEXT,
+            isFromAdmin: false,
+            createdAt: new Date().toISOString(),
+            isRead: false
+        };
+        
+        setMessages(prev => [...prev, optimisticMsg]);
+        
+        try {
+            const res = await sendMsgMutation.mutateAsync({
+                conversationId,
+                content: opt.label,
+                type: MessageType.TEXT,
+                isFromAdmin: false,
+                tempId: optimisticMsg.id
+            });
+            setMessages(prev => prev.map(m => m.id === optimisticMsg.id ? res.data : m));
+            queryClient.invalidateQueries({ queryKey: ['public-messages'] });
+        } catch (e) {
+            console.error('Failed to send menu option reply', e);
+        }
+    };
+
+    const handleTyping = () => {
+        if (!conversationId) return;
+        if (!typingRef.current) {
+            typingRef.current = true;
+            apiClient.post('/realtime/typing', { conversationId, isTyping: true, isFromAdmin: false }).catch(() => {});
+        }
+        if (typingTimeoutRef.current) {
+            clearTimeout(typingTimeoutRef.current);
+        }
+        typingTimeoutRef.current = setTimeout(() => {
+            typingRef.current = false;
+            apiClient.post('/realtime/typing', { conversationId, isTyping: false, isFromAdmin: false }).catch(() => {});
+        }, 2000);
     };
 
     const addOptimisticMessage = (content: string, type: MessageType = MessageType.TEXT, tempId?: string) => {
@@ -322,9 +458,15 @@ const PublicChat: React.FC = () => {
                             )}
                             <div className="min-w-0">
                                 <h2 className="text-white text-base font-bold truncate m-0">{chatInfo.adminName}</h2>
-                                <span className="text-xs text-emerald-400 flex items-center gap-1 font-medium">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" /> Online
-                                </span>
+                                {chatInfo.isOnline !== false ? (
+                                    <span className="text-xs text-emerald-400 flex items-center gap-1 font-medium">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" /> Online
+                                    </span>
+                                ) : (
+                                    <span className="text-xs text-amber-500 flex items-center gap-1 font-medium">
+                                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block animate-pulse" /> Offline (WhatsApp Handoff Ready)
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </div>
@@ -432,6 +574,54 @@ const PublicChat: React.FC = () => {
                                 />
                             </div>
                         )}
+
+                        {/* Offline banner */}
+                        {chatInfo.isOnline === false && (
+                            <div className="bg-[#202c33] border border-amber-500/30 rounded-2xl p-4 flex flex-col items-center text-center gap-3 shadow-md mx-4 my-2 shrink-0">
+                                <div className="text-xs font-bold text-amber-400">Our Agents are Currently Offline</div>
+                                <div className="text-[11px] font-semibold text-[#8696a0]">
+                                    You can send a message here, or start a direct chat on WhatsApp with our team.
+                                </div>
+                                <button
+                                    onClick={handleWhatsAppRedirect}
+                                    className="py-2.5 px-4 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl flex items-center gap-2 transition-all shadow-md cursor-pointer"
+                                >
+                                    <svg width="14" height="14" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.859 0c3.166.001 6.141 1.233 8.375 3.469 2.235 2.237 3.465 5.212 3.462 8.377-.003 6.535-5.328 11.86-11.859 11.86-2.004-.001-3.973-.51-5.716-1.48L0 24zm6.59-4.846c1.6.95 3.1 1.45 4.6 1.452 5.4 0 9.8-4.4 9.803-9.8.002-2.6-1.01-5.07-2.85-6.91-1.85-1.83-4.3-2.84-6.91-2.84-5.4 0-9.8 4.4-9.8 9.8-.001 1.7.46 3.3 1.35 4.74l-.99 3.6 3.7-.97zm10.4-3.5c-.3-.15-1.7-.85-2.0-.95-.3-.1-.5-.15-.7.15-.2.3-.75.95-.9.1-.15-.15-.3-.45-.3-.45 0-1.7-.6-3.2-1.95-1.16-1-1.95-2.3-2.2-2.7-.2-.3-.02-.45.13-.6.13-.13.3-.35.45-.5.15-.15.2-.25.3-.45.1-.2.05-.4-.02-.55-.07-.15-.7-1.7-.95-2.3-.3-.6-.6-.5-.8-.5-.2 0-.4 0-.6 0-.2 0-.6.1-.9.4-.3.3-1.1 1.1-1.1 2.7 0 1.6 1.2 3.1 1.35 3.3.15.2 2.35 3.6 5.7 5.03.8.34 1.43.55 1.9.7.8.25 1.5.2 2.1.1.65-.1 1.7-.7 2.0-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3z" /></svg>
+                                    Chat on WhatsApp Now
+                                </button>
+                            </div>
+                        )}
+
+                        {/* Welcome Menu button choices */}
+                        {chatInfo.menuOptions && chatInfo.menuOptions.length > 0 && messages.filter(m => !m.isFromAdmin).length === 0 && (
+                            <div className="flex flex-col gap-2 mt-4 bg-[#202c33]/50 border border-[#2c3943] rounded-2xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-300 mx-4 my-2 shrink-0">
+                                <div className="text-xs font-bold text-[#8696a0] mb-1">Select an option to start:</div>
+                                <div className="flex flex-wrap gap-2">
+                                    {chatInfo.menuOptions.map((opt: any) => (
+                                        <button
+                                            key={opt.key}
+                                            type="button"
+                                            onClick={() => selectMenuOption(opt)}
+                                            className="px-3.5 py-2 bg-[#005c4b] hover:bg-[#027560] text-white font-extrabold text-xs rounded-xl shadow-xs transition-colors cursor-pointer"
+                                        >
+                                            {opt.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Admin typing indicator bubble */}
+                        {isAdminTyping && (
+                            <div className="self-start bg-[#202c33] text-[#e9edef] rounded-2xl rounded-tl-none p-3.5 shadow-md text-xs font-semibold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-300 ml-4 mb-2 shrink-0">
+                                <span className="flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                                    <span className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                                </span>
+                                <span>Agent is typing...</span>
+                            </div>
+                        )}
                     </div>
 
                     {/* Input Area */}
@@ -479,7 +669,10 @@ const PublicChat: React.FC = () => {
                                         rows={1}
                                         placeholder="Type a message..."
                                         value={inputText}
-                                        onChange={e => setInputText(e.target.value)}
+                                        onChange={e => {
+                                            setInputText(e.target.value);
+                                            handleTyping();
+                                        }}
                                         onKeyDown={handleKeyDown}
                                         className="flex-1 bg-[#2a3942] border-none rounded-2xl px-4 py-2.5 text-sm text-white placeholder-[#8696a0] focus:outline-none focus:ring-2 focus:ring-emerald-500/30 transition-all resize-none max-h-32 custom-scrollbar leading-normal"
                                     />
@@ -516,7 +709,7 @@ const PublicChat: React.FC = () => {
                                     Move this conversation instantly to WhatsApp for faster and continuous updates directly to your mobile inbox.
                                 </p>
                                 <button
-                                    onClick={() => { window.open(chatInfo?.whatsappLink, '_blank'); setShowWAPopup(false); }}
+                                    onClick={handleWhatsAppRedirect}
                                     className="w-full py-3 bg-[#25d366] hover:bg-[#25d366]/90 text-black font-extrabold rounded-xl text-sm transition-all shadow-lg shadow-[#25d366]/20 mb-3 flex items-center justify-center gap-2"
                                 >
                                     <MessageCircle className="w-4 h-4" /> Open in WhatsApp
