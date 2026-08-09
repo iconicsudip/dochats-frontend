@@ -442,24 +442,24 @@ const ContactDetail: React.FC = () => {
 
                 {/* CENTER AREA: Tab Navigation & Details (6/12) */}
                 <div className="lg:col-span-6 space-y-6 font-sans">
-                    <div className="flex border-b border-slate-200 gap-8 px-2 font-sans">
+                    <div className="flex border-b border-slate-200 gap-4 sm:gap-8 px-2 font-sans overflow-x-auto">
                         <button 
                             onClick={() => setActiveTab('about')}
-                            className={`pb-4 text-sm font-bold border-b-2 transition-all cursor-pointer bg-transparent p-0 ${activeTab === 'about' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
+                            className={`pb-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer bg-transparent p-0 whitespace-nowrap shrink-0 ${activeTab === 'about' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
                         >
-                            About Record
+                            About
                         </button>
                         <button 
                             onClick={() => setActiveTab('activities')}
-                            className={`pb-4 text-sm font-bold border-b-2 transition-all cursor-pointer bg-transparent p-0 ${activeTab === 'activities' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
+                            className={`pb-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer bg-transparent p-0 whitespace-nowrap shrink-0 ${activeTab === 'activities' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
                         >
-                            Activity Timeline ({timeline.length})
+                            <span className="hidden sm:inline">Activity Timeline </span>Timeline <span className="hidden sm:inline">({timeline.length})</span><span className="sm:hidden">({timeline.length})</span>
                         </button>
                         <button 
                             onClick={() => setActiveTab('revenue')}
-                            className={`pb-4 text-sm font-bold border-b-2 transition-all cursor-pointer bg-transparent p-0 ${activeTab === 'revenue' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
+                            className={`pb-4 text-xs sm:text-sm font-bold border-b-2 transition-all cursor-pointer bg-transparent p-0 whitespace-nowrap shrink-0 ${activeTab === 'revenue' ? 'border-primary text-primary' : 'border-transparent text-slate-500 hover:text-slate-900'}`}
                         >
-                            Sales Orders ({orders.length})
+                            Orders ({orders.length})
                         </button>
                     </div>
 

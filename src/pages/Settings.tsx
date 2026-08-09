@@ -112,7 +112,7 @@ const Settings: React.FC = () => {
             </div>
 
             {/* Navigation Tabs */}
-            <div className="flex gap-1.5 p-1.5 bg-slate-100 rounded-2xl mb-8 w-full max-w-md border border-slate-200/80 shadow-2xs">
+            <div className="flex gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-slate-100 rounded-2xl mb-8 w-full border border-slate-200/80 shadow-2xs overflow-x-auto">
                 {[
                     { id: 'profile', label: 'My Profile', icon: User },
                     { id: 'security', label: 'Security', icon: Shield },
@@ -122,12 +122,12 @@ const Settings: React.FC = () => {
                         key={t.id}
                         onClick={() => setActiveTab(t.id as any)}
                         className={cn(
-                            "flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-xs font-semibold transition-all cursor-pointer m-0",
+                            "flex-1 min-w-[52px] flex items-center justify-center gap-1.5 py-2.5 px-2 sm:px-3 rounded-xl text-xs font-semibold transition-all cursor-pointer m-0 whitespace-nowrap",
                             activeTab === t.id ? "bg-white text-slate-900 shadow-xs font-bold" : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/50"
                         )}
                     >
-                        <t.icon className={cn("w-3.5 h-3.5", activeTab === t.id ? "text-primary" : "text-slate-400")} />
-                        <span>{t.label}</span>
+                        <t.icon className={cn("w-3.5 h-3.5 shrink-0", activeTab === t.id ? "text-primary" : "text-slate-400")} />
+                        <span className="hidden sm:inline">{t.label}</span>
                     </button>
                 ))}
             </div>
