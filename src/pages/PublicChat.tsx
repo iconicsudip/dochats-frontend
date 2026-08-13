@@ -458,9 +458,10 @@ Reference Link: ${refLink}`;
     };
 
     return (
-        <div className="flex flex-col h-screen w-full bg-[#0b141a] font-sans overflow-hidden relative">
-            {/* Background Pattern Overlay */}
-            <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
+        <div className="flex flex-col w-full bg-[#0b141a] md:bg-slate-900 font-sans md:items-center md:justify-center md:p-6" style={{ height: '100dvh' }}>
+            <div className="flex flex-col w-full h-full md:max-h-[850px] md:max-w-[450px] bg-[#0b141a] md:rounded-[2rem] md:shadow-2xl overflow-hidden relative md:border md:border-[#2a3942] shrink-0">
+                {/* Background Pattern Overlay */}
+                <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
 
             {!chatInfo ? (
                 <div className="flex-1 flex flex-col items-center justify-center gap-4 z-10">
@@ -765,6 +766,7 @@ Reference Link: ${refLink}`;
                     )}
                 </>
             )}
+            </div>
         </div>
     );
 };
