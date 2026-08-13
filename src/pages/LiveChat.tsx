@@ -10,7 +10,7 @@ import { AudioPlayer } from '../components/AudioPlayer';
 import { MessageType } from '../enums';
 import {
     Send, Smile, Paperclip, MoreVertical, Search, MessageSquare,
-    Check, CheckCheck, Mic, Filter, X, ArrowLeft,
+    Check, CheckCheck, Mic, Filter, X, ArrowLeft, Camera,
     User, Copy, ExternalLink, Phone, Calendar, Tag, Clock,
     MessagesSquare, Pin, Archive, Trash2, Sparkles, RefreshCw
 } from 'lucide-react';
@@ -51,6 +51,7 @@ const LiveChat: React.FC = () => {
     const isSending = useRef(false);
     const pollIntervalRef = useRef<any>(null);
     const chatInputRef = useRef<HTMLTextAreaElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     const queryClient = useQueryClient();
     const { user } = useAuth();
     const { isRecording, recordingTime, formatTime, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
@@ -68,6 +69,7 @@ const LiveChat: React.FC = () => {
 
     const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
     const [showContactCard, setShowContactCard] = useState(true);
+    const [showMobileContactSheet, setShowMobileContactSheet] = useState(false);
     const [copiedPhone, setCopiedPhone] = useState(false);
 
     const copyToClipboard = (text: string) => {
@@ -491,6 +493,58 @@ const LiveChat: React.FC = () => {
         }
     };
 
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !selectedId) return;
+        
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const base64String = reader.result as string;
+            
+            const currentReplyTo = replyingTo;
+            setReplyingTo(null);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+
+            const optimisticMsg = {
+                id: `temp-${Date.now()}`,
+                conversationId: selectedId,
+                content: base64String,
+                type: MessageType.IMAGE,
+                isFromAdmin: true,
+                isRead: false,
+                createdAt: new Date().toISOString(),
+                linkPreview: null,
+                replyTo: currentReplyTo,
+                replyToId: currentReplyTo?.id
+            };
+
+            isSending.current = true;
+            fetchCounter.current += 1;
+            setMessages(prev => [...prev, optimisticMsg]);
+
+            try {
+                const res = await sendMsgMutation.mutateAsync({
+                    conversationId: selectedId,
+                    content: base64String,
+                    type: MessageType.IMAGE,
+                    isFromAdmin: true,
+                    tempId: optimisticMsg.id,
+                    replyToId: currentReplyTo?.id
+                });
+                fetchCounter.current += 1;
+                setMessages(prev => prev.map(m => m.id === optimisticMsg.id ? res.data : m));
+                queryClient.invalidateQueries({ queryKey: ['conversations'] });
+                messagesCache.current[selectedId] = [];
+            } catch (error) {
+                console.error(error);
+                setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+            } finally {
+                isSending.current = false;
+            }
+        };
+        reader.readAsDataURL(file);
+    };
+
     const scrollToBottom = () => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -583,7 +637,7 @@ const LiveChat: React.FC = () => {
         <div className={cn(
             "flex overflow-hidden chat-container",
             isMobile 
-                ? "h-[calc(100vh-80px)] mx-[-16px] my-[-32px]" 
+                ? "h-[calc(100dvh-80px)] mx-[-16px] my-[-32px]" 
                 : "h-[calc(100vh-82px)] border rounded-2xl shadow-sm m-[-40px]"
         )}>
             {/* Sidebar List */}
@@ -718,7 +772,7 @@ const LiveChat: React.FC = () => {
                                                     </div>
 
                                                     {/* Hover actions */}
-                                                    <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                     <div className={cn("flex items-center gap-1 ml-2 transition-opacity", isMobile ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
                                                         <button
                                                             onClick={(e) => { e.stopPropagation(); togglePin(conv.id, conv.isPinned); }}
                                                             className="p-1 hover:bg-slate-200 rounded-md text-slate-400 hover:text-amber-500"
@@ -797,7 +851,7 @@ const LiveChat: React.FC = () => {
                                     </div>
                                     <div className="flex items-center gap-3 text-slate-400 shrink-0">
                                         {!isMobile && <Search className="w-5 h-5 cursor-pointer hover:text-primary transition-colors" />}
-                                        {!isMobile && (
+                                         {!isMobile && (
                                             <button
                                                 onClick={() => setShowContactCard(prev => !prev)}
                                                 className={cn(
@@ -808,6 +862,15 @@ const LiveChat: React.FC = () => {
                                             >
                                                 <User className="w-3.5 h-3.5" />
                                                 <span>Contact Info</span>
+                                            </button>
+                                        )}
+                                        {isMobile && (
+                                            <button
+                                                onClick={() => setShowMobileContactSheet(true)}
+                                                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-all cursor-pointer border border-slate-200 bg-white"
+                                                title="Contact Info"
+                                            >
+                                                <User className="w-4 h-4" />
                                             </button>
                                         )}
                                         <MoreVertical className="w-5 h-5 cursor-pointer hover:text-slate-700 transition-colors" />
@@ -860,7 +923,7 @@ const LiveChat: React.FC = () => {
                                                                     )}>
                                                                         <div className="font-bold mb-0.5">{msg.replyTo.isFromAdmin ? 'Admin' : 'Visitor'}</div>
                                                                         <div className="line-clamp-2 opacity-90">
-                                                                            {msg.replyTo.type === MessageType.AUDIO ? '🎤 Voice Message' : msg.replyTo.content}
+                                                                            {msg.replyTo.type === MessageType.AUDIO ? '🎤 Voice Message' : msg.replyTo.type === MessageType.IMAGE ? '📷 Image' : msg.replyTo.content}
                                                                         </div>
                                                                     </div>
                                                                 )}
@@ -870,6 +933,8 @@ const LiveChat: React.FC = () => {
                                                                 <div className="text-xs font-semibold leading-relaxed whitespace-pre-wrap break-words">
                                                                     {msg.type === MessageType.AUDIO ? (
                                                                         <AudioPlayer src={msg.content} isFromAdmin={msg.isFromAdmin} />
+                                                                    ) : msg.type === MessageType.IMAGE ? (
+                                                                        <img src={msg.content} alt="Attachment" className="max-w-full rounded-xl cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.content, '_blank')} />
                                                                     ) : (
                                                                         formatMessageText(msg.content)
                                                                     )}
@@ -923,7 +988,7 @@ const LiveChat: React.FC = () => {
                                                 {replyingTo && (
                                                     <>
                                                         <div className="text-xs font-bold text-primary mb-0.5">Replying to {replyingTo.isFromAdmin ? 'Admin' : 'Visitor'}</div>
-                                                        <div className="text-xs font-semibold text-slate-500 truncate">{replyingTo.type === MessageType.AUDIO ? '🎤 Voice Message' : replyingTo.content}</div>
+                                                        <div className="text-xs font-semibold text-slate-500 truncate">{replyingTo.type === MessageType.AUDIO ? '🎤 Voice Message' : replyingTo.type === MessageType.IMAGE ? '📷 Image' : replyingTo.content}</div>
                                                     </>
                                                 )}
                                                 {linkPreview && (
@@ -944,15 +1009,26 @@ const LiveChat: React.FC = () => {
                                             <button onClick={() => setShowEmoji(!showEmoji)} className={cn("hover:text-primary transition-colors cursor-pointer", showEmoji && "text-primary")}>
                                                 <Smile className="w-5 h-5" />
                                             </button>
+                                            <button onClick={() => fileInputRef.current?.click()} className="hover:text-primary transition-colors cursor-pointer">
+                                                <Camera className="w-5 h-5" />
+                                            </button>
                                             {!isMobile && (
                                                 <button className="hover:text-primary transition-colors cursor-pointer">
                                                     <Paperclip className="w-5 h-5" />
                                                 </button>
                                             )}
+                                            <input 
+                                                type="file" 
+                                                ref={fileInputRef} 
+                                                onChange={handleImageUpload} 
+                                                accept="image/*" 
+                                                capture="environment" 
+                                                className="hidden" 
+                                            />
                                         </div>
 
                                         {showEmoji && (
-                                            <div className="absolute bottom-20 left-4 z-50 shadow-2xl rounded-2xl overflow-hidden border border-slate-200">
+                                            <div className={cn("absolute z-50 shadow-2xl rounded-2xl overflow-hidden border border-slate-200", isMobile ? "bottom-16 left-0 right-0 mx-2" : "bottom-20 left-4")}>
                                                 <EmojiPicker theme={EmojiTheme.LIGHT} onEmojiClick={onEmojiClick} />
                                             </div>
                                         )}
@@ -1021,6 +1097,147 @@ const LiveChat: React.FC = () => {
                     </div>
 
                     {/* Right-side Contact Card Panel */}
+                    {/* Mobile Contact Info Bottom Sheet */}
+                    {isMobile && showMobileContactSheet && selectedConv && (
+                        <div className="fixed inset-0 z-50 flex flex-col justify-end" onClick={() => setShowMobileContactSheet(false)}>
+                            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-xs" />
+                            <div
+                                className="relative bg-white rounded-t-3xl max-h-[80dvh] flex flex-col shadow-2xl animate-in slide-in-from-bottom duration-300"
+                                onClick={e => e.stopPropagation()}
+                            >
+                                {/* Handle */}
+                                <div className="flex justify-center pt-3 pb-2 shrink-0">
+                                    <div className="w-10 h-1 bg-slate-200 rounded-full" />
+                                </div>
+                                {/* Sheet Header */}
+                                <div className="px-6 pb-4 flex items-center justify-between shrink-0 border-b border-slate-100">
+                                    <h3 className="text-sm font-bold text-slate-800 m-0">Contact Details</h3>
+                                    <button
+                                        onClick={() => setShowMobileContactSheet(false)}
+                                        className="p-1.5 hover:bg-slate-100 text-slate-400 hover:text-slate-600 rounded-lg transition-colors cursor-pointer"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                                {/* Sheet Body - same content as the desktop panel */}
+                                <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-6">
+                                    <div className="flex flex-col items-center text-center pb-4 border-b border-slate-100">
+                                        <div className="relative mb-3 group">
+                                            <img
+                                                src={`https://api.dicebear.com/7.x/bottts/svg?seed=${selectedConv.visitorToken}`}
+                                                className="w-20 h-20 rounded-2xl bg-slate-50 border border-slate-200 shadow-sm p-1.5"
+                                                alt="Visitor avatar"
+                                            />
+                                            <span className="absolute bottom-1 right-1 w-3.5 h-3.5 rounded-full bg-green-500 border-2 border-white animate-pulse" />
+                                        </div>
+                                        <h4 className="text-sm font-bold text-slate-900 m-0 line-clamp-1">
+                                            {selectedConv.visitorName ? parseVisitorName(selectedConv.visitorName).cleanName : `User ${selectedConv.visitorToken.substring(0, 8)}`}
+                                        </h4>
+                                        <span className="text-[10px] font-semibold text-slate-400 mt-1 uppercase tracking-wider select-all">
+                                            Token: {selectedConv.visitorToken.substring(0, 8)}
+                                        </span>
+                                    </div>
+
+                                    {selectedConv.visitorName && parseVisitorName(selectedConv.visitorName).tag && (
+                                        <div className="p-3.5 bg-gradient-to-br from-primary/5 to-primary/10 border border-primary/20 rounded-2xl flex items-start gap-3">
+                                            <div className="w-8 h-8 rounded-xl bg-primary/20 text-primary flex items-center justify-center shrink-0">
+                                                <Tag className="w-4 h-4" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <span className="block text-[10px] font-bold text-primary/70 uppercase tracking-wider">Lead Source Tag</span>
+                                                <span className="block text-xs font-extrabold text-slate-800 mt-0.5 truncate uppercase">
+                                                    {parseVisitorName(selectedConv.visitorName).tag}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <div className="space-y-4">
+                                        <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Contact Methods</div>
+                                        <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className="flex items-center gap-2">
+                                                    <Phone className="w-4 h-4 text-slate-400" />
+                                                    <span className="text-xs font-bold text-slate-700">{selectedConv.visitorPhone || 'N/A'}</span>
+                                                </div>
+                                                {selectedConv.visitorPhone && selectedConv.visitorPhone !== 'N/A' && (
+                                                    <button
+                                                        onClick={() => copyToClipboard(selectedConv.visitorPhone)}
+                                                        className="p-1 hover:bg-slate-200 text-slate-400 hover:text-slate-600 rounded-md transition-colors cursor-pointer"
+                                                    >
+                                                        {copiedPhone ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5" />}
+                                                    </button>
+                                                )}
+                                            </div>
+                                            {selectedConv.visitorPhone && selectedConv.visitorPhone !== 'N/A' && (
+                                                <div className="grid grid-cols-2 gap-2 mt-4 pt-4 border-t border-slate-200">
+                                                    <a href={`tel:${selectedConv.visitorPhone}`} className="py-2 px-3 bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs">
+                                                        <Phone className="w-3.5 h-3.5 text-primary" /> Call
+                                                    </a>
+                                                    <a
+                                                        href={`https://wa.me/${selectedConv.visitorPhone.replace(/\D/g, '')}`}
+                                                        target="_blank" rel="noopener noreferrer"
+                                                        className="py-2 px-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-2xs"
+                                                    >
+                                                        WhatsApp
+                                                    </a>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="space-y-4 pt-2">
+                                        <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Tracking</div>
+                                        <div className="divide-y divide-slate-100 text-xs">
+                                            <div className="py-2.5 flex items-center justify-between gap-4">
+                                                <span className="text-slate-500 font-semibold flex items-center gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> Source Link</span>
+                                                <span className="font-bold text-slate-800 text-right truncate max-w-[140px]">{selectedConv.linkTitle}</span>
+                                            </div>
+                                            <div className="py-2.5 flex items-center justify-between gap-4">
+                                                <span className="text-slate-500 font-semibold flex items-center gap-1.5"><Clock className="w-3.5 h-3.5" /> Connected</span>
+                                                <span className="font-bold text-slate-800 text-right">
+                                                    {selectedConv.createdAt ? format(new Date(selectedConv.createdAt), 'MMM d, h:mm a') : 'N/A'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* AI Suggestion */}
+                                    <div className="space-y-4">
+                                        <div className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                            <Sparkles className="w-3.5 h-3.5 text-primary" />
+                                            <span>AI Assistance</span>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            disabled={fetchingSuggestion}
+                                            onClick={getAiSuggestion}
+                                            className="w-full py-2.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-65"
+                                        >
+                                            {fetchingSuggestion ? (
+                                                <><RefreshCw className="w-3.5 h-3.5 animate-spin" /><span>Analyzing...</span></>
+                                            ) : (
+                                                <><Sparkles className="w-3.5 h-3.5 text-primary" /><span>Suggest AI Reply</span></>
+                                            )}
+                                        </button>
+                                        {aiSuggestion && (
+                                            <div className="p-3.5 bg-white border border-slate-200/80 rounded-xl">
+                                                <p className="text-xs font-medium text-slate-700 m-0 leading-relaxed select-all">{aiSuggestion}</p>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => { setInputText(aiSuggestion); setShowMobileContactSheet(false); }}
+                                                    className="mt-2 text-[10px] font-bold text-primary hover:text-primary-hover transition-colors cursor-pointer"
+                                                >
+                                                    Use this reply
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
                     {selectedId && showContactCard && !isMobile && selectedConv && (
                         <div className="w-[320px] shrink-0 border-l border-slate-200 bg-white flex flex-col h-full animate-in slide-in-from-right duration-300 z-10">
                             {/* Panel Header */}

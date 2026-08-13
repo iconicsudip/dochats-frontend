@@ -7,7 +7,8 @@ export type Role = typeof Role[keyof typeof Role];
 
 export const MessageType = {
     TEXT: 'TEXT',
-    AUDIO: 'AUDIO'
+    AUDIO: 'AUDIO',
+    IMAGE: 'IMAGE'
 } as const;
 export type MessageType = typeof MessageType[keyof typeof MessageType];
 

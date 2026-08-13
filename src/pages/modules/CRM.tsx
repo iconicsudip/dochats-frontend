@@ -1418,8 +1418,8 @@ const CRM: React.FC = () => {
                     </div>
 
                     {/* Controls & Search Bar */}
-                    <div className="flex flex-wrap items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs w-full min-w-0">
-                        <div className="relative flex-1 min-w-[260px]">
+                    <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center justify-between gap-4 mb-6 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-2xs w-full min-w-0">
+                        <div className="relative w-full sm:flex-1 sm:min-w-[200px]">
                             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 shrink-0" />
                             <input
                                 type="text"

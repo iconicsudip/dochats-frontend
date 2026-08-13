@@ -406,8 +406,8 @@ const Companies: React.FC = () => {
             </div>
 
             {/* Filter toolbar */}
-            <div className="flex items-center gap-4">
-                <div className="relative flex-1 max-w-md font-sans">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                <div className="relative w-full sm:flex-1 sm:max-w-md font-sans">
                     <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                     <input 
                         type="text"
