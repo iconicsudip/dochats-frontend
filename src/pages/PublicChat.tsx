@@ -9,7 +9,7 @@ import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { AudioPlayer } from '../components/AudioPlayer';
 import { MessageType } from '../enums';
 import { 
-    Send, Smile, User, Check, CheckCheck, Mic, X, MessageCircle, Lock, Phone 
+    Send, Smile, User, Check, CheckCheck, Mic, X, MessageCircle, Lock, Phone, Camera 
 } from 'lucide-react';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -77,6 +77,7 @@ const PublicChat: React.FC = () => {
     const hasShownFormRef = useRef(false);
     const pollIntervalRef = useRef<any>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const [isAdminTyping, setIsAdminTyping] = useState(false);
     const typingRef = useRef(false);
@@ -362,6 +363,28 @@ Reference Link: ${refLink}`;
         } catch (err) { setMessages(prev => prev.filter(m => m.id !== tempId)); }
     };
 
+    const sendImageMessage = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file || !conversationId) return;
+        if (onboardingStep < 3) return;
+        
+        const reader = new FileReader();
+        reader.onloadend = async () => {
+            const base64String = reader.result as string;
+            
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            
+            const tempId = `temp-${Date.now()}`;
+            addOptimisticMessage(base64String, MessageType.IMAGE, tempId);
+            
+            try {
+                const res = await sendMsgMutation.mutateAsync({ conversationId, content: base64String, type: MessageType.IMAGE, isFromAdmin: false, tempId });
+                setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
+            } catch (err) { setMessages(prev => prev.filter(m => m.id !== tempId)); }
+        };
+        reader.readAsDataURL(file);
+    };
+
     useEffect(() => {
         setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 100);
         const customerMsgs = messages.filter(m => !m.isFromAdmin);
@@ -501,13 +524,15 @@ Reference Link: ${refLink}`;
                                                     {!msg.replyTo.isFromAdmin ? 'You' : 'Agent'}
                                                 </div>
                                                 <div className="line-clamp-2">
-                                                    {msg.replyTo.type === MessageType.AUDIO ? '🎤 Voice Message' : msg.replyTo.content}
+                                                    {msg.replyTo.type === MessageType.AUDIO ? '🎤 Voice Message' : msg.replyTo.type === MessageType.IMAGE ? '📷 Image' : msg.replyTo.content}
                                                 </div>
                                             </div>
                                         )}
                                         <LinkPreview preview={msg.linkPreview} />
                                         <div className="pr-12 whitespace-pre-wrap break-words min-h-[1.5rem]">
-                                            {msg.type === MessageType.AUDIO ? <AudioPlayer src={msg.content} isFromAdmin={msg.isFromAdmin} /> : formatMessageText(msg.content)}
+                                            {msg.type === MessageType.AUDIO ? <AudioPlayer src={msg.content} isFromAdmin={msg.isFromAdmin} /> : msg.type === MessageType.IMAGE ? (
+                                                <img src={msg.content} alt="Attachment" className="max-w-full rounded-xl cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.content, '_blank')} />
+                                            ) : formatMessageText(msg.content)}
                                         </div>
                                         <div className="absolute right-2.5 bottom-1.5 flex items-center gap-1 text-[10px] text-[#8696a0]">
                                             <span>{format(new Date(msg.createdAt), 'HH:mm')}</span>
@@ -634,6 +659,21 @@ Reference Link: ${refLink}`;
                             >
                                 <Smile className="w-6 h-6" />
                             </button>
+                            <button 
+                                type="button"
+                                onClick={() => fileInputRef.current?.click()}
+                                className="w-10 h-10 flex items-center justify-center text-[#8696a0] hover:text-white transition-colors rounded-xl hover:bg-[#2a3942] shrink-0"
+                            >
+                                <Camera className="w-6 h-6" />
+                            </button>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef} 
+                                onChange={sendImageMessage} 
+                                accept="image/*" 
+                                capture="environment" 
+                                className="hidden" 
+                            />
 
                             {showEmoji && (
                                 <div className="absolute bottom-16 left-4 z-50 shadow-2xl">
