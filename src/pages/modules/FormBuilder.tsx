@@ -3,6 +3,8 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { formsApi } from '../../api/forms';
 import apiClient from '../../api/apiClient';
 import PublicForm from '../PublicForm';
+import { useModules } from '../../contexts/ModuleContext';
+import { Module } from '../../enums';
 
 // Dnd Kit Imports
 import {
@@ -786,6 +788,7 @@ const FormBuilder: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const queryClient = useQueryClient();
+    const { hasModule } = useModules();
     
     // Custom Toast State
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'warning' } | null>(null);
@@ -793,6 +796,18 @@ const FormBuilder: React.FC = () => {
         setToast({ message, type });
         setTimeout(() => setToast(null), 3500);
     };
+
+    // Check module limits
+    useEffect(() => {
+        if (!id && !hasModule(Module.FORMS)) {
+            formsApi.getForms().then(res => {
+                if (res.data.length >= 1) {
+                    showToast('You can only create 1 form on your current plan.', 'warning');
+                    navigate('/dashboard/forms');
+                }
+            }).catch(() => {});
+        }
+    }, [id, hasModule, navigate]);
 
     // Form States
     const [title, setTitle] = useState('');

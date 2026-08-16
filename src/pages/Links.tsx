@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import ReactQuill from 'react-quill-new';
+import 'react-quill-new/dist/quill.snow.css';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
     Link as LinkIcon, Plus, Search, Copy, CheckCircle2, ExternalLink, Trash2, Edit2, 
@@ -15,6 +17,12 @@ import { twMerge } from 'tailwind-merge';
 
 function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
+}
+
+function stripHtml(html: string) {
+    const tmp = document.createElement("DIV");
+    tmp.innerHTML = html;
+    return tmp.textContent || tmp.innerText || "";
 }
 
 const Links: React.FC = () => {
@@ -44,7 +52,8 @@ const Links: React.FC = () => {
         whatsappLink: '',
         whatsappThreshold: 5,
         leadCaptureFormId: '',
-        leadCaptureDelay: 3
+        leadCaptureDelay: 3,
+        whatsappOnFormSubmit: false
     });
 
     const { data: linksResponse, isLoading } = useQuery({
@@ -107,7 +116,8 @@ const Links: React.FC = () => {
             whatsappLink: '',
             whatsappThreshold: 5,
             leadCaptureFormId: '',
-            leadCaptureDelay: 3
+            leadCaptureDelay: 3,
+            whatsappOnFormSubmit: false
         });
         setEditingLink(null);
     };
@@ -128,7 +138,8 @@ const Links: React.FC = () => {
             whatsappLink: link.whatsappLink || '',
             whatsappThreshold: link.whatsappThreshold ?? 5,
             leadCaptureFormId: (!hasModule(Module.FORMS) && link.leadCaptureFormId && forms.length > 0) ? forms[0].id : (link.leadCaptureFormId || ''),
-            leadCaptureDelay: link.leadCaptureDelay ?? 3
+            leadCaptureDelay: link.leadCaptureDelay ?? 3,
+            whatsappOnFormSubmit: link.whatsappOnFormSubmit || false
         });
         setIsDrawerOpen(true);
     };
@@ -161,7 +172,7 @@ const Links: React.FC = () => {
                 ...allLinks.map((l: any) => [
                     `"${(l.title || '').replace(/"/g, '""')}"`,
                     l.slug,
-                    `"${(l.welcomeMessage || '').replace(/"/g, '""')}"`,
+                    `"${(stripHtml(l.welcomeMessage || '')).replace(/"/g, '""')}"`,
                     l._count?.conversations || 0,
                     `"${(l.whatsappLink || 'Disabled').replace(/"/g, '""')}"`
                 ].join(','))
@@ -323,7 +334,7 @@ const Links: React.FC = () => {
                                     <span>Welcome Message</span>
                                 </div>
                                 <p className="text-xs text-slate-700 italic line-clamp-2 m-0 leading-normal font-medium">
-                                    "{link.welcomeMessage || 'No message set'}"
+                                    "{link.welcomeMessage ? stripHtml(link.welcomeMessage) : 'No message set'}"
                                 </p>
                             </div>
                         </div>
@@ -482,13 +493,14 @@ const Links: React.FC = () => {
 
                                 <div>
                                     <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">AI Welcome Message</label>
-                                    <textarea
-                                        rows={3}
-                                        placeholder="Auto-reply whenever someone opens the link"
-                                        value={formData.welcomeMessage}
-                                        onChange={e => setFormData({ ...formData, welcomeMessage: e.target.value })}
-                                        className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all resize-none font-medium"
-                                    />
+                                    <div className="bg-white rounded-xl overflow-hidden border border-slate-200">
+                                        <ReactQuill
+                                            theme="snow"
+                                            value={formData.welcomeMessage}
+                                            onChange={val => setFormData({ ...formData, welcomeMessage: val })}
+                                            className="font-medium"
+                                        />
+                                    </div>
                                 </div>
 
                                 {/* WhatsApp Redirection */}

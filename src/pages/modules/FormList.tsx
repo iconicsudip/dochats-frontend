@@ -7,6 +7,8 @@ import {
     Plus, Edit2, Trash2, BarChart2, Copy, Eye, FileText, 
     LayoutTemplate, CheckCircle, Search, MoreHorizontal, X
 } from 'lucide-react';
+import { useModules } from '../../contexts/ModuleContext';
+import { Module } from '../../enums';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -26,6 +28,9 @@ const FormList: React.FC<FormListProps> = ({ predefined }) => {
     const [page, setPage] = useState(1);
     const pageSize = 10;
     const navigate = useNavigate();
+    const { hasModule } = useModules();
+
+    const canCreateNew = hasModule(Module.FORMS) || forms.length === 0;
 
     // Custom Toast State
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
@@ -123,23 +128,27 @@ const FormList: React.FC<FormListProps> = ({ predefined }) => {
                         >
                             My Forms
                         </button>
-                        <button 
-                            onClick={() => { setView('templates'); setPage(1); }}
-                            className={cn(
-                                "flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
-                                view === 'templates' ? "bg-white text-slate-900 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
-                            )}
-                        >
-                            Templates
-                        </button>
+                        {hasModule(Module.FORMS) && (
+                            <button 
+                                onClick={() => { setView('templates'); setPage(1); }}
+                                className={cn(
+                                    "flex-1 sm:flex-none px-4 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer",
+                                    view === 'templates' ? "bg-white text-slate-900 shadow-2xs font-bold" : "text-slate-500 hover:text-slate-800"
+                                )}
+                            >
+                                Templates
+                            </button>
+                        )}
                     </div>
-                    <button 
-                        onClick={() => navigate('/dashboard/forms/new')}
-                        className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all w-full sm:w-auto shrink-0 cursor-pointer"
-                    >
-                        <Plus className="w-3.5 h-3.5 shrink-0" />
-                        <span>Create Blank Form</span>
-                    </button>
+                    {canCreateNew && (
+                        <button 
+                            onClick={() => navigate('/dashboard/forms/new')}
+                            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all w-full sm:w-auto shrink-0 cursor-pointer"
+                        >
+                            <Plus className="w-3.5 h-3.5 shrink-0" />
+                            <span>Create Blank Form</span>
+                        </button>
+                    )}
                 </div>
             </div>
 

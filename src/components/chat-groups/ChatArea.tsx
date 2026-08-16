@@ -164,7 +164,14 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                                                 </button>
                                             )}
                                             {msg.content && !msg.systemLink && (
-                                                <p className="m-0 text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                                                msg.isFromAdmin && typeof msg.content === 'string' && msg.content.startsWith('<p>') ? (
+                                                    <div 
+                                                        dangerouslySetInnerHTML={{ __html: msg.content }} 
+                                                        className={cn("prose prose-sm max-w-none [&>p]:m-0 [&>p]:leading-normal [&_img]:max-w-[200px] [&_img]:rounded-lg [&_img]:my-2", own ? "prose-invert" : "")}
+                                                    />
+                                                ) : (
+                                                    <p className="m-0 text-sm whitespace-pre-wrap break-words">{msg.content}</p>
+                                                )
                                             )}
                                             {msg.content && msg.systemLink && msg.content !== `Shared: ${msg.systemLink.label}` && (
                                                 <p className="m-0 text-sm whitespace-pre-wrap break-words mt-1">{msg.content}</p>

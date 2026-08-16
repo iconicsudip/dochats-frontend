@@ -413,14 +413,49 @@ Reference Link: ${refLink}`;
     }, [messages.length, chatInfo]);
 
     useEffect(() => {
-        const handleMessage = (event: MessageEvent) => {
+        const handleMessage = async (event: MessageEvent) => {
             if (event.data?.type === 'LEAD_CAPTURE_SUCCESS') {
                 setShowLeadCaptureForm(false);
+                
+                const formData = event.data.formData || {};
+                let name = formData['Name'] || formData['First Name'] || formData['Full Name'] || formData['name'] || formData['first_name'] || formData['full_name'];
+                let phone = formData['Phone'] || formData['Phone Number'] || formData['WhatsApp Number'] || formData['phone'] || formData['phone_number'];
+                let email = formData['Email'] || formData['Email Address'] || formData['email'] || formData['email_address'];
+
+                if (name || phone || email) {
+                    if (name) localStorage.setItem('visitor_name', name);
+                    if (phone) localStorage.setItem('visitor_phone', phone);
+                    if (email) localStorage.setItem('visitor_email', email);
+                    
+                    setVisitorData(prev => ({
+                        name: name || prev.name,
+                        phone: phone || prev.phone,
+                        email: email || prev.email
+                    }));
+
+                    if (slug && visitorToken) {
+                        try {
+                            await initMutation.mutateAsync({ 
+                                slug, 
+                                visitorToken, 
+                                visitorName: name, 
+                                visitorPhone: phone, 
+                                visitorEmail: email 
+                            });
+                        } catch (e) {
+                            console.error('Failed to update visitor info from form submission', e);
+                        }
+                    }
+                }
+
+                if (chatInfo?.whatsappOnFormSubmit && chatInfo?.whatsappLink) {
+                    window.location.href = chatInfo.whatsappLink;
+                }
             }
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, []);
+    }, [chatInfo, slug, visitorToken]);
 
     const onEmojiClick = (emojiData: any) => { setInputText(prev => prev + emojiData.emoji); };
 
@@ -438,6 +473,18 @@ Reference Link: ${refLink}`;
             if (part.match(urlRegex)) return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-400 underline">{part}</a>;
             return <span key={i}>{part.split('\n').map((line, j) => <React.Fragment key={j}>{j > 0 && <br />}{line}</React.Fragment>)}</span>;
         });
+    };
+
+    const renderMessageContent = (msg: any) => {
+        if (msg.isFromAdmin && msg.content && typeof msg.content === 'string' && msg.content.startsWith('<p>')) {
+            return (
+                <div 
+                    dangerouslySetInnerHTML={{ __html: msg.content }} 
+                    className="prose prose-sm prose-invert max-w-none [&>p]:m-0 [&>p]:leading-normal [&_img]:max-w-[200px] [&_img]:rounded-lg [&_img]:my-2"
+                />
+            );
+        }
+        return formatMessageText(msg.content);
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -539,7 +586,7 @@ Reference Link: ${refLink}`;
                                         <div className="pr-12 whitespace-pre-wrap break-words min-h-[1.5rem]">
                                             {msg.type === MessageType.AUDIO ? <AudioPlayer src={msg.content} isFromAdmin={msg.isFromAdmin} /> : msg.type === MessageType.IMAGE ? (
                                                 <img src={msg.content} alt="Attachment" className="max-w-full rounded-xl cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.content, '_blank')} />
-                                            ) : formatMessageText(msg.content)}
+                                            ) : renderMessageContent(msg)}
                                         </div>
                                         <div className="absolute right-2.5 bottom-1.5 flex items-center gap-1 text-[10px] text-[#8696a0]">
                                             <span>{format(new Date(msg.createdAt), 'HH:mm')}</span>

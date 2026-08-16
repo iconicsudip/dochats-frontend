@@ -258,7 +258,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                 showToast('Form submitted successfully!', 'success');
                 
                 if (isEmbed) {
-                    window.parent.postMessage({ type: 'LEAD_CAPTURE_SUCCESS' }, '*');
+                    window.parent.postMessage({ type: 'LEAD_CAPTURE_SUCCESS', formData }, '*');
                 }
             }
         } catch (e) {
