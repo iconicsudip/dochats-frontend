@@ -14,6 +14,7 @@ import {
     User, Copy, ExternalLink, Phone, Calendar, Tag, Clock,
     MessagesSquare, Pin, Archive, Trash2, Sparkles, RefreshCw
 } from 'lucide-react';
+import { stripHtml } from '../utils/helpers';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -766,7 +767,7 @@ const LiveChat: React.FC = () => {
                                                             {conv.lastMessageType === MessageType.AUDIO ? (
                                                                 <span className="flex items-center gap-1"><Mic className="w-3 h-3" /> Voice Message</span>
                                                             ) : (
-                                                                conv.lastMessage || 'No messages yet'
+                                                                stripHtml(conv.lastMessage) || 'No messages yet'
                                                             )}
                                                         </div>
                                                     </div>

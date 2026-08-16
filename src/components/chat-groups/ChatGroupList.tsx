@@ -1,5 +1,6 @@
 import React from 'react';
 import { MessagesSquare, Plus, Hash, Paperclip } from 'lucide-react';
+import { stripHtml } from '../../utils/helpers';
 import { cn } from '../../utils/cn';
 
 interface ChatGroupListProps {
@@ -74,7 +75,7 @@ const ChatGroupList: React.FC<ChatGroupListProps> = ({
                                     {g.lastMessagePreview ? (
                                         <>
                                             {g.lastMessagePreview.includes('test') && <Paperclip className="w-3.5 h-3.5" />}
-                                            {g.lastMessagePreview}
+                                            {stripHtml(g.lastMessagePreview)}
                                         </>
                                     ) : (
                                         `${g.memberCount} members`
