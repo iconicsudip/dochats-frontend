@@ -167,7 +167,7 @@ const ChatArea: React.FC<ChatAreaProps> = ({
                                                 msg.isFromAdmin && typeof msg.content === 'string' && msg.content.startsWith('<p>') ? (
                                                     <div 
                                                         dangerouslySetInnerHTML={{ __html: msg.content }} 
-                                                        className={cn("prose prose-sm max-w-none [&>p]:m-0 [&>p]:leading-normal [&_img]:max-w-[200px] [&_img]:rounded-lg [&_img]:my-2", own ? "prose-invert" : "")}
+                                                        className={cn("prose prose-sm max-w-none overflow-hidden break-words [&_*]:break-words [&>p]:m-0 [&>p]:leading-normal [&_img]:max-w-[200px] [&_img]:rounded-lg [&_img]:my-2", own ? "prose-invert" : "")}
                                                     />
                                                 ) : (
                                                     <p className="m-0 text-sm whitespace-pre-wrap break-words">{msg.content}</p>

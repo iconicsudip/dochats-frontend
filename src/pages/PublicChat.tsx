@@ -73,6 +73,7 @@ const PublicChat: React.FC = () => {
         return 1; 
     });
     const [showWAPopup, setShowWAPopup] = useState(false);
+    const [redirectingToWa, setRedirectingToWa] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [showOnboardingForm, setShowOnboardingForm] = useState(false);
     const [showLeadCaptureForm, setShowLeadCaptureForm] = useState(false);
@@ -449,7 +450,10 @@ Reference Link: ${refLink}`;
                 }
 
                 if (chatInfo?.whatsappOnFormSubmit && chatInfo?.whatsappLink) {
-                    window.location.href = chatInfo.whatsappLink;
+                    setRedirectingToWa(true);
+                    setTimeout(() => {
+                        window.location.href = chatInfo.whatsappLink;
+                    }, 2000);
                 }
             }
         };
@@ -480,7 +484,7 @@ Reference Link: ${refLink}`;
             return (
                 <div 
                     dangerouslySetInnerHTML={{ __html: msg.content }} 
-                    className="prose prose-sm prose-invert max-w-none [&>p]:m-0 [&>p]:leading-normal [&_img]:max-w-[200px] [&_img]:rounded-lg [&_img]:my-2"
+                    className="prose prose-sm prose-invert max-w-none overflow-hidden break-words [&_*]:break-words [&>p]:m-0 [&>p]:leading-normal [&_img]:max-w-[200px] [&_img]:rounded-lg [&_img]:my-2"
                 />
             );
         }
@@ -512,7 +516,10 @@ Reference Link: ${refLink}`;
 
     return (
         <div className="flex flex-col w-full bg-[#0b141a] md:bg-slate-900 font-sans md:items-center md:justify-center md:p-6" style={{ height: '100dvh' }}>
-            <div className="flex flex-col w-full h-full md:max-h-[850px] md:max-w-[450px] bg-[#0b141a] md:rounded-[2rem] md:shadow-2xl overflow-hidden relative md:border md:border-[#2a3942] shrink-0">
+            <div 
+                className="flex flex-col w-full h-full md:max-h-[850px] md:max-w-[450px] bg-[#0b141a] md:rounded-[2rem] md:shadow-2xl overflow-hidden relative md:border md:border-[#2a3942] shrink-0"
+                style={chatInfo?.chatBackgroundImage ? { backgroundImage: `url(${chatInfo.chatBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+            >
                 {/* Background Pattern Overlay */}
                 <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
 
@@ -824,6 +831,29 @@ Reference Link: ${refLink}`;
                                 >
                                     Not now
                                 </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* WhatsApp Redirecting Overlay */}
+                    {redirectingToWa && (
+                        <div className="absolute inset-0 z-[100] bg-[#0b141a]/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+                            <div className="bg-[#202c33] border border-[#2a3942] rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl flex flex-col items-center justify-center gap-4">
+                                <div className="relative">
+                                    <div className="absolute inset-0 animate-ping rounded-full bg-[#25d366]/20" />
+                                    <MessageCircle className="w-14 h-14 text-[#25d366] relative z-10" />
+                                </div>
+                                <div>
+                                    <h3 className="text-white font-bold text-lg mb-1">Connecting to WhatsApp</h3>
+                                    <p className="text-[#8696a0] text-sm leading-relaxed">
+                                        Please wait while we redirect you to our WhatsApp chat...
+                                    </p>
+                                </div>
+                                <div className="mt-4 flex gap-1.5">
+                                    <div className="w-2 h-2 rounded-full bg-[#25d366] animate-bounce" style={{ animationDelay: '0ms' }} />
+                                    <div className="w-2 h-2 rounded-full bg-[#25d366] animate-bounce" style={{ animationDelay: '150ms' }} />
+                                    <div className="w-2 h-2 rounded-full bg-[#25d366] animate-bounce" style={{ animationDelay: '300ms' }} />
+                                </div>
                             </div>
                         </div>
                     )}
