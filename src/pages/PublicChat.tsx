@@ -18,6 +18,14 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
+const generateBackground = (design: any, fallback: string) => {
+    if (!design) return fallback;
+    if (design.type === 'gradient') {
+        return `linear-gradient(${design.direction || 'to right'}, ${design.color1}, ${design.color2 || '#ffffff'})`;
+    }
+    return design.color1;
+};
+
 const PublicChat: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
     const [visitorToken] = useState<string | null>(() => {
@@ -517,8 +525,8 @@ Reference Link: ${refLink}`;
     return (
         <div className="flex flex-col w-full bg-[#0b141a] md:bg-slate-900 font-sans md:items-center md:justify-center md:p-6" style={{ height: '100dvh' }}>
             <div 
-                className="flex flex-col w-full h-full md:max-h-[850px] md:max-w-[450px] bg-[#0b141a] md:rounded-[2rem] md:shadow-2xl overflow-hidden relative md:border md:border-[#2a3942] shrink-0"
-                style={chatInfo?.chatBackgroundImage ? { backgroundImage: `url(${chatInfo.chatBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                className="flex flex-col w-full h-full md:max-h-[850px] md:max-w-[450px] md:rounded-[2rem] md:shadow-2xl overflow-hidden relative md:border md:border-[#2a3942] shrink-0"
+                style={{ background: generateBackground(chatInfo?.chatDesign?.chatBackground, '#0b141a') }}
             >
                 {/* Background Pattern Overlay */}
                 <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
@@ -531,8 +539,17 @@ Reference Link: ${refLink}`;
             ) : (
                 <>
                     {/* Header */}
-                    <div className="h-16 px-4 bg-[#202c33] flex items-center justify-between z-10 border-b border-[#111b21] shrink-0 shadow-md">
-                        <div className="flex items-center gap-3">
+                    <div 
+                        className="h-16 px-4 flex items-center justify-between z-10 border-b border-[#111b21] shrink-0 shadow-md relative"
+                        style={{ 
+                            ...(chatInfo?.chatBackgroundImage 
+                                ? { backgroundImage: `url(${chatInfo.chatBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } 
+                                : { background: generateBackground(chatInfo?.chatDesign?.headerBackground, '#202c33') }
+                            )
+                        }}
+                    >
+                        {chatInfo?.chatBackgroundImage && <div className="absolute inset-0 bg-black/30" />}
+                        <div className="flex items-center gap-3 relative z-10">
                             {chatInfo.adminLogo ? (
                                 <img src={chatInfo.adminLogo} alt="Logo" className="w-10 h-10 rounded-full object-cover border border-[#374248]" />
                             ) : (
@@ -576,8 +593,13 @@ Reference Link: ${refLink}`;
                                         key={msg.tempId || msg.id} 
                                         className={cn(
                                             "max-w-[85%] rounded-2xl p-3 shadow-sm relative text-sm font-normal leading-snug",
-                                            !msg.isFromAdmin ? "bg-[#005c4b] text-white self-end rounded-tr-none" : "bg-[#202c33] text-[#e9edef] self-start rounded-tl-none"
+                                            !msg.isFromAdmin ? "text-white self-end rounded-tr-none" : "text-[#e9edef] self-start rounded-tl-none"
                                         )}
+                                        style={{
+                                            background: msg.isFromAdmin 
+                                                ? generateBackground(chatInfo?.chatDesign?.adminBubbleBackground, '#202c33')
+                                                : generateBackground(chatInfo?.chatDesign?.visitorBubbleBackground, '#005c4b')
+                                        }}
                                     >
                                         {msg.replyTo && (
                                             <div className="bg-black/20 p-2 rounded mb-2 border-l-4 border-emerald-500 text-xs text-white/80">
@@ -722,7 +744,10 @@ Reference Link: ${refLink}`;
 
                     {/* Input Area */}
                     {onboardingStep === 3 && !showLeadCaptureForm && (
-                        <div className="p-3 bg-[#202c33] flex items-center gap-2 z-10 border-t border-[#111b21] shrink-0 relative">
+                        <div 
+                            className="p-3 flex items-center gap-2 z-10 border-t border-[#111b21] shrink-0 relative"
+                            style={{ background: generateBackground(chatInfo?.chatDesign?.inputBackground, '#202c33') }}
+                        >
                             <button 
                                 type="button"
                                 onClick={() => setShowEmoji(!showEmoji)} 
@@ -824,12 +849,6 @@ Reference Link: ${refLink}`;
                                     className="w-full py-3 bg-[#25d366] hover:bg-[#25d366]/90 text-black font-extrabold rounded-xl text-sm transition-all shadow-lg shadow-[#25d366]/20 mb-3 flex items-center justify-center gap-2"
                                 >
                                     <MessageCircle className="w-4 h-4" /> Open in WhatsApp
-                                </button>
-                                <button
-                                    onClick={() => setShowWAPopup(false)}
-                                    className="w-full py-2 bg-transparent text-[#8696a0] hover:text-white font-bold text-xs rounded-xl transition-colors"
-                                >
-                                    Not now
                                 </button>
                             </div>
                         </div>

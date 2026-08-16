@@ -4,11 +4,12 @@ import 'react-quill-new/dist/quill.snow.css';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { 
     Link as LinkIcon, Plus, Search, Copy, CheckCircle2, ExternalLink, Trash2, Edit2, 
-    MessageSquare, AlertCircle, Phone, FileText, X, Check, ChevronLeft, ChevronRight, Download, Image as ImageIcon
+    MessageSquare, AlertCircle, Phone, FileText, X, Check, ChevronLeft, ChevronRight, Download, Image as ImageIcon, Settings
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
 import { formsApi } from '../api/forms';
+import { DesignEditor, ChatDesign } from '../components/DesignEditor';
 import { useModules } from '../contexts/ModuleContext';
 import { Module } from '../enums';
 import { useNavigate } from 'react-router-dom';
@@ -54,7 +55,8 @@ const Links: React.FC = () => {
         leadCaptureFormId: '',
         leadCaptureDelay: 3,
         whatsappOnFormSubmit: false,
-        chatBackgroundImage: ''
+        chatBackgroundImage: '',
+        chatDesign: undefined as ChatDesign | undefined
     });
 
     const { data: linksResponse, isLoading } = useQuery({
@@ -87,7 +89,7 @@ const Links: React.FC = () => {
     const updateMutation = useMutation({
         mutationFn: ({ id, values }: { id: string, values: any }) => apiClient.put(`/links/${id}`, values),
         onSuccess: () => {
-            setFormData({ title: '', welcomeMessage: 'Hello! How can I help you today?', whatsappLink: '', whatsappThreshold: 5, leadCaptureFormId: '', leadCaptureDelay: 3, whatsappOnFormSubmit: false, chatBackgroundImage: '' });
+            setFormData({ title: '', welcomeMessage: 'Hello! How can I help you today?', whatsappLink: '', whatsappThreshold: 5, leadCaptureFormId: '', leadCaptureDelay: 3, whatsappOnFormSubmit: false, chatBackgroundImage: '', chatDesign: undefined });
             queryClient.invalidateQueries({ queryKey: ['links'] });
             showToast('Link updated successfully!', 'success');
             setIsDrawerOpen(false);
@@ -131,7 +133,8 @@ const Links: React.FC = () => {
             leadCaptureFormId: '',
             leadCaptureDelay: 3,
             whatsappOnFormSubmit: false,
-            chatBackgroundImage: ''
+            chatBackgroundImage: '',
+            chatDesign: undefined
         });
         setEditingLink(null);
     };
@@ -154,7 +157,8 @@ const Links: React.FC = () => {
             leadCaptureFormId: (!hasModule(Module.FORMS) && link.leadCaptureFormId && forms.length > 0) ? forms[0].id : (link.leadCaptureFormId || ''),
             leadCaptureDelay: link.leadCaptureDelay ?? 3,
             whatsappOnFormSubmit: link.whatsappOnFormSubmit || false,
-            chatBackgroundImage: link.chatBackgroundImage || ''
+            chatBackgroundImage: link.chatBackgroundImage || '',
+            chatDesign: link.chatDesign || undefined
         });
         setIsDrawerOpen(true);
     };
@@ -526,7 +530,7 @@ const Links: React.FC = () => {
                                     </h3>
 
                                     <div>
-                                        <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">Chat Background Image</label>
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider mb-2">Header Background Image</label>
                                         <div className="flex items-center gap-4">
                                             {formData.chatBackgroundImage ? (
                                                 <div className="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 shadow-sm group">
@@ -546,9 +550,23 @@ const Links: React.FC = () => {
                                                 </label>
                                             )}
                                             <div className="text-xs text-slate-500 max-w-[200px]">
-                                                Upload a background image for the public chat widget. We recommend a subtle pattern or dark image.
+                                                Upload a background image for the public chat widget's header. We recommend a subtle pattern or dark image.
                                             </div>
                                         </div>
+                                    </div>
+
+                                    {/* Advanced Chat Design */}
+                                    <div className="pt-6 border-t border-slate-100">
+                                        <h3 className="text-sm font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+                                            <div className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                                                <Settings className="w-3.5 h-3.5" />
+                                            </div>
+                                            Advanced Chat Design
+                                        </h3>
+                                        <DesignEditor 
+                                            value={formData.chatDesign} 
+                                            onChange={(val) => setFormData(prev => ({ ...prev, chatDesign: val }))} 
+                                        />
                                     </div>
                                 </div>
 
