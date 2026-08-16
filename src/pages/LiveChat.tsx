@@ -546,6 +546,18 @@ const LiveChat: React.FC = () => {
         reader.readAsDataURL(file);
     };
 
+    const renderMessageContent = (msg: any) => {
+        if (msg.isFromAdmin && msg.content && typeof msg.content === 'string' && msg.content.startsWith('<p>')) {
+            return (
+                <div 
+                    dangerouslySetInnerHTML={{ __html: msg.content }} 
+                    className="prose prose-sm prose-invert max-w-none overflow-hidden break-words [&_*]:break-words [&>p]:m-0 [&>p]:leading-normal [&_img]:max-w-[200px] [&_img]:rounded-lg [&_img]:my-2"
+                />
+            );
+        }
+        return formatMessageText(msg.content);
+    };
+
     const scrollToBottom = () => {
         if (scrollRef.current) {
             scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -939,7 +951,7 @@ const LiveChat: React.FC = () => {
                                                                     ) : msg.type === MessageType.IMAGE ? (
                                                                         <img src={msg.content} alt="Attachment" className="max-w-full rounded-xl cursor-pointer hover:opacity-90 transition-opacity" onClick={() => window.open(msg.content, '_blank')} />
                                                                     ) : (
-                                                                        formatMessageText(msg.content)
+                                                                        renderMessageContent(msg)
                                                                     )}
                                                                 </div>
 
