@@ -484,7 +484,7 @@ Reference Link: ${refLink}`;
             return (
                 <div 
                     dangerouslySetInnerHTML={{ __html: msg.content }} 
-                    className="prose prose-sm prose-invert max-w-none overflow-hidden break-words [&_*]:break-words [&>p]:m-0 [&>p]:leading-normal [&_img]:max-w-[200px] [&_img]:rounded-lg [&_img]:my-2"
+                    className="prose prose-sm prose-invert max-w-none w-fit inline-block overflow-hidden whitespace-normal break-words [word-break:break-word] [&_*]:break-words [&>p]:m-0 [&>p]:leading-normal [&_img]:max-w-[200px] [&_img]:rounded-lg [&_img]:my-2"
                 />
             );
         }
@@ -575,7 +575,7 @@ Reference Link: ${refLink}`;
                                     <div 
                                         key={msg.tempId || msg.id} 
                                         className={cn(
-                                            "max-w-[85%] sm:max-w-md rounded-2xl p-3 shadow-sm relative text-sm font-normal leading-snug",
+                                            "max-w-[85%] rounded-2xl p-3 shadow-sm relative text-sm font-normal leading-snug",
                                             !msg.isFromAdmin ? "bg-[#005c4b] text-white self-end rounded-tr-none" : "bg-[#202c33] text-[#e9edef] self-start rounded-tl-none"
                                         )}
                                     >

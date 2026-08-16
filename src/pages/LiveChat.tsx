@@ -551,7 +551,7 @@ const LiveChat: React.FC = () => {
             return (
                 <div 
                     dangerouslySetInnerHTML={{ __html: msg.content }} 
-                    className="prose prose-sm prose-invert max-w-none overflow-hidden break-words [&_*]:break-words [&>p]:m-0 [&>p]:leading-normal [&_img]:max-w-[200px] [&_img]:rounded-lg [&_img]:my-2"
+                    className="prose prose-sm prose-invert max-w-none w-fit inline-block overflow-hidden whitespace-normal break-words [word-break:break-word] [&_*]:break-words [&>p]:m-0 [&>p]:leading-normal [&_img]:max-w-[200px] [&_img]:rounded-lg [&_img]:my-2"
                 />
             );
         }
