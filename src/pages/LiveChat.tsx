@@ -787,13 +787,15 @@ const LiveChat: React.FC = () => {
                                                         >
                                                             <Archive className="w-3.5 h-3.5" />
                                                         </button>
-                                                        <button
-                                                            onClick={(e) => { e.stopPropagation(); deleteConv(conv.id); }}
-                                                            className="p-1 hover:bg-slate-200 rounded-md text-slate-400 hover:text-red-500"
-                                                            title="Delete Chat"
-                                                        >
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        </button>
+                                                        {user?.role !== 'SUB_USER' && (
+                                                            <button
+                                                                onClick={(e) => { e.stopPropagation(); deleteConv(conv.id); }}
+                                                                className="p-1 hover:bg-slate-200 rounded-md text-slate-400 hover:text-red-500"
+                                                                title="Delete Chat"
+                                                            >
+                                                                <Trash2 className="w-3.5 h-3.5" />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>

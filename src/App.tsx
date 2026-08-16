@@ -30,6 +30,7 @@ import Bookings from './pages/modules/Bookings';
 import Automation from './pages/modules/Automation';
 import WhatsApp from './pages/modules/WhatsApp';
 import ModuleManager from './pages/SuperAdmin/ModuleManager';
+import ChannelsManager from './pages/SuperAdmin/ChannelsManager';
 import FormList from './pages/modules/FormList';
 import FormBuilder from './pages/modules/FormBuilder';
 import FormResponses from './pages/modules/FormResponses';
@@ -68,6 +69,7 @@ function App() {
                         <Route path="payments" element={<Payments />} />
                         <Route path="upgrade-requests" element={<UpgradeRequests />} />
                         <Route path="module-manager" element={<ModuleManager />} />
+                        <Route path="channels-manager" element={<ChannelsManager />} />
                     </>
                 )}
 

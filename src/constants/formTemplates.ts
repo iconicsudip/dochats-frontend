@@ -354,5 +354,37 @@ export const FORM_TEMPLATES = [
             { id: '3', label: 'WhatsApp Number', type: 'tel', required: true },
             { id: '4', label: 'How did you hear about us?', type: 'select', required: false, options: ['Social Media', 'Email', 'Friend', 'Ad'] }
         ]
+    },
+    {
+        id: 'project-request-lead',
+        title: 'Project Request Form',
+        description: 'A comprehensive project request form to capture high-quality leads, budgets, and services.',
+        industry: 'Agency',
+        design: {
+            isMultistep: false,
+            layout: 'default',
+            primaryColor: '#e60000',
+            submitButtonText: 'Send Project Request',
+            footerDisclaimer: 'Your information is used only to respond to your request and is never sold or shared with third parties.',
+            thankYouPage: {
+                template: 'custom',
+                blocks: [
+                    { id: 'icon', type: 'icon', value: 'check-circle', color: '#e60000', visible: true },
+                    { id: 'title', type: 'title', value: 'Request Received!', visible: true },
+                    { id: 'msg', type: 'message', value: 'Thank you for your project request. We will review your details and get back to you shortly.', visible: true },
+                    { id: 'btn', type: 'button', label: 'Done', url: '', visible: true }
+                ]
+            }
+        },
+        fields: [
+            { id: 'pr1', label: 'Name', type: 'text', required: true, colSpan: 6 },
+            { id: 'pr2', label: 'Business / Website', type: 'text', required: false, colSpan: 6 },
+            { id: 'pr3', label: 'Email', type: 'email', required: true, colSpan: 6 },
+            { id: 'pr4', label: 'Phone / WhatsApp', type: 'tel', required: false, colSpan: 6 },
+            { id: 'pr5', label: 'Industry', type: 'select', required: true, options: ['iGaming', 'Crypto / Web3', 'Dating', 'Astrology', 'Other'], colSpan: 6 },
+            { id: 'pr6', label: 'Service', type: 'select', required: true, options: ['Ad Account Infrastructure', 'Meta Ads', 'Google Ads', 'SEO', 'Website Development', 'Landing Page', 'Automation', 'WhatsApp Marketing', 'RCS Marketing', 'Custom Chatbot', 'Custom Chat Platform', 'Other'], colSpan: 6 },
+            { id: 'pr7', label: 'Budget', type: 'select', required: false, options: ['Under $1,000 / month', '$1,000 - $5,000 / month', '$5,000 - $15,000 / month', '$15,000+ / month', 'Project-based'], colSpan: 12 },
+            { id: 'pr8', label: 'Message', type: 'textarea', required: false, placeholder: 'Tell us about your business and where you\'re stuck...', colSpan: 12 }
+        ]
     }
 ];

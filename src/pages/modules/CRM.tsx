@@ -507,13 +507,15 @@ const CRM: React.FC = () => {
                         </button>
                         
                         <div className="flex items-center gap-3 action-dropdown-container relative">
-                            <button 
-                                onClick={() => setDrawerType('edit')}
-                                className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer"
-                            >
-                                <Edit3 className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Edit Record</span>
-                            </button>
+                            {user?.role !== 'SUB_USER' && (
+                                <button 
+                                    onClick={() => setDrawerType('edit')}
+                                    className="flex items-center gap-1.5 px-4 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all shadow-2xs cursor-pointer"
+                                >
+                                    <Edit3 className="w-3.5 h-3.5 text-slate-500" />
+                                    <span>Edit Record</span>
+                                </button>
+                            )}
 
                             <div className="relative">
                                 <button 
@@ -543,19 +545,23 @@ const CRM: React.FC = () => {
                                         >
                                             <Download className="w-3.5 h-3.5 text-slate-400" /> <span>Export VCard</span>
                                         </button>
-                                        <div className="border-t border-slate-100 my-1" />
-                                        <button 
-                                            onClick={async () => {
-                                                if (window.confirm("Delete this contact record?")) {
-                                                    await deleteLeadsMutation.mutateAsync([selectedLead.id]);
-                                                    showToast("Contact deleted", 'success');
-                                                    setView('list');
-                                                }
-                                            }}
-                                            className="w-full text-left px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
-                                        >
-                                            <Trash2 className="w-3.5 h-3.5 text-red-500" /> <span>Delete Contact</span>
-                                        </button>
+                                        {user?.role !== 'SUB_USER' && (
+                                            <>
+                                                <div className="border-t border-slate-100 my-1" />
+                                                <button 
+                                                    onClick={async () => {
+                                                        if (window.confirm("Delete this contact record?")) {
+                                                            await deleteLeadsMutation.mutateAsync([selectedLead.id]);
+                                                            showToast("Contact deleted", 'success');
+                                                            setView('list');
+                                                        }
+                                                    }}
+                                                    className="w-full text-left px-4 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                                                >
+                                                    <Trash2 className="w-3.5 h-3.5 text-red-500" /> <span>Delete Contact</span>
+                                                </button>
+                                            </>
+                                        )}
                                     </div>
                                 )}
                             </div>
@@ -615,9 +621,11 @@ const CRM: React.FC = () => {
                             <div className="bg-white border border-slate-200/80 rounded-2xl p-5 shadow-2xs space-y-4 font-medium">
                                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
                                     <h3 className="text-xs font-bold text-slate-900 m-0 uppercase tracking-wider">Key Information</h3>
-                                    <button onClick={() => setDrawerType('edit')} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700 cursor-pointer">
-                                        <Settings className="w-3.5 h-3.5" />
-                                    </button>
+                                    {user?.role !== 'SUB_USER' && (
+                                        <button onClick={() => setDrawerType('edit')} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700 cursor-pointer">
+                                            <Settings className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
                                 </div>
 
                                 <div className="space-y-3.5 text-xs">
@@ -733,9 +741,11 @@ const CRM: React.FC = () => {
                                     <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-2xs space-y-4">
                                         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                                             <h3 className="text-xs font-bold text-slate-900 m-0 uppercase tracking-wider">Contact profile</h3>
-                                            <button onClick={() => setDrawerType('edit')} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700 cursor-pointer">
-                                                <Settings className="w-3.5 h-3.5" />
-                                            </button>
+                                            {user?.role !== 'SUB_USER' && (
+                                                <button onClick={() => setDrawerType('edit')} className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-700 cursor-pointer">
+                                                    <Settings className="w-3.5 h-3.5" />
+                                                </button>
+                                            )}
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-xs font-medium">
@@ -1325,13 +1335,15 @@ const CRM: React.FC = () => {
                                 <span>Export CSV</span>
                             </button>
 
-                            <button 
-                                onClick={() => setDrawerType('add')}
-                                className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
-                            >
-                                <Plus className="w-3.5 h-3.5" />
-                                <span>Create Contact</span>
-                            </button>
+                            {user?.role !== 'SUB_USER' && (
+                                <button 
+                                    onClick={() => setDrawerType('add')}
+                                    className="flex items-center gap-2 px-5 py-2 bg-primary hover:bg-primary-hover text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                                >
+                                    <Plus className="w-3.5 h-3.5" />
+                                    <span>Create Contact</span>
+                                </button>
+                            )}
                         </div>
                     </div>
 
@@ -1486,12 +1498,14 @@ const CRM: React.FC = () => {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <button
-                                    onClick={handleBulkDelete}
-                                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold transition-colors border border-red-200 cursor-pointer"
-                                >
-                                    <Trash2 className="w-3.5 h-3.5" /> <span>Bulk Delete</span>
-                                </button>
+                                {user?.role !== 'SUB_USER' && (
+                                    <button
+                                        onClick={handleBulkDelete}
+                                        className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold transition-colors border border-red-200 cursor-pointer"
+                                    >
+                                        <Trash2 className="w-3.5 h-3.5" /> <span>Bulk Delete</span>
+                                    </button>
+                                )}
                                 <button
                                     onClick={() => setSelectedLeadIds([])}
                                     className="text-slate-500 hover:text-slate-700 underline text-xs cursor-pointer"
@@ -1714,20 +1728,24 @@ const CRM: React.FC = () => {
                                                                                 <span>{s.label}</span>
                                                                             </button>
                                                                         ))}
-                                                                        <div className="border-t border-slate-100 my-1" />
-                                                                        <button
-                                                                            onClick={async (e) => {
-                                                                                e.stopPropagation();
-                                                                                if (window.confirm("Delete this contact record?")) {
-                                                                                    await deleteLeadsMutation.mutateAsync([lead.id]);
-                                                                                    showToast("Contact deleted", 'success');
-                                                                                }
-                                                                            }}
-                                                                            className="w-full text-left px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
-                                                                        >
-                                                                            <Trash2 className="w-3.5 h-3.5 text-red-500" />
-                                                                            <span>Delete</span>
-                                                                        </button>
+                                                                        {user?.role !== 'SUB_USER' && (
+                                                                            <>
+                                                                                <div className="border-t border-slate-100 my-1" />
+                                                                                <button
+                                                                                    onClick={async (e) => {
+                                                                                        e.stopPropagation();
+                                                                                        if (window.confirm("Delete this contact record?")) {
+                                                                                            await deleteLeadsMutation.mutateAsync([lead.id]);
+                                                                                            showToast("Contact deleted", 'success');
+                                                                                        }
+                                                                                    }}
+                                                                                    className="w-full text-left px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center gap-2 cursor-pointer"
+                                                                                >
+                                                                                    <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                                                                                    <span>Delete</span>
+                                                                                </button>
+                                                                            </>
+                                                                        )}
                                                                     </div>
                                                                 )}
                                                             </div>

@@ -7,6 +7,9 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import apiClient from '../api/apiClient';
 import { formsApi } from '../api/forms';
+import { useModules } from '../contexts/ModuleContext';
+import { Module } from '../enums';
+import { useNavigate } from 'react-router-dom';
 import clsx from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -16,6 +19,8 @@ function cn(...inputs: (string | undefined | null | false)[]) {
 
 const Links: React.FC = () => {
     const { user } = useAuth();
+    const { hasModule } = useModules();
+    const navigate = useNavigate();
     const [searchTerm, setSearchTerm] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [isDrawerOpen, setIsDrawerOpen] = useState(false);
@@ -109,6 +114,9 @@ const Links: React.FC = () => {
 
     const handleOpenCreate = () => {
         resetForm();
+        if (!hasModule(Module.FORMS) && forms.length > 0) {
+            setFormData(prev => ({ ...prev, leadCaptureFormId: forms[0].id }));
+        }
         setIsDrawerOpen(true);
     };
 
@@ -119,10 +127,24 @@ const Links: React.FC = () => {
             welcomeMessage: link.welcomeMessage || '',
             whatsappLink: link.whatsappLink || '',
             whatsappThreshold: link.whatsappThreshold ?? 5,
-            leadCaptureFormId: link.leadCaptureFormId || '',
+            leadCaptureFormId: (!hasModule(Module.FORMS) && link.leadCaptureFormId && forms.length > 0) ? forms[0].id : (link.leadCaptureFormId || ''),
             leadCaptureDelay: link.leadCaptureDelay ?? 3
         });
         setIsDrawerOpen(true);
+    };
+
+    const handleCreateDefaultForm = async () => {
+        try {
+            const res = await formsApi.createForm({
+                title: 'Default Inline Form',
+                description: 'Capture details during live chat',
+                isPublic: true,
+                fields: []
+            });
+            navigate(`/dashboard/forms/edit/${res.data.id}`);
+        } catch (e) {
+            showToast('Failed to create default form', 'error');
+        }
     };
 
     const handleExportCSV = async () => {
@@ -509,7 +531,28 @@ const Links: React.FC = () => {
                                     </h3>
 
                                     <div>
-                                        <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Inline Capture Form</label>
+                                        <div className="flex justify-between items-end mb-1">
+                                            <label className="block font-bold text-slate-700 uppercase tracking-wider">Inline Capture Form</label>
+                                            {!hasModule(Module.FORMS) && (
+                                                forms.length === 0 ? (
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleCreateDefaultForm}
+                                                        className="text-xs font-bold text-primary hover:text-primary-hover transition-colors"
+                                                    >
+                                                        + Create Default Form
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => navigate(`/dashboard/forms/edit/${forms[0].id}`)}
+                                                        className="text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors"
+                                                    >
+                                                        Edit Form
+                                                    </button>
+                                                )
+                                            )}
+                                        </div>
                                         <p className="text-[11px] text-slate-400 mb-2 font-medium">Select a custom form to display during chat</p>
                                         <select
                                             value={formData.leadCaptureFormId}
@@ -517,9 +560,13 @@ const Links: React.FC = () => {
                                             className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all cursor-pointer font-medium"
                                         >
                                             <option value="">None (Disabled)</option>
-                                            {forms.map((f: any) => (
-                                                <option key={f.id} value={f.id}>{f.title}</option>
-                                            ))}
+                                            {!hasModule(Module.FORMS) ? (
+                                                forms.length > 0 && <option value={forms[0].id}>{forms[0].title}</option>
+                                            ) : (
+                                                forms.map((f: any) => (
+                                                    <option key={f.id} value={f.id}>{f.title}</option>
+                                                ))
+                                            )}
                                         </select>
                                     </div>
 

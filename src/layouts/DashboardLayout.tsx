@@ -155,6 +155,7 @@ const DashboardLayout: React.FC = () => {
         { key: '/dashboard/manage-admins', icon: Users, label: 'Tenants & Admins', tourKey: 'manage-admins' },
         { key: '/dashboard/manage-plans', icon: Zap, label: 'Subscriptions', tourKey: 'manage-plans' },
         { key: '/dashboard/module-manager', icon: AppWindow, label: 'Feature Flags', tourKey: 'module-manager' },
+        { key: '/dashboard/channels-manager', icon: MessageCircle, label: 'Channels Permission' },
     ];
 
     // Modern SaaS Admin items structured perfectly to match user screenshots and feedback
@@ -222,11 +223,7 @@ const DashboardLayout: React.FC = () => {
             label: 'CRM',
             module: Module.CRM,
             children: [
-                { key: '/dashboard/crm', icon: Users, label: 'Contacts' },
-                { key: '/dashboard/crm/companies', icon: Building2, label: 'Companies' },
-                { key: '/dashboard/crm/deals', icon: Briefcase, label: 'Deals' },
-                { key: '/dashboard/crm/tickets', icon: LifeBuoy, label: 'Tickets' },
-                { key: '/dashboard/crm/orders', icon: ShoppingBag, label: 'Orders' },
+                { key: '/dashboard/crm', icon: Users, label: 'Contacts' }
             ]
         },
         { key: '/dashboard/bookings', icon: Calendar, label: 'Appointments', module: Module.BOOKINGS },

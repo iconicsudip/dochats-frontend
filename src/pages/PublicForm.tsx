@@ -606,7 +606,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                 return (
                     <textarea 
                         className={cn(baseInputClasses, "min-h-[100px] resize-y")}
-                        placeholder={`Enter ${field.label.toLowerCase()}...`}
+                        placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}...`}
                         value={value || ''}
                         onChange={e => {
                             setFormData({...formData, [field.label]: e.target.value});
@@ -698,7 +698,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                             setFormData({...formData, [field.label]: date ? date.format('YYYY-MM-DD') : ''});
                             if (error) setErrors({...errors, [field.label]: ''});
                         }}
-                        placeholder={`Select ${field.label.toLowerCase()}`}
+                        placeholder={field.placeholder || `Select ${field.label.toLowerCase()}`}
                         style={{ width: '100%' }}
                         className={cn(hasError ? 'border-red-400' : isBlueBorderField ? 'border-[#1e88e5]' : '')}
                         size="large"
@@ -837,7 +837,7 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                     <input 
                         type={field.type}
                         className={baseInputClasses}
-                        placeholder={`Enter ${field.label.toLowerCase()}...`}
+                        placeholder={field.placeholder || `Enter ${field.label.toLowerCase()}...`}
                         value={value || ''}
                         onChange={e => {
                             setFormData({...formData, [field.label]: e.target.value});
@@ -951,6 +951,11 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                     >
                         {submitting ? <Loader2 className="w-5 h-5 animate-spin text-current" /> : submitButtonText}
                     </button>
+                    {form?.design?.footerDisclaimer && (
+                        <p className="mt-4 text-center text-xs text-slate-500 font-medium px-4">
+                            {form.design.footerDisclaimer}
+                        </p>
+                    )}
                 </div>
             );
         }

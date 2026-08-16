@@ -14,21 +14,16 @@ function cn(...inputs: (string | undefined | null | false)[]) {
   return twMerge(clsx(inputs));
 }
 
-const ALL_MODULES: { key: Module; icon: React.ReactNode; color: string; desc: string }[] = [
-    { key: Module.CRM, icon: <TrendingUp className="w-5 h-5 text-purple-500" />, color: 'border-purple-200 bg-purple-50 text-purple-700', desc: 'Pipeline, leads, deals' },
-    { key: Module.BOOKINGS, icon: <Calendar className="w-5 h-5 text-blue-500" />, color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Appointments & reservations' },
-    { key: Module.AUTOMATION, icon: <Zap className="w-5 h-5 text-amber-500" />, color: 'border-amber-200 bg-amber-50 text-amber-700', desc: 'Workflow automation engine' },
-    { key: Module.ANALYTICS, icon: <PieChart className="w-5 h-5 text-cyan-500" />, color: 'border-cyan-200 bg-cyan-50 text-cyan-700', desc: 'Reports & insights' },
-    { key: Module.LINKS, icon: <LinkIcon className="w-5 h-5 text-pink-500" />, color: 'border-pink-200 bg-pink-50 text-pink-700', desc: 'Smart link management' },
-    { key: Module.SUB_USERS, icon: <Users className="w-5 h-5 text-indigo-500" />, color: 'border-indigo-200 bg-indigo-50 text-indigo-700', desc: 'Team & agent access' },
-    { key: Module.BILLING, icon: <CreditCard className="w-5 h-5 text-slate-500" />, color: 'border-slate-200 bg-slate-50 text-slate-700', desc: 'Billing & subscriptions' },
-    { key: Module.PLANS, icon: <ShieldCheck className="w-5 h-5 text-amber-500" />, color: 'border-amber-200 bg-amber-50 text-amber-700', desc: 'Plan management' },
-    { key: Module.FORMS, icon: <FormInput className="w-5 h-5 text-emerald-500" />, color: 'border-emerald-200 bg-emerald-50 text-emerald-700', desc: 'Dynamic form creation' },
+const ALL_CHANNELS: { key: Module; icon: React.ReactNode; color: string; desc: string }[] = [
+    { key: Module.LIVE_CHAT, icon: <MessageSquare className="w-5 h-5 text-purple-500" />, color: 'border-purple-200 bg-purple-50 text-purple-700', desc: 'Real-time chat with visitors' },
+    { key: Module.CHAT_GROUPS, icon: <MessageSquare className="w-5 h-5 text-violet-500" />, color: 'border-violet-200 bg-violet-50 text-violet-700', desc: 'Internal team group chat' },
+    { key: Module.WHATSAPP, icon: <MessageCircle className="w-5 h-5 text-green-500" />, color: 'border-green-200 bg-green-50 text-green-700', desc: 'WhatsApp Meta Business Hub' },
+    { key: Module.EMAIL, icon: <Mail className="w-5 h-5 text-blue-500" />, color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Drag-and-Drop Email Marketing' },
 ];
 
-const CHANNELS: Module[] = [Module.LIVE_CHAT, Module.WHATSAPP, Module.EMAIL, Module.CHAT_GROUPS];
+const NON_CHANNELS: Module[] = [Module.CRM, Module.BOOKINGS, Module.AUTOMATION, Module.ANALYTICS, Module.LINKS, Module.SUB_USERS, Module.BILLING, Module.PLANS, Module.FORMS];
 
-const ModuleManager: React.FC = () => {
+const ChannelsManager: React.FC = () => {
     const [admins, setAdmins] = useState<any[]>([]);
     const [selectedAdmin, setSelectedAdmin] = useState<any | null>(null);
     const [configOpen, setConfigOpen] = useState(false);
@@ -72,8 +67,7 @@ const ModuleManager: React.FC = () => {
 
     const openConfig = (admin: any) => {
         setSelectedAdmin(admin);
-        // Only set the editModules to the modules managed on this page
-        setEditModules(admin.enabledModules.filter((m: Module) => !CHANNELS.includes(m)));
+        setEditModules(admin.enabledModules.filter((m: Module) => !NON_CHANNELS.includes(m)));
         setConfigOpen(true);
     };
 
@@ -86,19 +80,18 @@ const ModuleManager: React.FC = () => {
     const saveModules = async () => {
         if (!selectedAdmin) return;
         try {
-            // Keep existing channels intact, replace ONLY the modules from this page
-            const existingChannels = selectedAdmin.enabledModules.filter((m: Module) => CHANNELS.includes(m));
-            const newModules = [...existingChannels, ...editModules];
+            const existingModules = selectedAdmin.enabledModules.filter((m: Module) => NON_CHANNELS.includes(m));
+            const newModules = [...existingModules, ...editModules];
             
             await moduleConfigApi.updateAdminModules(selectedAdmin.id, newModules);
             setAdmins(prev => prev.map(a =>
                 a.id === selectedAdmin.id ? { ...a, enabledModules: newModules } : a
             ));
             setConfigOpen(false);
-            showToast(`Modules updated for ${selectedAdmin.name}`, 'success');
+            showToast(`Channels updated for ${selectedAdmin.name}`, 'success');
         } catch (error) {
             console.error(error);
-            showToast('Failed to update modules', 'error');
+            showToast('Failed to update channels', 'error');
         }
     };
 
@@ -110,8 +103,8 @@ const ModuleManager: React.FC = () => {
     };
 
     const totalAdmins = admins.length;
-    const avgModules = totalAdmins > 0 ? Math.round(admins.reduce((a, ad) => a + ad.enabledModules.filter((m: Module) => !CHANNELS.includes(m)).length, 0) / totalAdmins) : 0;
-    const fullAccessCount = admins.filter(a => a.enabledModules.filter((m: Module) => !CHANNELS.includes(m)).length === ALL_MODULES.length).length;
+    const avgModules = totalAdmins > 0 ? Math.round(admins.reduce((a, ad) => a + ad.enabledModules.filter((m: Module) => !NON_CHANNELS.includes(m)).length, 0) / totalAdmins) : 0;
+    const fullAccessCount = admins.filter(a => a.enabledModules.filter((m: Module) => !NON_CHANNELS.includes(m)).length === ALL_CHANNELS.length).length;
 
     return (
         <div className="pb-20 animate-in fade-in duration-500 font-sans text-slate-800">
@@ -119,11 +112,11 @@ const ModuleManager: React.FC = () => {
             <div className="mb-8">
                 <div className="flex items-center gap-2 mb-1">
                     <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0">
-                        <Layout className="w-6 h-6 text-primary" />
+                        <MessageCircle className="w-6 h-6 text-primary" />
                     </div>
-                    <h1 className="text-xl font-bold tracking-tight text-slate-900 m-0">Module Manager</h1>
+                    <h1 className="text-xl font-bold tracking-tight text-slate-900 m-0">Channels Permission</h1>
                 </div>
-                <p className="text-xs font-semibold text-slate-500 mt-2 m-0">Control which Business OS modules each admin account can access.</p>
+                <p className="text-xs font-semibold text-slate-500 mt-2 m-0">Control which communication channels (WhatsApp, Email, etc.) each admin can access.</p>
             </div>
 
             {/* Summary Row */}
@@ -134,7 +127,7 @@ const ModuleManager: React.FC = () => {
                 </div>
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs text-center">
                     <div className="text-3xl font-extrabold text-emerald-600 mb-1">{avgModules}</div>
-                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Avg Modules / Admin</div>
+                    <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Avg Channels / Admin</div>
                 </div>
                 <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-2xs text-center">
                     <div className="text-3xl font-extrabold text-purple-600 mb-1">{fullAccessCount}</div>
@@ -164,7 +157,7 @@ const ModuleManager: React.FC = () => {
                                         {admin.plan?.name || 'No Plan'}
                                     </span>
                                     <span className="px-3 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 border border-slate-200">
-                                        {admin.enabledModules?.filter((m: Module) => !CHANNELS.includes(m)).length || 0} / {ALL_MODULES.length} modules
+                                        {admin.enabledModules?.filter((m: Module) => !NON_CHANNELS.includes(m)).length || 0} / {ALL_CHANNELS.length} channels
                                     </span>
                                     <button
                                         onClick={() => openConfig(admin)}
@@ -175,9 +168,9 @@ const ModuleManager: React.FC = () => {
                                 </div>
                             </div>
 
-                            {/* Active Module Tags */}
+                            {/* Active Channel Tags */}
                             <div className="flex flex-wrap gap-2 mt-5">
-                                {ALL_MODULES.map(m => {
+                                {ALL_CHANNELS.map(m => {
                                     const active = admin.enabledModules?.includes(m.key);
                                     return (
                                         <span 
@@ -204,7 +197,7 @@ const ModuleManager: React.FC = () => {
                     <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
                         <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50/50 shrink-0">
                             <h2 className="text-lg font-bold tracking-tight text-slate-900 m-0">
-                                Configure Modules — {selectedAdmin.name || selectedAdmin.username}
+                                Configure Channels — {selectedAdmin.name || selectedAdmin.username}
                             </h2>
                             <button onClick={() => setConfigOpen(false)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
                                 <X className="w-5 h-5" />
@@ -213,10 +206,10 @@ const ModuleManager: React.FC = () => {
                         
                         <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-3">
                             <p className="text-xs font-semibold text-slate-500 mb-4 m-0">
-                                Toggle modules on/off for this admin. Changes apply immediately on next login.
+                                Toggle channels on/off for this admin. Changes apply immediately on next login.
                             </p>
 
-                            {ALL_MODULES.map(m => {
+                            {ALL_CHANNELS.map(m => {
                                 const active = editModules.includes(m.key);
                                 return (
                                     <div 
@@ -282,4 +275,4 @@ const ModuleManager: React.FC = () => {
     );
 };
 
-export default ModuleManager;
+export default ChannelsManager;

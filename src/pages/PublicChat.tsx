@@ -51,12 +51,15 @@ const PublicChat: React.FC = () => {
             const taggedName = sourceParam ? `${nameParam} [Form: ${sourceParam}]` : nameParam;
             localStorage.setItem('visitor_name', taggedName);
             localStorage.setItem('visitor_phone', phoneParam);
-            return { name: taggedName, phone: phoneParam };
+            const emailParam = params.get('email') || '';
+            if (emailParam) localStorage.setItem('visitor_email', emailParam);
+            return { name: taggedName, phone: phoneParam, email: emailParam };
         }
 
         return {
             name: localStorage.getItem('visitor_name') || '',
-            phone: localStorage.getItem('visitor_phone') || ''
+            phone: localStorage.getItem('visitor_phone') || '',
+            email: localStorage.getItem('visitor_email') || ''
         };
     });
     const [onboardingStep, setOnboardingStep] = useState<0 | 1 | 2 | 3>(() => {
@@ -107,7 +110,7 @@ const PublicChat: React.FC = () => {
                 .then(res => {
                     setConversationId(res.data.conversationId);
                     setChatInfo(res.data);
-                    setVisitorData({ name: res.data.visitorName || '', phone: res.data.visitorPhone || '' });
+                    setVisitorData({ name: res.data.visitorName || '', phone: res.data.visitorPhone || '', email: res.data.visitorEmail || '' });
 
                     if (!res.data.leadCaptureEnabled) {
                         setOnboardingStep(3);
@@ -240,18 +243,21 @@ const PublicChat: React.FC = () => {
     };
 
     const handleOnboardingSubmit = async () => {
-        if (!visitorData.name.trim() || !visitorData.phone.trim() || !conversationId) return;
-        const { name, phone } = visitorData;
+        if (!visitorData.name.trim() || !visitorData.phone.trim() || !visitorData.email.trim() || !conversationId) return;
+        const { name, phone, email } = visitorData;
         localStorage.setItem('visitor_name', name);
         localStorage.setItem('visitor_phone', phone);
+        localStorage.setItem('visitor_email', email);
         setOnboardingStep(3);
         try {
-            await initMutation.mutateAsync({ slug, visitorToken, visitorName: name, visitorPhone: phone });
+            await initMutation.mutateAsync({ slug, visitorToken, visitorName: name, visitorPhone: phone, visitorEmail: email });
             const tempIdName = `temp-name-${Date.now()}`;
+            const tempIdEmail = `temp-email-${Date.now()}`;
             const tempIdPhone = `temp-phone-${Date.now()}`;
             setMessages(prev => [
                 ...prev,
                 { id: tempIdName, content: `Name: ${name}`, isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT },
+                { id: tempIdEmail, content: `Email: ${email}`, isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT },
                 { id: tempIdPhone, content: `Phone: ${phone}`, isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT }
             ]);
             setTimeout(() => { sendBotMessage("Perfect! Thank you for sharing your details. How can I help you today?"); }, 800);
@@ -562,6 +568,16 @@ Reference Link: ${refLink}`;
                                         />
                                     </div>
                                     <div>
+                                        <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-1">Email Address</label>
+                                        <input 
+                                            type="email" 
+                                            placeholder="e.g. john@example.com"
+                                            value={visitorData.email}
+                                            onChange={e => setVisitorData(prev => ({ ...prev, email: e.target.value }))}
+                                            className="w-full bg-[#2a3942] border border-[#3b4a54] rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-emerald-500/40 transition-all"
+                                        />
+                                    </div>
+                                    <div>
                                         <label className="block text-[10px] font-bold uppercase tracking-wider text-[#8696a0] mb-1">Phone Number</label>
                                         <input 
                                             type="tel" 
@@ -576,7 +592,7 @@ Reference Link: ${refLink}`;
                                         />
                                     </div>
                                     <button 
-                                        disabled={!visitorData.name.trim() || visitorData.phone.length !== 10}
+                                        disabled={!visitorData.name.trim() || !visitorData.email.trim() || visitorData.phone.length !== 10}
                                         onClick={handleOnboardingSubmit}
                                         className="w-full py-3 bg-[#00a884] hover:bg-[#00a884]/90 disabled:opacity-50 disabled:cursor-not-allowed text-black font-extrabold text-sm rounded-xl transition-all shadow-md"
                                     >

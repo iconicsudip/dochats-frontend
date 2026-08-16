@@ -824,6 +824,7 @@ const FormBuilder: React.FC = () => {
     const [steps, setSteps] = useState<{ id: string; title: string; description: string; dependsOnFieldId?: string; showWhenValue?: string }[]>([]);
     const [stepsSidebarTitle, setStepsSidebarTitle] = useState('Booking Steps');
     const [submitButtonText, setSubmitButtonText] = useState('Submit Response');
+    const [footerDisclaimer, setFooterDisclaimer] = useState('');
     const [thankYouBlocks, setThankYouBlocks] = useState<any[]>([
         { id: 'icon', type: 'icon', value: 'check-circle', color: '#10b981', visible: true },
         { id: 'title', type: 'title', value: 'Booking Requested!', visible: true },
@@ -912,6 +913,7 @@ const FormBuilder: React.FC = () => {
             setSteps(stps);
             setStepsSidebarTitle(data.design?.stepsSidebarTitle || 'Booking Steps');
             setSubmitButtonText(data.design?.submitButtonText || (isMs ? 'Book Appointment' : 'Submit Response'));
+            setFooterDisclaimer(data.design?.footerDisclaimer || '');
             if (stps.length > 0) {
                 setActiveStepTab(stps[0].id);
             }
@@ -945,6 +947,7 @@ const FormBuilder: React.FC = () => {
             setSteps(stps);
             setStepsSidebarTitle(template.design?.stepsSidebarTitle || 'Booking Steps');
             setSubmitButtonText(template.design?.submitButtonText || (isMs ? 'Book Appointment' : 'Submit Response'));
+            setFooterDisclaimer(template.design?.footerDisclaimer || '');
             if (stps.length > 0) {
                 setActiveStepTab(stps[0].id);
             }
@@ -1203,6 +1206,7 @@ const FormBuilder: React.FC = () => {
                     steps,
                     stepsSidebarTitle,
                     submitButtonText,
+                    footerDisclaimer,
                     thankYouPage: {
                         template: 'custom',
                         blocks: thankYouBlocks
@@ -1411,6 +1415,16 @@ const FormBuilder: React.FC = () => {
                                         value={submitButtonText}
                                         onChange={e => setSubmitButtonText(e.target.value)}
                                         placeholder="e.g. Submit Response"
+                                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all focus:bg-white"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Footer Disclaimer</label>
+                                    <input
+                                        type="text"
+                                        value={footerDisclaimer}
+                                        onChange={e => setFooterDisclaimer(e.target.value)}
+                                        placeholder="e.g. Your info is safe with us"
                                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all focus:bg-white"
                                     />
                                 </div>
@@ -1989,6 +2003,7 @@ const FormBuilder: React.FC = () => {
                                         steps,
                                         stepsSidebarTitle,
                                         submitButtonText,
+                                        footerDisclaimer,
                                         thankYouPage: {
                                             template: 'custom',
                                             blocks: thankYouBlocks
