@@ -404,3 +404,39 @@ textarea[class*="ant-"],
   background-color: var(--surface) !important;
   border-color: var(--border) !important;
 }
+/* Quill Editor Styles */
+.ql-toolbar.ql-snow, .ql-container.ql-snow {
+  border-color: var(--border) !important;
+}
+.dark .ql-toolbar.ql-snow {
+  background-color: var(--surface-secondary) !important;
+}
+.dark .ql-container.ql-snow {
+  background-color: var(--surface) !important;
+  color: var(--text-primary) !important;
+}
+.dark .ql-snow .ql-stroke {
+  stroke: var(--text-secondary) !important;
+}
+.dark .ql-snow .ql-fill, .dark .ql-snow .ql-stroke.ql-fill {
+  fill: var(--text-secondary) !important;
+}
+.dark .ql-snow .ql-picker {
+  color: var(--text-secondary) !important;
+}
+.dark .ql-snow .ql-picker-options {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+.dark .ql-snow .ql-tooltip {
+  background-color: var(--surface-secondary) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5) !important;
+}
+.dark .ql-snow .ql-tooltip input[type="text"] {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--text-primary) !important;
+}
+
