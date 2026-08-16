@@ -26,6 +26,17 @@ const generateBackground = (design: any, fallback: string) => {
     return design.color1;
 };
 
+declare global {
+    interface Window {
+        fbq: any;
+        _fbq: any;
+        dataLayer: any[];
+        gtag: (...args: any[]) => void;
+        ttq: any;
+        TiktokAnalyticsObject: any;
+    }
+}
+
 const PublicChat: React.FC = () => {
     const { slug } = useParams<{ slug: string }>();
     const [visitorToken] = useState<string | null>(() => {
@@ -131,11 +142,79 @@ const PublicChat: React.FC = () => {
                         setOnboardingStep(1);
                     }
                 })
-                .catch(err => console.error('Init error:', err));
+                .catch(err => {
+                    console.error('Failed to init public chat:', err);
+                });
         }
-    }, [slug, visitorToken]);
+    }, [slug, visitorToken, initMutation]);
 
-    const { data: fetchedMessages, isLoading: loadingMessages } = useQuery({
+    useEffect(() => {
+        if (!chatInfo?.trackingPixels) return;
+        
+        const pixels = chatInfo.trackingPixels;
+
+        // Meta Pixel
+        if (pixels.facebook && !window.fbq) {
+            (function(f: any,b: any,e: any,v: any,n?: any,t?: any,s?: any)
+            // @ts-ignore
+            {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+            // @ts-ignore
+            n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+            // @ts-ignore
+            if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+            // @ts-ignore
+            n.queue=[];t=b.createElement(e);t.async=!0;
+            // @ts-ignore
+            t.src=v;s=b.getElementsByTagName(e)[0];
+            // @ts-ignore
+            s.parentNode.insertBefore(t,s)})(window, document,'script',
+            'https://connect.facebook.net/en_US/fbevents.js');
+            window.fbq('init', pixels.facebook);
+            window.fbq('track', 'PageView');
+        }
+
+        // Google Analytics
+        if (pixels.googleAnalytics && !window.gtag) {
+            const script = document.createElement('script');
+            script.src = `https://www.googletagmanager.com/gtag/js?id=${pixels.googleAnalytics}`;
+            script.async = true;
+            document.head.appendChild(script);
+
+            window.dataLayer = window.dataLayer || [];
+            function gtag(...args: any[]){window.dataLayer.push(args);}
+            window.gtag = gtag;
+            window.gtag('js', new Date());
+            window.gtag('config', pixels.googleAnalytics);
+        }
+
+        // TikTok Pixel
+        if (pixels.tiktok && !window.ttq) {
+            (function (w: any, d: any, t: any) {
+                // @ts-ignore
+                w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var i="https://analytics.tiktok.com/i18n/pixel/events.js";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=i,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=document.createElement("script");o.type="text/javascript",o.async=!0,o.src=i+"?sdkid="+e+"&lib="+t;var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};
+                ttq.load(pixels.tiktok);
+                ttq.page();
+            })(window, document, 'ttq');
+        }
+
+        // Custom Scripts
+        if (pixels.customScripts) {
+            try {
+                const container = document.createElement('div');
+                container.innerHTML = pixels.customScripts;
+                Array.from(container.querySelectorAll('script')).forEach(oldScript => {
+                    const newScript = document.createElement('script');
+                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
+                    document.head.appendChild(newScript);
+                });
+            } catch (err) {
+                console.error('Failed to inject custom scripts:', err);
+            }
+        }
+    }, [chatInfo?.trackingPixels]);
+
+    const { data: fetchedMessages, isLoading: isMessagesLoading } = useQuery({
         queryKey: ['public-messages', conversationId],
         queryFn: () => apiClient.get(`/public/messages?conversationId=${conversationId}`).then(res => res.data),
         enabled: !!conversationId,
@@ -288,8 +367,20 @@ const PublicChat: React.FC = () => {
             setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
         } catch (err) { console.error('Send error:', err); setMessages(prev => prev.filter(m => m.id !== tempId)); }
     };
+    const fireLeadEvent = () => {
+        if (window.fbq) {
+            try { window.fbq('track', 'Lead'); } catch (e) {}
+        }
+        if (window.gtag) {
+            try { window.gtag('event', 'generate_lead'); } catch (e) {}
+        }
+        if (window.ttq) {
+            try { window.ttq.track('SubmitForm'); } catch (e) {}
+        }
+    };
 
     const handleWhatsAppRedirect = () => {
+        fireLeadEvent();
         if (!chatInfo?.whatsappLink) return;
         
         const customerName = visitorData.name || 'Visitor';
@@ -425,6 +516,7 @@ Reference Link: ${refLink}`;
         const handleMessage = async (event: MessageEvent) => {
             if (event.data?.type === 'LEAD_CAPTURE_SUCCESS') {
                 setShowLeadCaptureForm(false);
+                fireLeadEvent();
                 
                 const formData = event.data.formData || {};
                 let name = formData['Name'] || formData['First Name'] || formData['Full Name'] || formData['name'] || formData['first_name'] || formData['full_name'];

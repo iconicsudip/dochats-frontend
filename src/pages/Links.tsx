@@ -56,7 +56,13 @@ const Links: React.FC = () => {
         leadCaptureDelay: 3,
         whatsappOnFormSubmit: false,
         chatBackgroundImage: '',
-        chatDesign: undefined as ChatDesign | undefined
+        chatDesign: undefined as ChatDesign | undefined,
+        trackingPixels: {
+            facebook: '',
+            googleAnalytics: '',
+            tiktok: '',
+            customScripts: ''
+        }
     });
 
     const { data: linksResponse, isLoading } = useQuery({
@@ -89,7 +95,7 @@ const Links: React.FC = () => {
     const updateMutation = useMutation({
         mutationFn: ({ id, values }: { id: string, values: any }) => apiClient.put(`/links/${id}`, values),
         onSuccess: () => {
-            setFormData({ title: '', welcomeMessage: 'Hello! How can I help you today?', whatsappLink: '', whatsappThreshold: 5, leadCaptureFormId: '', leadCaptureDelay: 3, whatsappOnFormSubmit: false, chatBackgroundImage: '', chatDesign: undefined });
+            setFormData({ title: '', welcomeMessage: 'Hello! How can I help you today?', whatsappLink: '', whatsappThreshold: 5, leadCaptureFormId: '', leadCaptureDelay: 3, whatsappOnFormSubmit: false, chatBackgroundImage: '', chatDesign: undefined, trackingPixels: { facebook: '', googleAnalytics: '', tiktok: '', customScripts: '' } });
             queryClient.invalidateQueries({ queryKey: ['links'] });
             showToast('Link updated successfully!', 'success');
             setIsDrawerOpen(false);
@@ -134,7 +140,13 @@ const Links: React.FC = () => {
             leadCaptureDelay: 3,
             whatsappOnFormSubmit: false,
             chatBackgroundImage: '',
-            chatDesign: undefined
+            chatDesign: undefined,
+            trackingPixels: {
+                facebook: '',
+                googleAnalytics: '',
+                tiktok: '',
+                customScripts: ''
+            }
         });
         setEditingLink(null);
     };
@@ -158,7 +170,8 @@ const Links: React.FC = () => {
             leadCaptureDelay: link.leadCaptureDelay ?? 3,
             whatsappOnFormSubmit: link.whatsappOnFormSubmit || false,
             chatBackgroundImage: link.chatBackgroundImage || '',
-            chatDesign: link.chatDesign || undefined
+            chatDesign: link.chatDesign,
+            trackingPixels: link.trackingPixels || { facebook: '', googleAnalytics: '', tiktok: '', customScripts: '' }
         });
         setIsDrawerOpen(true);
     };
@@ -567,6 +580,57 @@ const Links: React.FC = () => {
                                             value={formData.chatDesign} 
                                             onChange={(val) => setFormData(prev => ({ ...prev, chatDesign: val }))} 
                                         />
+                                    </div>
+                                    
+                                    <div className="bg-slate-50 rounded-2xl p-5 border border-slate-200">
+                                        <div className="flex items-center gap-2 mb-4">
+                                            <div className="w-8 h-8 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
+                                                <Settings className="w-4 h-4" />
+                                            </div>
+                                            <h3 className="text-sm font-bold text-slate-800 m-0">Advanced Tracking & Pixels</h3>
+                                        </div>
+                                        <div className="space-y-4">
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">Meta / Facebook Pixel ID</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.trackingPixels.facebook}
+                                                    onChange={e => setFormData(prev => ({ ...prev, trackingPixels: { ...prev.trackingPixels, facebook: e.target.value } }))}
+                                                    placeholder="e.g. 1234567890"
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-xs"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">Google Analytics ID</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.trackingPixels.googleAnalytics}
+                                                    onChange={e => setFormData(prev => ({ ...prev, trackingPixels: { ...prev.trackingPixels, googleAnalytics: e.target.value } }))}
+                                                    placeholder="e.g. G-ABCDEFG123"
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-xs"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">TikTok Pixel ID</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.trackingPixels.tiktok}
+                                                    onChange={e => setFormData(prev => ({ ...prev, trackingPixels: { ...prev.trackingPixels, tiktok: e.target.value } }))}
+                                                    placeholder="e.g. C1234567890"
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-xs"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-semibold text-slate-700 mb-1.5 uppercase tracking-wide">Custom Scripts (e.g. &lt;script&gt;)</label>
+                                                <textarea
+                                                    value={formData.trackingPixels.customScripts}
+                                                    onChange={e => setFormData(prev => ({ ...prev, trackingPixels: { ...prev.trackingPixels, customScripts: e.target.value } }))}
+                                                    placeholder="Paste any custom tracking scripts here..."
+                                                    rows={4}
+                                                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all shadow-xs font-mono"
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 

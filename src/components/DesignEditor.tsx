@@ -39,9 +39,9 @@ const ColorGradientField = ({
     onChange: (val: BackgroundDesign) => void;
 }) => {
     return (
-        <div className="border border-slate-200 rounded-xl p-4 bg-white/50 space-y-3">
+        <div className="border border-[#2a3942] rounded-xl p-4 bg-[#202c33] space-y-3">
             <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-700 uppercase">{label}</label>
+                <label className="text-xs font-bold text-white uppercase">{label}</label>
                 <Radio.Group 
                     size="small" 
                     value={value.type} 
@@ -54,7 +54,7 @@ const ColorGradientField = ({
 
             <div className="flex items-center gap-4 pt-2">
                 <div className="flex flex-col gap-1">
-                    <span className="text-[10px] text-slate-500 font-medium">Color 1</span>
+                    <span className="text-[10px] text-[#8696a0] font-medium">Color 1</span>
                     <input 
                         type="color" 
                         value={value.color1} 
@@ -66,7 +66,7 @@ const ColorGradientField = ({
                 {value.type === 'gradient' && (
                     <>
                         <div className="flex flex-col gap-1">
-                            <span className="text-[10px] text-slate-500 font-medium">Color 2</span>
+                            <span className="text-[10px] text-[#8696a0] font-medium">Color 2</span>
                             <input 
                                 type="color" 
                                 value={value.color2 || '#ffffff'} 
@@ -75,7 +75,7 @@ const ColorGradientField = ({
                             />
                         </div>
                         <div className="flex flex-col gap-1 flex-1">
-                            <span className="text-[10px] text-slate-500 font-medium">Direction</span>
+                            <span className="text-[10px] text-[#8696a0] font-medium">Direction</span>
                             <Select 
                                 size="small"
                                 value={value.direction || 'to right'}
