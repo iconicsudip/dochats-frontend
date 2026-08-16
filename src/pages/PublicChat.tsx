@@ -583,7 +583,10 @@ Reference Link: ${refLink}`;
                         {Object.entries(groupMessagesByDate(messages)).map(([date, dateMsgs]) => (
                             <React.Fragment key={date}>
                                 <div className="flex justify-center my-4">
-                                    <div className="bg-[#202c33]/90 backdrop-blur-xs px-3 py-1 rounded-lg text-[#8696a0] text-[10px] font-bold uppercase tracking-wider shadow-xs">
+                                    <div 
+                                        className="backdrop-blur-xs px-3 py-1 rounded-lg text-white/80 text-[10px] font-bold uppercase tracking-wider shadow-xs border border-white/5"
+                                        style={{ background: generateBackground(chatInfo?.chatDesign?.inputBackground, '#202c33') }}
+                                    >
                                         {getDateLabel(date)}
                                     </div>
                                 </div>
@@ -836,20 +839,31 @@ Reference Link: ${refLink}`;
                     {/* WhatsApp Redirect Modal Dialog */}
                     {showWAPopup && (
                         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-                            <div className="bg-[#202c33] rounded-3xl p-6 shadow-2xl max-w-xs w-full text-center border border-[#2a3942] animate-in zoom-in-95 duration-200">
-                                <div className="w-16 h-16 bg-[#25d366]/20 text-[#25d366] rounded-2xl flex items-center justify-center mx-auto mb-4 border border-[#25d366]/30 shadow-lg">
-                                    <MessageCircle className="w-8 h-8" />
+                            <div 
+                                className="rounded-3xl shadow-2xl max-w-xs w-full text-center border border-[#2a3942] animate-in zoom-in-95 duration-200 relative overflow-hidden"
+                            >
+                                <div className="absolute inset-0 z-0" style={{ background: generateBackground(chatInfo?.chatDesign?.inputBackground, '#202c33') }} />
+                                <div className="absolute inset-0 bg-black/40 z-0" />
+                                
+                                <div className="relative z-10 p-6">
+                                    <div 
+                                        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg border border-white/20"
+                                        style={{ background: generateBackground(chatInfo?.chatDesign?.visitorBubbleBackground, '#25d366') }}
+                                    >
+                                        <MessageCircle className="w-8 h-8 text-white drop-shadow-md" />
+                                    </div>
+                                    <h3 className="text-lg font-extrabold text-white mb-2 m-0 drop-shadow-md">Continue on WhatsApp?</h3>
+                                    <p className="text-xs text-white/90 mb-6 leading-relaxed drop-shadow-md font-medium">
+                                        Move this conversation instantly to WhatsApp for faster and continuous updates directly to your mobile inbox.
+                                    </p>
+                                    <button
+                                        onClick={handleWhatsAppRedirect}
+                                        className="w-full py-3 text-white font-extrabold rounded-xl text-sm transition-all shadow-lg mb-3 flex items-center justify-center gap-2 border border-white/20 hover:opacity-90"
+                                        style={{ background: generateBackground(chatInfo?.chatDesign?.visitorBubbleBackground, '#25d366') }}
+                                    >
+                                        <MessageCircle className="w-4 h-4 text-white" /> Open in WhatsApp
+                                    </button>
                                 </div>
-                                <h3 className="text-lg font-bold text-white mb-2 m-0">Continue on WhatsApp?</h3>
-                                <p className="text-xs text-[#8696a0] mb-6 leading-relaxed">
-                                    Move this conversation instantly to WhatsApp for faster and continuous updates directly to your mobile inbox.
-                                </p>
-                                <button
-                                    onClick={handleWhatsAppRedirect}
-                                    className="w-full py-3 bg-[#25d366] hover:bg-[#25d366]/90 text-black font-extrabold rounded-xl text-sm transition-all shadow-lg shadow-[#25d366]/20 mb-3 flex items-center justify-center gap-2"
-                                >
-                                    <MessageCircle className="w-4 h-4" /> Open in WhatsApp
-                                </button>
                             </div>
                         </div>
                     )}
