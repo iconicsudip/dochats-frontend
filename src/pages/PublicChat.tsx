@@ -497,6 +497,7 @@ Reference Link: ${refLink}`;
         
         window.open(waUrl.toString(), '_blank');
         setShowWAPopup(false);
+        setHasDismissedWaPopup(true);
     };
 
     const selectMenuOption = async (opt: any) => {

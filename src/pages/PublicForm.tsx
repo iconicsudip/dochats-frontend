@@ -1216,12 +1216,12 @@ const PublicForm: React.FC<PublicFormProps> = ({ previewData, onClosePreview }) 
                             <img src={form.owner.logoUrl} alt={form.owner.name} className="h-16 mx-auto mb-5 rounded-lg shadow-sm" />
                         )}
                         {showTitle && (
-                            <h1 className="text-2xl font-extrabold tracking-tight mb-2 font-sans" style={{ color: titleColor }}>
+                            <h1 className="text-2xl font-extrabold tracking-tight mb-2 font-sans" style={{ color: isEmbed ? '#ffffff' : titleColor }}>
                                 {form.title}
                             </h1>
                         )}
                         {showDescription && form.description && (
-                            <p className="text-xs opacity-75 font-sans font-bold uppercase tracking-wider" style={{ color: descriptionColor }}>
+                            <p className="text-xs opacity-75 font-sans font-bold uppercase tracking-wider" style={{ color: isEmbed ? '#8696a0' : descriptionColor }}>
                                 {form.description}
                             </p>
                         )}
