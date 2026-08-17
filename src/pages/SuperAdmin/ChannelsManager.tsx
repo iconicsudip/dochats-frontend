@@ -19,6 +19,7 @@ const ALL_CHANNELS: { key: Module; icon: React.ReactNode; color: string; desc: s
     { key: Module.CHAT_GROUPS, icon: <MessageSquare className="w-5 h-5 text-violet-500" />, color: 'border-violet-200 bg-violet-50 text-violet-700', desc: 'Internal team group chat' },
     { key: Module.WHATSAPP, icon: <MessageCircle className="w-5 h-5 text-green-500" />, color: 'border-green-200 bg-green-50 text-green-700', desc: 'WhatsApp Meta Business Hub' },
     { key: Module.EMAIL, icon: <Mail className="w-5 h-5 text-blue-500" />, color: 'border-blue-200 bg-blue-50 text-blue-700', desc: 'Drag-and-Drop Email Marketing' },
+    { key: Module.RCS, icon: <MessageCircle className="w-5 h-5 text-orange-500" />, color: 'border-orange-200 bg-orange-50 text-orange-700', desc: 'RCS Business Messaging' },
 ];
 
 const NON_CHANNELS: Module[] = [Module.CRM, Module.BOOKINGS, Module.AUTOMATION, Module.ANALYTICS, Module.LINKS, Module.SUB_USERS, Module.BILLING, Module.PLANS, Module.FORMS];

@@ -197,17 +197,31 @@ const Billing: React.FC = () => {
             {/* Plan Info Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-5 mb-8">
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start mb-4">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                            {status?.billingCycle === 'YEARLY' ? 'Yearly' : 'Monthly'} Plan
-                        </span>
-                        <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wide", getStatusBadge(sub?.status || 'EXPIRED'))}>
-                            {sub?.status || 'Inactive'}
-                        </span>
+                    <div>
+                        <div className="flex justify-between items-start mb-4">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                {status?.billingCycle === 'YEARLY' ? 'Yearly' : 'Monthly'} Plan
+                            </span>
+                            <span className={cn("px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase tracking-wide", getStatusBadge(sub?.status || 'EXPIRED'))}>
+                                {sub?.status || 'Inactive'}
+                            </span>
+                        </div>
+                        <div className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono">
+                            ₹{(sub?.amount || status?.defaultAmount || 0).toLocaleString()}
+                        </div>
                     </div>
-                    <div className="text-3xl font-extrabold text-slate-900 tracking-tight font-mono">
-                        ₹{(sub?.amount || status?.defaultAmount || 0).toLocaleString()}
-                    </div>
+                    {status?.breakdown && (
+                        <div className="mt-4 pt-3 border-t border-slate-100 space-y-1.5">
+                            <div className="flex justify-between items-center text-[11px] font-semibold text-slate-500">
+                                <span>Base Plan</span>
+                                <span className="text-slate-700">₹{status.breakdown.basePrice.toLocaleString()}</span>
+                            </div>
+                            <div className="flex justify-between items-center text-[11px] font-semibold text-slate-500">
+                                <span>{status.breakdown.linksCount} Smart Links (₹{status.breakdown.linkPrice}/ea)</span>
+                                <span className="text-slate-700">₹{status.breakdown.totalLinksPrice.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow">

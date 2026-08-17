@@ -26,7 +26,7 @@ const ALL_MODULES: { key: Module; icon: React.ReactNode; color: string; desc: st
     { key: Module.FORMS, icon: <FormInput className="w-5 h-5 text-emerald-500" />, color: 'border-emerald-200 bg-emerald-50 text-emerald-700', desc: 'Dynamic form creation' },
 ];
 
-const CHANNELS: Module[] = [Module.LIVE_CHAT, Module.WHATSAPP, Module.EMAIL, Module.CHAT_GROUPS];
+const CHANNELS: Module[] = [Module.LIVE_CHAT, Module.WHATSAPP, Module.EMAIL, Module.CHAT_GROUPS, Module.RCS];
 
 const ModuleManager: React.FC = () => {
     const [admins, setAdmins] = useState<any[]>([]);

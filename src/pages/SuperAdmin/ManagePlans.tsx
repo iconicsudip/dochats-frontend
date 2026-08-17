@@ -23,6 +23,8 @@ const ManagePlans: React.FC = () => {
         yearlyPrice: number;
         subUsersLimit: number;
         linksLimit: number;
+        pricePerLinkMonthly: number;
+        pricePerLinkYearly: number;
         isPublic: boolean;
         leadCaptureEnabled: boolean;
         description: string;
@@ -34,10 +36,12 @@ const ManagePlans: React.FC = () => {
         yearlyPrice: 0,
         subUsersLimit: 3,
         linksLimit: 5,
+        pricePerLinkMonthly: 0,
+        pricePerLinkYearly: 0,
         isPublic: true,
         leadCaptureEnabled: false,
         description: '',
-        enabledModules: Object.values(Module)
+        enabledModules: Object.values(Module).filter(m => m !== Module.RCS)
     });
 
     // Custom Toast State
@@ -65,10 +69,6 @@ const ManagePlans: React.FC = () => {
 
     const handleSavePlan = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (formData.enabledModules.length === 0) {
-            showToast('Please select at least one module', 'error');
-            return;
-        }
 
         setSubmitting(true);
         try {
@@ -109,6 +109,8 @@ const ManagePlans: React.FC = () => {
             yearlyPrice: plan.yearlyPrice || 0,
             subUsersLimit: plan.subUsersLimit || 0,
             linksLimit: plan.linksLimit || 0,
+            pricePerLinkMonthly: plan.pricePerLinkMonthly || 0,
+            pricePerLinkYearly: plan.pricePerLinkYearly || 0,
             isPublic: plan.isPublic ?? true,
             leadCaptureEnabled: plan.leadCaptureEnabled ?? false,
             description: plan.description || '',
@@ -159,8 +161,8 @@ const ManagePlans: React.FC = () => {
                         setEditingPlan(null);
                         setFormData({
                             name: '', order: plans.length, monthlyPrice: 0, yearlyPrice: 0,
-                            subUsersLimit: 3, linksLimit: 5, isPublic: true, leadCaptureEnabled: false,
-                            description: '', enabledModules: Object.values(Module)
+                            subUsersLimit: 3, linksLimit: 5, pricePerLinkMonthly: 0, pricePerLinkYearly: 0, isPublic: true, leadCaptureEnabled: false,
+                            description: '', enabledModules: Object.values(Module).filter(m => m !== Module.RCS)
                         });
                         setIsModalOpen(true);
                     }}
@@ -180,6 +182,7 @@ const ManagePlans: React.FC = () => {
                                 <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider w-20">Order</th>
                                 <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Plan Name</th>
                                 <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Prices</th>
+                                <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Per Link</th>
                                 <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Limits</th>
                                 <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Visibility</th>
                                 <th className="py-3.5 px-6 text-[11px] font-bold text-slate-500 uppercase tracking-wider">Lead Capture</th>
@@ -218,6 +221,10 @@ const ManagePlans: React.FC = () => {
                                         <td className="py-4 px-6">
                                             <div className="text-xs font-semibold text-primary">Monthly: ₹{plan.monthlyPrice?.toLocaleString()}</div>
                                             <div className="text-xs font-semibold text-primary mt-0.5">Yearly: ₹{plan.yearlyPrice?.toLocaleString()}</div>
+                                        </td>
+                                        <td className="py-4 px-6">
+                                            <div className="text-xs font-semibold text-primary">Monthly: ₹{plan.pricePerLinkMonthly?.toLocaleString()}</div>
+                                            <div className="text-xs font-semibold text-primary mt-0.5">Yearly: ₹{plan.pricePerLinkYearly?.toLocaleString()}</div>
                                         </td>
                                         <td className="py-4 px-6">
                                             <div className="space-y-1 text-xs text-slate-600">
@@ -339,6 +346,29 @@ const ManagePlans: React.FC = () => {
 
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                                     <div className="space-y-1.5">
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider">Per Link Price (Monthly) (₹) *</label>
+                                        <input 
+                                            required type="number" min="0"
+                                            value={formData.pricePerLinkMonthly}
+                                            onChange={e => setFormData({...formData, pricePerLinkMonthly: Number(e.target.value)})}
+                                            placeholder="0"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all" 
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <label className="block font-bold text-slate-700 uppercase tracking-wider">Per Link Price (Yearly) (₹) *</label>
+                                        <input 
+                                            required type="number" min="0"
+                                            value={formData.pricePerLinkYearly}
+                                            onChange={e => setFormData({...formData, pricePerLinkYearly: Number(e.target.value)})}
+                                            placeholder="0"
+                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all" 
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                    <div className="space-y-1.5">
                                         <label className="block font-bold text-slate-700 uppercase tracking-wider">Sub-Users Limit *</label>
                                         <input 
                                             required type="number" min="0"
@@ -404,9 +434,9 @@ const ManagePlans: React.FC = () => {
                                 </div>
 
                                 <div className="space-y-3">
-                                    <label className="block font-bold text-slate-700 uppercase tracking-wider">Plan Modules *</label>
+                                    <label className="block font-bold text-slate-700 uppercase tracking-wider">Plan Modules</label>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-4 bg-slate-50 border border-slate-200/80 rounded-xl">
-                                        {Object.values(Module).map(m => {
+                                        {Object.values(Module).filter(m => m !== Module.RCS).map(m => {
                                             const isSelected = formData.enabledModules.includes(m);
                                             return (
                                                 <div 

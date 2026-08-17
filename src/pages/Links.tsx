@@ -256,7 +256,7 @@ const Links: React.FC = () => {
         l.slug.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
-    const usagePercent = Math.min(100, Math.round((totalLinks / (user?.linksLimit || 1)) * 100));
+    // const usagePercent = Math.min(100, Math.round((totalLinks / (user?.linksLimit || 1)) * 100));
 
     if (isLoading) {
         return (
@@ -302,12 +302,9 @@ const Links: React.FC = () => {
                 {/* Usage & Buttons */}
                 <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full md:w-auto">
                     <div className="bg-slate-50 px-4 py-2.5 rounded-xl border border-slate-200 shadow-2xs min-w-[180px]">
-                        <div className="flex justify-between items-center text-[11px] font-semibold mb-1.5">
-                            <span className="text-slate-500 uppercase tracking-wider">Usage Quota</span>
-                            <span className="text-slate-900 font-bold">{totalLinks} / {user?.linksLimit || 0}</span>
-                        </div>
-                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
-                            <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: `${usagePercent}%` }} />
+                        <div className="flex justify-between items-center text-[11px] font-semibold">
+                            <span className="text-slate-500 uppercase tracking-wider">Total Links</span>
+                            <span className="text-slate-900 font-bold">{totalLinks}</span>
                         </div>
                     </div>
 
@@ -321,7 +318,6 @@ const Links: React.FC = () => {
 
                     <button
                         onClick={handleOpenCreate}
-                        disabled={totalLinks >= (user?.linksLimit || 0)}
                         className="flex items-center justify-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl shadow-xs transition-all text-xs shrink-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                         <Plus className="w-3.5 h-3.5" /> Create New Link
@@ -440,7 +436,6 @@ const Links: React.FC = () => {
                     </div>
                     <h3 className="text-base font-bold text-slate-900 m-0">No chat links found</h3>
                     <p className="text-xs text-slate-500 mt-1 mb-6 font-medium">You have not created any chat links yet or none match your search.</p>
-                    {totalLinks < (user?.linksLimit || 0) && (
                         <button
                             onClick={handleOpenCreate}
                             className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary hover:bg-primary-hover text-white font-semibold rounded-xl text-xs shadow-xs transition-all cursor-pointer"
@@ -448,7 +443,6 @@ const Links: React.FC = () => {
                             <Plus className="w-3.5 h-3.5" />
                             <span>Create Link Now</span>
                         </button>
-                    )}
                 </div>
             )}
 

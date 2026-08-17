@@ -182,7 +182,11 @@ const Plans: React.FC = () => {
                                         <div className="w-5 h-5 rounded-full bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
                                             <LinkIcon className="w-3 h-3" />
                                         </div>
-                                        <span>{plan.linksLimit} Dynamic Links</span>
+                                        {plan.pricePerLinkMonthly > 0 || plan.pricePerLinkYearly > 0 ? (
+                                            <span>Unlimited Links (+₹{isYearly ? plan.pricePerLinkYearly?.toLocaleString() : plan.pricePerLinkMonthly?.toLocaleString()}/link)</span>
+                                        ) : (
+                                            <span>{plan.linksLimit} Dynamic Links</span>
+                                        )}
                                     </li>
                                     <li className="flex items-center gap-3 text-xs text-slate-700 font-medium">
                                         <div className="w-5 h-5 rounded-full bg-green-50 text-green-600 flex items-center justify-center shrink-0">

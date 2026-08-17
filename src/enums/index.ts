@@ -27,6 +27,7 @@ export const Module = {
     FORMS: 'FORMS',
     WHATSAPP: 'WHATSAPP',
     EMAIL: 'EMAIL',
+    RCS: 'RCS',
 } as const;
 export type Module = typeof Module[keyof typeof Module];
 
@@ -45,4 +46,5 @@ export const ModuleLabel: Record<Module, string> = {
     FORMS: 'Dynamic Forms',
     WHATSAPP: 'WhatsApp Business',
     EMAIL: 'Email Marketing',
+    RCS: 'RCS Messaging',
 };

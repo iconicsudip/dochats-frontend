@@ -405,7 +405,7 @@ const DashboardLayout: React.FC = () => {
             </div>
 
             {/* Upgrade Premium Block */}
-            {(!user?.planId || user?.plan?.name?.toLowerCase().includes('basic')) && (
+            {user?.role !== Role.SUPER_ADMIN && user?.role !== Role.SUB_USER && (!user?.planId || user?.plan?.monthlyPrice === 0 || (user?.plan?.name && (user.plan.name.toLowerCase().includes('basic') || user.plan.name.toLowerCase().includes('free')))) && (
                 <div className="p-4 shrink-0 font-sans">
                     <div className="bg-gradient-to-br from-primary/20 via-slate-900 to-slate-900 border border-primary/30 rounded-2xl p-5 text-white relative overflow-hidden shadow-xl">
                         <div className="absolute top-0 right-0 w-24 h-24 bg-primary/20 rounded-full blur-2xl -mr-8 -mt-8 pointer-events-none" />

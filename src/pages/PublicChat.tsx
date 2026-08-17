@@ -102,6 +102,14 @@ const PublicChat: React.FC = () => {
     const scrollRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
+    const scrollToBottom = () => {
+        setTimeout(() => {
+            if (scrollRef.current) {
+                scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+            }
+        }, 100);
+    };
+
     const [isAdminTyping, setIsAdminTyping] = useState(false);
     const typingRef = useRef(false);
     const typingTimeoutRef = useRef<any>(null);
@@ -130,6 +138,7 @@ const PublicChat: React.FC = () => {
                 .then(res => {
                     setConversationId(res.data.conversationId);
                     setChatInfo(res.data);
+                    localStorage.setItem(`chat_info_${slug}`, JSON.stringify(res.data));
                     setVisitorData({ name: res.data.visitorName || '', phone: res.data.visitorPhone || '', email: res.data.visitorEmail || '' });
 
                     if (!res.data.leadCaptureEnabled) {
@@ -146,7 +155,7 @@ const PublicChat: React.FC = () => {
                     console.error('Failed to init public chat:', err);
                 });
         }
-    }, [slug, visitorToken, initMutation]);
+    }, [slug, visitorToken]);
 
     useEffect(() => {
         if (!chatInfo?.trackingPixels) return;
@@ -299,14 +308,14 @@ const PublicChat: React.FC = () => {
         return () => {
             es.close();
         };
-    }, [conversationId, visitorToken, markReadMutation]);
+    }, [conversationId, visitorToken]);
 
 
     useEffect(() => {
         if (!chatInfo || !conversationId || isInitialLoading || hasTriggeredOnboarding.current) return;
         const runFlow = async () => {
             hasTriggeredOnboarding.current = true;
-            if (chatInfo.welcomeMessage) {
+            if (chatInfo?.welcomeMessage) {
                 const alreadySent = messages.some(m => m.isFromAdmin && m.content === chatInfo.welcomeMessage);
                 if (!alreadySent) {
                     await sendBotMessage(chatInfo.welcomeMessage);
@@ -327,7 +336,27 @@ const PublicChat: React.FC = () => {
         if (!conversationId) return;
         const alreadyExists = messages.some(m => m.isFromAdmin && m.content === text);
         if (alreadyExists) return;
-        try { await sendMsgMutation.mutateAsync({ conversationId, content: text, isFromAdmin: true }); } catch (err) { }
+
+        const tempId = `temp-bot-${Date.now()}`;
+        const newMsg: any = {
+            id: tempId,
+            conversationId,
+            content: text,
+            isFromAdmin: true,
+            isRead: true,
+            type: MessageType.TEXT,
+            createdAt: new Date().toISOString(),
+            tempId,
+            replyTo: null
+        };
+
+        setMessages(prev => [...prev, newMsg]);
+        scrollToBottom();
+
+        try { 
+            const res = await sendMsgMutation.mutateAsync({ conversationId, content: text, isFromAdmin: true, tempId }); 
+            setMessages(prev => prev.map(m => m.id === tempId ? (res.data?.data || res.data) : m));
+        } catch (err) { console.error('Bot err', err); setMessages(prev => prev.filter(m => m.id !== tempId)); }
     };
 
     const handleOnboardingSubmit = async () => {
@@ -364,7 +393,7 @@ const PublicChat: React.FC = () => {
         addOptimisticMessage(content, MessageType.TEXT, tempId);
         try {
             const res = await sendMsgMutation.mutateAsync({ conversationId, content, type: MessageType.TEXT, isFromAdmin: false, tempId, replyToId: replyingTo?.id });
-            setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
+            setMessages(prev => prev.map(m => m.id === tempId ? (res.data?.data || res.data) : m));
         } catch (err) { console.error('Send error:', err); setMessages(prev => prev.filter(m => m.id !== tempId)); }
     };
     const fireLeadEvent = () => {
@@ -410,13 +439,15 @@ Reference Link: ${refLink}`;
 
     const selectMenuOption = async (opt: any) => {
         if (!conversationId) return;
+        const userTempId = 'temp-' + Date.now();
         const optimisticMsg = {
-            id: 'temp-' + Date.now(),
+            id: userTempId,
             content: opt.label,
             type: MessageType.TEXT,
             isFromAdmin: false,
             createdAt: new Date().toISOString(),
-            isRead: false
+            isRead: false,
+            tempId: userTempId
         };
         
         setMessages(prev => [...prev, optimisticMsg]);
@@ -452,7 +483,8 @@ Reference Link: ${refLink}`;
     };
 
     const addOptimisticMessage = (content: string, type: MessageType = MessageType.TEXT, tempId?: string) => {
-        const optimisticMsg: any = { id: tempId || `temp-${Date.now()}`, conversationId, content, type, isFromAdmin: false, isRead: false, createdAt: new Date().toISOString(), linkPreview, replyTo: replyingTo, replyToId: replyingTo?.id };
+        const tid = tempId || `temp-${Date.now()}`;
+        const optimisticMsg: any = { id: tid, tempId: tid, conversationId, content, type, isFromAdmin: false, isRead: false, createdAt: new Date().toISOString(), linkPreview, replyTo: replyingTo, replyToId: replyingTo?.id };
         setMessages(prev => [...prev, optimisticMsg]);
     };
 
@@ -465,7 +497,7 @@ Reference Link: ${refLink}`;
         addOptimisticMessage(audioBase64, MessageType.AUDIO, tempId);
         try {
             const res = await sendMsgMutation.mutateAsync({ conversationId, content: audioBase64, type: MessageType.AUDIO, isFromAdmin: false, tempId });
-            setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
+            setMessages(prev => prev.map(m => m.id === tempId ? (res.data?.data || res.data) : m));
         } catch (err) { setMessages(prev => prev.filter(m => m.id !== tempId)); }
     };
 
@@ -485,18 +517,20 @@ Reference Link: ${refLink}`;
             
             try {
                 const res = await sendMsgMutation.mutateAsync({ conversationId, content: base64String, type: MessageType.IMAGE, isFromAdmin: false, tempId });
-                setMessages(prev => prev.map(m => m.id === tempId ? res.data : m));
+                setMessages(prev => prev.map(m => m.id === tempId ? (res.data?.data || res.data) : m));
             } catch (err) { setMessages(prev => prev.filter(m => m.id !== tempId)); }
         };
         reader.readAsDataURL(file);
     };
 
     useEffect(() => {
-        setTimeout(() => { if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight; }, 100);
+        scrollToBottom();
         const customerMsgs = messages.filter(m => !m.isFromAdmin);
         
+        const isDataFilled = visitorData.name || visitorData.phone || visitorData.email;
         const formThreshold = chatInfo?.leadCaptureDelay ?? 3;
-        if (chatInfo?.leadCaptureFormId && customerMsgs.length === formThreshold && !hasShownFormRef.current) {
+        
+        if (chatInfo?.leadCaptureFormId && customerMsgs.length >= formThreshold && !hasShownFormRef.current && !isDataFilled) {
             const lastMsg = messages[messages.length - 1];
             if (lastMsg && !lastMsg.isFromAdmin) {
                 hasShownFormRef.current = true;
@@ -510,7 +544,7 @@ Reference Link: ${refLink}`;
             const lastMsg = messages[messages.length - 1];
             if (lastMsg && !lastMsg.isFromAdmin) { setShowWAPopup(true); }
         }
-    }, [messages.length, chatInfo]);
+    }, [messages.length, chatInfo, visitorData]);
 
     useEffect(() => {
         const handleMessage = async (event: MessageEvent) => {
@@ -623,13 +657,7 @@ Reference Link: ${refLink}`;
                 {/* Background Pattern Overlay */}
                 <div className="absolute inset-0 opacity-5 pointer-events-none bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px]" />
 
-            {!chatInfo ? (
-                <div className="flex-1 flex flex-col items-center justify-center gap-4 z-10">
-                    <div className="w-10 h-10 border-4 border-slate-700 border-t-emerald-500 rounded-full animate-spin" />
-                    <span className="text-xs font-bold text-slate-400 tracking-wide uppercase">Connecting...</span>
-                </div>
-            ) : (
-                <>
+
                     {/* Header */}
                     <div 
                         className="h-16 px-4 flex items-center justify-between z-10 border-b border-[#111b21] shrink-0 shadow-md relative"
@@ -642,7 +670,7 @@ Reference Link: ${refLink}`;
                     >
                         {chatInfo?.chatBackgroundImage && <div className="absolute inset-0 bg-black/30" />}
                         <div className="flex items-center gap-3 relative z-10">
-                            {chatInfo.adminLogo ? (
+                            {chatInfo?.adminLogo ? (
                                 <img src={chatInfo.adminLogo} alt="Logo" className="w-10 h-10 rounded-full object-cover border border-[#374248]" />
                             ) : (
                                 <div className="w-10 h-10 rounded-full bg-[#6a7175] text-white flex items-center justify-center font-bold text-sm shrink-0">
@@ -650,8 +678,8 @@ Reference Link: ${refLink}`;
                                 </div>
                             )}
                             <div className="min-w-0">
-                                <h2 className="text-white text-base font-bold truncate m-0">{chatInfo.adminName}</h2>
-                                {chatInfo.isOnline !== false ? (
+                                <h2 className="text-white text-base font-bold truncate m-0">{chatInfo?.adminName || 'Agent'}</h2>
+                                {chatInfo?.isOnline !== false ? (
                                     <span className="text-xs text-emerald-400 flex items-center gap-1 font-medium">
                                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" /> Online
                                     </span>
@@ -724,7 +752,7 @@ Reference Link: ${refLink}`;
                         ))}
 
                         {/* Onboarding Form Bubble */}
-                        {onboardingStep < 3 && chatInfo.leadCaptureEnabled && showOnboardingForm && (
+                        {onboardingStep < 3 && chatInfo?.leadCaptureEnabled && showOnboardingForm && (
                             <div className="bg-[#202c33] text-[#e9edef] p-5 rounded-2xl shadow-lg max-w-sm w-full self-start border border-[#2a3942] animate-in fade-in slide-in-from-bottom-2 duration-300">
                                 <h3 className="text-sm font-bold text-white mb-4 m-0">To help you better, please share your details:</h3>
                                 <div className="space-y-4">
@@ -789,7 +817,7 @@ Reference Link: ${refLink}`;
                         )}
 
                         {/* Offline banner */}
-                        {chatInfo.isOnline === false && (
+                        {chatInfo?.isOnline === false && (
                             <div className="bg-[#202c33] border border-amber-500/30 rounded-2xl p-4 flex flex-col items-center text-center gap-3 shadow-md mx-4 my-2 shrink-0">
                                 <div className="text-xs font-bold text-amber-400">Our Agents are Currently Offline</div>
                                 <div className="text-[11px] font-semibold text-[#8696a0]">
@@ -805,10 +833,10 @@ Reference Link: ${refLink}`;
                             </div>
                         )}
 
-                        {/* Welcome Menu button choices */}
-                        {chatInfo.menuOptions && chatInfo.menuOptions.length > 0 && messages.filter(m => !m.isFromAdmin).length === 0 && (
-                            <div className="flex flex-col gap-2 mt-4 bg-[#202c33]/50 border border-[#2c3943] rounded-2xl p-4 animate-in fade-in slide-in-from-bottom-2 duration-300 mx-4 my-2 shrink-0">
-                                <div className="text-xs font-bold text-[#8696a0] mb-1">Select an option to start:</div>
+                        {/* Menu Options Bubble */}
+                        {chatInfo?.menuOptions && chatInfo.menuOptions.length > 0 && messages.filter(m => !m.isFromAdmin).length === 0 && (
+                            <div className="flex flex-col gap-2 mx-4 my-2 shrink-0">
+                                <div className="text-xs font-bold text-slate-300 ml-1">Select an option:</div>
                                 <div className="flex flex-wrap gap-2">
                                     {chatInfo.menuOptions.map((opt: any) => (
                                         <button
@@ -982,8 +1010,6 @@ Reference Link: ${refLink}`;
                             </div>
                         </div>
                     )}
-                </>
-            )}
             </div>
         </div>
     );

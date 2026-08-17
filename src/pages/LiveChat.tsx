@@ -100,6 +100,7 @@ const LiveChat: React.FC = () => {
                 const newConvs = convsResponse.data.filter((c: any) => !existingIds.has(c.id));
                 return [...prev, ...newConvs];
             });
+            setHasMore(convPage < (convsResponse.totalPages || 1));
         } else if (Array.isArray(convsResponse)) {
             setAllConvs(convsResponse);
         }
@@ -348,7 +349,7 @@ const LiveChat: React.FC = () => {
         return () => {
             es.close();
         };
-    }, [selectedId, queryClient, markReadMutation]);
+    }, [selectedId]);
 
 
     useEffect(() => {
