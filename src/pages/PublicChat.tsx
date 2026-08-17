@@ -782,8 +782,8 @@ Reference Link: ${refLink}`;
                         </div>
                     </div>
 
-                    {/* Persistent WhatsApp Banner (if dismissed popup) */}
-                    {hasDismissedWaPopup && chatInfo?.whatsappLink && (
+                    {/* Persistent WhatsApp Banner */}
+                    {chatInfo?.whatsappLink && messages.filter(m => !m.isFromAdmin).length >= (chatInfo?.whatsappThreshold || 5) && !showWAPopup && (
                         <div 
                             className="w-full bg-[#1e2b33] border-b border-[#2a3942] py-2 px-4 flex items-center justify-between shadow-sm z-10 shrink-0 cursor-pointer hover:bg-[#25353f] transition-colors"
                             onClick={handleWhatsAppRedirect}
@@ -1081,14 +1081,22 @@ Reference Link: ${refLink}`;
                                         Move this conversation instantly to WhatsApp for faster and continuous updates directly to your mobile inbox.
                                     </p>
                                     <button
-                                        onClick={handleWhatsAppRedirect}
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleWhatsAppRedirect();
+                                        }}
                                         className="w-full py-3 text-white font-extrabold rounded-xl text-sm transition-all shadow-lg mb-3 flex items-center justify-center gap-2 border border-white/20 hover:opacity-90"
                                         style={{ background: generateBackground(chatInfo?.chatDesign?.visitorBubbleBackground, '#25d366') }}
                                     >
                                         <MessageCircle className="w-4 h-4 text-white" /> Open in WhatsApp
                                     </button>
                                     <button
-                                        onClick={() => {
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
                                             setShowWAPopup(false);
                                             setHasDismissedWaPopup(true);
                                         }}
