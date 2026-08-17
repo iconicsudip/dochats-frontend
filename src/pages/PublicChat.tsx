@@ -92,6 +92,7 @@ const PublicChat: React.FC = () => {
         return 1; 
     });
     const [showWAPopup, setShowWAPopup] = useState(false);
+    const [hasDismissedWaPopup, setHasDismissedWaPopup] = useState(false);
     const [redirectingToWa, setRedirectingToWa] = useState(false);
     const [isInitialLoading, setIsInitialLoading] = useState(true);
     const [showOnboardingForm, setShowOnboardingForm] = useState(false);
@@ -359,6 +360,51 @@ const PublicChat: React.FC = () => {
         } catch (err) { console.error('Bot err', err); setMessages(prev => prev.filter(m => m.id !== tempId)); }
     };
 
+    const subscribeToPushNotifications = async () => {
+        try {
+            if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+            const permission = await Notification.requestPermission();
+            if (permission !== 'granted') return;
+            
+            const registration = await navigator.serviceWorker.register('/sw.js');
+            await navigator.serviceWorker.ready;
+            
+            let subscription = await registration.pushManager.getSubscription();
+            if (!subscription) {
+                const res = await apiClient.get('/push/vapidPublicKey');
+                const vapidPublicKey = res.data.publicKey;
+                const convertedVapidKey = urlBase64ToUint8Array(vapidPublicKey);
+                
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: convertedVapidKey
+                });
+            }
+            
+            if (subscription && conversationId) {
+                await apiClient.post('/push/subscribe', {
+                    subscription,
+                    conversationId
+                });
+            }
+        } catch (err) {
+            console.error('Error subscribing to push notifications:', err);
+        }
+    };
+
+    const urlBase64ToUint8Array = (base64String: string) => {
+        const padding = '='.repeat((4 - base64String.length % 4) % 4);
+        const base64 = (base64String + padding)
+            .replace(/\-/g, '+')
+            .replace(/_/g, '/');
+        const rawData = window.atob(base64);
+        const outputArray = new Uint8Array(rawData.length);
+        for (let i = 0; i < rawData.length; ++i) {
+            outputArray[i] = rawData.charCodeAt(i);
+        }
+        return outputArray;
+    };
+
     const handleOnboardingSubmit = async () => {
         if (!visitorData.name.trim() || !visitorData.phone.trim() || !visitorData.email.trim() || !conversationId) return;
         const { name, phone, email } = visitorData;
@@ -373,11 +419,27 @@ const PublicChat: React.FC = () => {
             const tempIdPhone = `temp-phone-${Date.now()}`;
             setMessages(prev => [
                 ...prev,
-                { id: tempIdName, content: `Name: ${name}`, isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT },
-                { id: tempIdEmail, content: `Email: ${email}`, isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT },
-                { id: tempIdPhone, content: `Phone: ${phone}`, isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT }
+                { id: tempIdName, content: `Name: ${name}`, isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT, tempId: tempIdName },
+                { id: tempIdEmail, content: `Email: ${email}`, isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT, tempId: tempIdEmail },
+                { id: tempIdPhone, content: `Phone: ${phone}`, isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT, tempId: tempIdPhone }
             ]);
+            
+            // Send to server so admin sees it too
+            const sendPromise1 = sendMsgMutation.mutateAsync({ conversationId, content: `Name: ${name}`, type: MessageType.TEXT, isFromAdmin: false, tempId: tempIdName });
+            const sendPromise2 = sendMsgMutation.mutateAsync({ conversationId, content: `Email: ${email}`, type: MessageType.TEXT, isFromAdmin: false, tempId: tempIdEmail });
+            const sendPromise3 = sendMsgMutation.mutateAsync({ conversationId, content: `Phone: ${phone}`, type: MessageType.TEXT, isFromAdmin: false, tempId: tempIdPhone });
+            
+            Promise.allSettled([sendPromise1, sendPromise2, sendPromise3]).then((results) => {
+                results.forEach((res, i) => {
+                    if (res.status === 'fulfilled') {
+                        const tempId = [tempIdName, tempIdEmail, tempIdPhone][i];
+                        setMessages(prev => prev.map(m => m.id === tempId ? (res.value.data?.data || res.value.data) : m));
+                    }
+                });
+            });
+
             setTimeout(() => { sendBotMessage("Perfect! Thank you for sharing your details. How can I help you today?"); }, 800);
+            setTimeout(() => { subscribeToPushNotifications(); }, 1500);
         } catch (err) { console.error('Onboarding submit error:', err); }
     };
 
@@ -589,11 +651,38 @@ Reference Link: ${refLink}`;
                         window.location.href = chatInfo.whatsappLink;
                     }, 2000);
                 }
+
+                if (conversationId) {
+                    let formText = '📝 *Form Submitted*\n';
+                    Object.entries(formData).forEach(([key, value]) => {
+                        formText += `${key}: ${value}\n`;
+                    });
+                    
+                    const tempId = `temp-form-${Date.now()}`;
+                    setMessages(prev => [
+                        ...prev,
+                        { id: tempId, content: formText.trim(), isFromAdmin: false, createdAt: new Date().toISOString(), type: MessageType.TEXT, tempId }
+                    ]);
+                    
+                    try {
+                        const res = await sendMsgMutation.mutateAsync({ 
+                            conversationId, 
+                            content: formText.trim(), 
+                            type: MessageType.TEXT, 
+                            isFromAdmin: false, 
+                            tempId 
+                        });
+                        setMessages(prev => prev.map(m => m.id === tempId ? (res.data?.data || res.data) : m));
+                    } catch (err) {
+                        console.error('Failed to send form details message', err);
+                        setMessages(prev => prev.filter(m => m.id !== tempId));
+                    }
+                }
             }
         };
         window.addEventListener('message', handleMessage);
         return () => window.removeEventListener('message', handleMessage);
-    }, [chatInfo, slug, visitorToken]);
+    }, [chatInfo, slug, visitorToken, conversationId]);
 
     const onEmojiClick = (emojiData: any) => { setInputText(prev => prev + emojiData.emoji); };
 
@@ -691,6 +780,20 @@ Reference Link: ${refLink}`;
                             </div>
                         </div>
                     </div>
+
+                    {/* Persistent WhatsApp Banner (if dismissed popup) */}
+                    {hasDismissedWaPopup && chatInfo?.whatsappLink && (
+                        <div 
+                            className="w-full bg-[#1e2b33] border-b border-[#2a3942] py-2 px-4 flex items-center justify-between shadow-sm z-10 shrink-0 cursor-pointer hover:bg-[#25353f] transition-colors"
+                            onClick={handleWhatsAppRedirect}
+                        >
+                            <div className="flex items-center gap-2 text-[#25d366]">
+                                <MessageCircle className="w-4 h-4" />
+                                <span className="text-xs font-bold uppercase tracking-wider text-white">Continue in WhatsApp</span>
+                            </div>
+                            <span className="text-[10px] text-white/50 bg-black/20 px-2 py-0.5 rounded-full">Recommended</span>
+                        </div>
+                    )}
 
                     {/* Messages Area */}
                     <div className="flex-1 overflow-y-auto px-4 py-6 flex flex-col z-10 custom-scrollbar space-y-4" ref={scrollRef}>
@@ -806,7 +909,7 @@ Reference Link: ${refLink}`;
                             <div className="bg-[#202c33] text-[#e9edef] rounded-2xl shadow-xl max-w-md w-full self-start border border-[#2a3942] overflow-clip animate-in fade-in slide-in-from-bottom-2 duration-300 my-2">
                                 <div className="p-3 bg-[#2a3942]/80 border-b border-[#111b21] font-bold text-xs text-[#00a884] flex items-center gap-2">
                                     <span className="w-2 h-2 rounded-full bg-[#00a884] animate-pulse inline-block shrink-0" />
-                                    Please complete this form to continue:
+                                    {chatInfo?.leadCaptureMessage || 'Please complete this form to continue:'}
                                 </div>
                                 <iframe 
                                     src={`/f/${chatInfo?.leadCaptureFormId}?embed=true`} 
@@ -982,6 +1085,15 @@ Reference Link: ${refLink}`;
                                         style={{ background: generateBackground(chatInfo?.chatDesign?.visitorBubbleBackground, '#25d366') }}
                                     >
                                         <MessageCircle className="w-4 h-4 text-white" /> Open in WhatsApp
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setShowWAPopup(false);
+                                            setHasDismissedWaPopup(true);
+                                        }}
+                                        className="w-full py-2.5 bg-transparent text-white/70 font-bold rounded-xl text-xs transition-colors hover:bg-white/10 hover:text-white border border-transparent hover:border-white/10"
+                                    >
+                                        No thanks, continue here
                                     </button>
                                 </div>
                             </div>

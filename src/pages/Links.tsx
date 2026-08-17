@@ -53,6 +53,7 @@ const Links: React.FC = () => {
         whatsappLink: '',
         whatsappThreshold: 5,
         leadCaptureFormId: '',
+        leadCaptureMessage: 'Please complete this form to continue:',
         leadCaptureDelay: 3,
         whatsappOnFormSubmit: false,
         chatBackgroundImage: '',
@@ -95,7 +96,7 @@ const Links: React.FC = () => {
     const updateMutation = useMutation({
         mutationFn: ({ id, values }: { id: string, values: any }) => apiClient.put(`/links/${id}`, values),
         onSuccess: () => {
-            setFormData({ title: '', welcomeMessage: 'Hello! How can I help you today?', whatsappLink: '', whatsappThreshold: 5, leadCaptureFormId: '', leadCaptureDelay: 3, whatsappOnFormSubmit: false, chatBackgroundImage: '', chatDesign: undefined, trackingPixels: { facebook: '', googleAnalytics: '', tiktok: '', customScripts: '' } });
+            setFormData({ title: '', welcomeMessage: 'Hello! How can I help you today?', whatsappLink: '', whatsappThreshold: 5, leadCaptureFormId: '', leadCaptureMessage: 'Please complete this form to continue:', leadCaptureDelay: 3, whatsappOnFormSubmit: false, chatBackgroundImage: '', chatDesign: undefined, trackingPixels: { facebook: '', googleAnalytics: '', tiktok: '', customScripts: '' } });
             queryClient.invalidateQueries({ queryKey: ['links'] });
             showToast('Link updated successfully!', 'success');
             setIsDrawerOpen(false);
@@ -137,6 +138,7 @@ const Links: React.FC = () => {
             whatsappLink: '',
             whatsappThreshold: 5,
             leadCaptureFormId: '',
+            leadCaptureMessage: 'Please complete this form to continue:',
             leadCaptureDelay: 3,
             whatsappOnFormSubmit: false,
             chatBackgroundImage: '',
@@ -167,6 +169,7 @@ const Links: React.FC = () => {
             whatsappLink: link.whatsappLink || '',
             whatsappThreshold: link.whatsappThreshold ?? 5,
             leadCaptureFormId: (!hasModule(Module.FORMS) && link.leadCaptureFormId && forms.length > 0) ? forms[0].id : (link.leadCaptureFormId || ''),
+            leadCaptureMessage: link.leadCaptureMessage || 'Please complete this form to continue:',
             leadCaptureDelay: link.leadCaptureDelay ?? 3,
             whatsappOnFormSubmit: link.whatsappOnFormSubmit || false,
             chatBackgroundImage: link.chatBackgroundImage || '',
@@ -708,9 +711,20 @@ const Links: React.FC = () => {
                                     </div>
 
                                     {formData.leadCaptureFormId && (
-                                        <div>
-                                            <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Trigger Form After (Messages)</label>
-                                            <p className="text-[11px] text-slate-400 mb-2 font-medium">Wait for this many messages before requiring form submission</p>
+                                        <div className="space-y-5">
+                                            <div>
+                                                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Form Request Message</label>
+                                                <p className="text-[11px] text-slate-400 mb-2 font-medium">Message shown above the inline form</p>
+                                                <input
+                                                    type="text"
+                                                    value={formData.leadCaptureMessage}
+                                                    onChange={e => setFormData({ ...formData, leadCaptureMessage: e.target.value })}
+                                                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all font-medium"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block font-bold text-slate-700 uppercase tracking-wider mb-1">Trigger Form After (Messages)</label>
+                                                <p className="text-[11px] text-slate-400 mb-2 font-medium">Wait for this many messages before requiring form submission</p>
                                             <input
                                                 type="number"
                                                 min="1"
@@ -718,6 +732,24 @@ const Links: React.FC = () => {
                                                 onChange={e => setFormData({ ...formData, leadCaptureDelay: Number(e.target.value) })}
                                                 className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all font-medium"
                                             />
+                                            </div>
+                                            
+                                            <div className="pt-2">
+                                                <label className="flex items-start gap-3 cursor-pointer group">
+                                                    <div className="relative flex items-center justify-center mt-0.5">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={formData.whatsappOnFormSubmit}
+                                                            onChange={e => setFormData({ ...formData, whatsappOnFormSubmit: e.target.checked })}
+                                                            className="w-4 h-4 border-2 border-slate-300 rounded text-primary focus:ring-primary/20 focus:ring-offset-0 transition-all cursor-pointer peer bg-white checked:border-primary"
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <span className="block font-bold text-slate-700 uppercase tracking-wider text-xs mb-0.5 group-hover:text-primary transition-colors">Redirect to WhatsApp on Submit</span>
+                                                        <span className="block text-[11px] text-slate-400 font-medium">Automatically send the customer to the configured WhatsApp URL immediately after they submit this form (Requires WhatsApp Target URL to be set above)</span>
+                                                    </div>
+                                                </label>
+                                            </div>
                                         </div>
                                     )}
                                 </div>

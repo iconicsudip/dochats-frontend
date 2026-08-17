@@ -14,6 +14,7 @@ export interface BroadcastCampaign {
     targetFilter: {
         linkId?: string;
         leadStatus?: string;
+        pushSubscribersOnly?: boolean;
     };
     content: string;
     mediaUrl?: string;

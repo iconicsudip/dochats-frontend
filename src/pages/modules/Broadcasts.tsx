@@ -31,6 +31,7 @@ const Broadcasts: React.FC = () => {
     const [mediaUrl, setMediaUrl] = useState('');
     const [targetLink, setTargetLink] = useState('all');
     const [targetStatus, setTargetStatus] = useState('all');
+    const [targetPushSubscribers, setTargetPushSubscribers] = useState(false);
 
     const { data: campaigns = [], isLoading } = useQuery({
         queryKey: ['broadcast-campaigns'],
@@ -78,7 +79,7 @@ const Broadcasts: React.FC = () => {
         onError: (err: any) => { showToast(err.response?.data?.error || 'Failed to delete campaign', 'error'); }
     });
 
-    const resetForm = () => { setName(''); setContent(''); setMediaUrl(''); setTargetLink('all'); setTargetStatus('all'); };
+    const resetForm = () => { setName(''); setContent(''); setMediaUrl(''); setTargetLink('all'); setTargetStatus('all'); setTargetPushSubscribers(false); };
 
     const handleCreate = (e: React.FormEvent) => {
         e.preventDefault();
@@ -88,7 +89,8 @@ const Broadcasts: React.FC = () => {
             mediaUrl: mediaUrl || undefined,
             targetFilter: {
                 linkId: targetLink !== 'all' ? targetLink : undefined,
-                leadStatus: targetStatus !== 'all' ? targetStatus : undefined
+                leadStatus: targetStatus !== 'all' ? targetStatus : undefined,
+                pushSubscribersOnly: targetPushSubscribers
             }
         });
     };
@@ -551,6 +553,19 @@ const Broadcasts: React.FC = () => {
                                         <option value="LOST">Lost</option>
                                     </select>
                                 </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2 mt-2">
+                                <input
+                                    type="checkbox"
+                                    id="pushSubscribers"
+                                    checked={targetPushSubscribers}
+                                    onChange={(e) => setTargetPushSubscribers(e.target.checked)}
+                                    className="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary"
+                                />
+                                <label htmlFor="pushSubscribers" className="text-xs font-semibold text-slate-700">
+                                    Target Web Push Subscribers Only
+                                </label>
                             </div>
 
                             <div className="space-y-1">
