@@ -453,6 +453,12 @@ const PublicChat: React.FC = () => {
         setReplyingTo(null);
         const tempId = `temp-${Date.now()}`;
         addOptimisticMessage(content, MessageType.TEXT, tempId);
+        
+        // Request push notifications on first user interaction
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+            subscribeToPushNotifications();
+        }
+
         try {
             const res = await sendMsgMutation.mutateAsync({ conversationId, content, type: MessageType.TEXT, isFromAdmin: false, tempId, replyToId: replyingTo?.id });
             setMessages(prev => prev.map(m => m.id === tempId ? (res.data?.data || res.data) : m));
@@ -514,6 +520,11 @@ Reference Link: ${refLink}`;
         };
         
         setMessages(prev => [...prev, optimisticMsg]);
+        
+        // Request push notifications on first user interaction
+        if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+            subscribeToPushNotifications();
+        }
         
         try {
             const res = await sendMsgMutation.mutateAsync({
@@ -1087,6 +1098,11 @@ Reference Link: ${refLink}`;
                                             e.stopPropagation();
                                             handleWhatsAppRedirect();
                                         }}
+                                        onTouchEnd={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            handleWhatsAppRedirect();
+                                        }}
                                         className="w-full py-3 text-white font-extrabold rounded-xl text-sm transition-all shadow-lg mb-3 flex items-center justify-center gap-2 border border-white/20 hover:opacity-90"
                                         style={{ background: generateBackground(chatInfo?.chatDesign?.visitorBubbleBackground, '#25d366') }}
                                     >
@@ -1095,6 +1111,12 @@ Reference Link: ${refLink}`;
                                     <button
                                         type="button"
                                         onClick={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            setShowWAPopup(false);
+                                            setHasDismissedWaPopup(true);
+                                        }}
+                                        onTouchEnd={(e) => {
                                             e.preventDefault();
                                             e.stopPropagation();
                                             setShowWAPopup(false);

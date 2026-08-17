@@ -458,7 +458,7 @@ const Broadcasts: React.FC = () => {
                                                     <div className="py-10 text-center text-xs text-slate-400 font-semibold">No results match your search</div>
                                                 ) : (
                                                     filteredRecipients.map((r, i) => (
-                                                        <div key={i} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50/70 transition-colors">
+                                                        <div key={i} className="flex items-center justify-between px-5 py-3.5 hover:bg-slate-50/50 transition-colors">
                                                             <div className="min-w-0">
                                                                 <p className="text-xs font-bold text-slate-800 m-0 truncate">{r.name}</p>
                                                                 <p className="text-[10px] text-slate-400 font-semibold mt-0.5 m-0">{r.phone}</p>
