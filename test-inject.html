@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test</title>
+</head>
+<body>
+    <script>
+        const customScripts = `
+<script>
+console.log('Script executed!');
+<\/script>
+<noscript><img src="test.jpg" /></noscript>
+        `;
+        const container = document.createElement('div');
+        container.innerHTML = customScripts;
+        Array.from(container.childNodes).forEach(node => {
+            if (node.nodeName.toLowerCase() === 'script') {
+                const oldScript = node;
+                const newScript = document.createElement('script');
+                Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                newScript.text = oldScript.textContent || '';
+                document.head.appendChild(newScript);
+            } else if (node.nodeType === Node.ELEMENT_NODE) {
+                document.head.appendChild(node.cloneNode(true));
+            }
+        });
+    </script>
+</body>
+</html>
