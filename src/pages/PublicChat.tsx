@@ -212,11 +212,16 @@ const PublicChat: React.FC = () => {
             try {
                 const container = document.createElement('div');
                 container.innerHTML = pixels.customScripts;
-                Array.from(container.querySelectorAll('script')).forEach(oldScript => {
-                    const newScript = document.createElement('script');
-                    Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-                    newScript.appendChild(document.createTextNode(oldScript.innerHTML));
-                    document.head.appendChild(newScript);
+                Array.from(container.childNodes).forEach(node => {
+                    if (node.nodeName.toLowerCase() === 'script') {
+                        const oldScript = node as HTMLScriptElement;
+                        const newScript = document.createElement('script');
+                        Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
+                        newScript.text = oldScript.textContent || '';
+                        document.head.appendChild(newScript);
+                    } else if (node.nodeType === Node.ELEMENT_NODE) {
+                        document.head.appendChild(node.cloneNode(true));
+                    }
                 });
             } catch (err) {
                 console.error('Failed to inject custom scripts:', err);
