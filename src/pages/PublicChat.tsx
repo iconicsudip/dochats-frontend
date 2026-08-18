@@ -614,10 +614,7 @@ Reference Link: ${refLink}`;
         }
 
         const waThreshold = chatInfo?.whatsappThreshold || 5;
-        if (chatInfo?.whatsappLink && customerMsgs.length === waThreshold) {
-            const lastMsg = messages[messages.length - 1];
-            if (lastMsg && !lastMsg.isFromAdmin) { setShowWAPopup(true); }
-        }
+        // Replaced modal popup with inline chat prompt
     }, [messages.length, chatInfo, visitorData]);
 
     useEffect(() => {
@@ -948,6 +945,36 @@ Reference Link: ${refLink}`;
                             </div>
                         )}
 
+                        {/* Inline WhatsApp Prompt */}
+                        {chatInfo?.whatsappLink && messages.filter(m => !m.isFromAdmin).length >= (chatInfo?.whatsappThreshold || 5) && !hasDismissedWaPopup && (
+                            <div className="bg-[#202c33] border border-[#2a3942] rounded-2xl p-4 flex flex-col gap-3 shadow-md mx-4 my-2 shrink-0 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-[#25d366]/10 flex items-center justify-center shrink-0 border border-[#25d366]/20">
+                                        <MessageCircle className="w-5 h-5 text-[#25d366]" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-white m-0 leading-tight">Continue on WhatsApp?</h3>
+                                        <p className="text-[11px] font-medium text-[#8696a0] m-0 mt-1 leading-tight">Get faster replies and updates directly on your mobile.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 mt-1">
+                                    <button
+                                        onClick={handleWhatsAppRedirect}
+                                        className="flex-1 py-2.5 bg-[#25d366] hover:bg-[#20bd5a] text-white font-extrabold text-xs rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-md cursor-pointer"
+                                    >
+                                        <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946C.003 5.324 5.328 0 11.859 0c3.166.001 6.141 1.233 8.375 3.469 2.235 2.237 3.465 5.212 3.462 8.377-.003 6.535-5.328 11.86-11.859 11.86-2.004-.001-3.973-.51-5.716-1.48L0 24zm6.59-4.846c1.6.95 3.1 1.45 4.6 1.452 5.4 0 9.8-4.4 9.803-9.8.002-2.6-1.01-5.07-2.85-6.91-1.85-1.83-4.3-2.84-6.91-2.84-5.4 0-9.8 4.4-9.8 9.8-.001 1.7.46 3.3 1.35 4.74l-.99 3.6 3.7-.97zm10.4-3.5c-.3-.15-1.7-.85-2.0-.95-.3-.1-.5-.15-.7.15-.2.3-.75.95-.9.1-.15-.15-.3-.45-.3-.45 0-1.7-.6-3.2-1.95-1.16-1-1.95-2.3-2.2-2.7-.2-.3-.02-.45.13-.6.13-.13.3-.35.45-.5.15-.15.2-.25.3-.45.1-.2.05-.4-.02-.55-.07-.15-.7-1.7-.95-2.3-.3-.6-.6-.5-.8-.5-.2 0-.4 0-.6 0-.2 0-.6.1-.9.4-.3.3-1.1 1.1-1.1 2.7 0 1.6 1.2 3.1 1.35 3.3.15.2 2.35 3.6 5.7 5.03.8.34 1.43.55 1.9.7.8.25 1.5.2 2.1.1.65-.1 1.7-.7 2.0-1.4.3-.7.3-1.3.2-1.4-.1-.1-.3-.2-.6-.3z" /></svg>
+                                        Yes, Open WhatsApp
+                                    </button>
+                                    <button
+                                        onClick={() => setHasDismissedWaPopup(true)}
+                                        className="py-2.5 px-4 bg-[#2a3942] hover:bg-[#3b4a54] border border-transparent hover:border-[#8696a0]/20 text-[#e9edef] font-bold text-xs rounded-xl transition-all cursor-pointer"
+                                    >
+                                        Dismiss
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
                         {/* Menu Options Bubble */}
                         {chatInfo?.menuOptions && chatInfo.menuOptions.length > 0 && messages.filter(m => !m.isFromAdmin).length === 0 && (
                             <div className="flex flex-col gap-2 mx-4 my-2 shrink-0">
@@ -1068,66 +1095,6 @@ Reference Link: ${refLink}`;
                                     )}
                                 </form>
                             )}
-                        </div>
-                    )}
-
-                    {/* WhatsApp Redirect Modal Dialog */}
-                    {showWAPopup && (
-                        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-                            <div 
-                                className="rounded-3xl shadow-2xl max-w-xs w-full text-center border border-[#2a3942] animate-in zoom-in-95 duration-200 relative overflow-hidden"
-                            >
-                                <div className="absolute inset-0 z-0" style={{ background: generateBackground(chatInfo?.chatDesign?.inputBackground, '#202c33') }} />
-                                <div className="absolute inset-0 bg-black/40 z-0" />
-                                
-                                <div className="relative z-10 p-6">
-                                    <div 
-                                        className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg border border-white/20"
-                                        style={{ background: generateBackground(chatInfo?.chatDesign?.visitorBubbleBackground, '#25d366') }}
-                                    >
-                                        <MessageCircle className="w-8 h-8 text-white drop-shadow-md" />
-                                    </div>
-                                    <h3 className="text-lg font-extrabold text-white mb-2 m-0 drop-shadow-md">Continue on WhatsApp?</h3>
-                                    <p className="text-xs text-white/90 mb-6 leading-relaxed drop-shadow-md font-medium">
-                                        Move this conversation instantly to WhatsApp for faster and continuous updates directly to your mobile inbox.
-                                    </p>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            handleWhatsAppRedirect();
-                                        }}
-                                        onTouchEnd={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            handleWhatsAppRedirect();
-                                        }}
-                                        className="w-full py-3 text-white font-extrabold rounded-xl text-sm transition-all shadow-lg mb-3 flex items-center justify-center gap-2 border border-white/20 hover:opacity-90"
-                                        style={{ background: generateBackground(chatInfo?.chatDesign?.visitorBubbleBackground, '#25d366') }}
-                                    >
-                                        <MessageCircle className="w-4 h-4 text-white" /> Open in WhatsApp
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            setShowWAPopup(false);
-                                            setHasDismissedWaPopup(true);
-                                        }}
-                                        onTouchEnd={(e) => {
-                                            e.preventDefault();
-                                            e.stopPropagation();
-                                            setShowWAPopup(false);
-                                            setHasDismissedWaPopup(true);
-                                        }}
-                                        className="w-full py-2.5 bg-transparent text-white/70 font-bold rounded-xl text-xs transition-colors hover:bg-white/10 hover:text-white border border-transparent hover:border-white/10"
-                                    >
-                                        No thanks, continue here
-                                    </button>
-                                </div>
-                            </div>
                         </div>
                     )}
 
